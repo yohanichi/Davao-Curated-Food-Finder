@@ -1,0 +1,625 @@
+{
+  "version": "3.0.0",
+  "experiment_name": "Davao Food Finder Controlled Temporal & Counterfactual Data Volatility Benchmark",
+  "methodology_note": "Evaluates Objective 1 (Data Volatility Resilience) by comparing Static 2025 CSV Baseline, Stale 12h+ Cached Snapshots (pre-change state), Single-Pass Ablation with Fresh Evidence, and Full Agentic Iterative Loop with Fresh Evidence across 15 real Davao City store scenarios.",
+  "scenarios": [
+    {
+      "id": "VOL001",
+      "volatility_type": "closure",
+      "query": "Japanese restaurants in Davao City",
+      "invalidated_venues": ["Sukidesu Modern Japanese Cuisine - Aurora"],
+      "expected_valid_alternatives": [
+        "Sukidesu Japanese Street Dining - Lanang",
+        "Ginkaku Japanese Restaurant - Matina",
+        "Makoto Ya Japanese Restaurant",
+        "Kitsune Japanese Restaurant - Matina"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 50400,
+        "crawled_at": "2026-10-30T00:00:00Z",
+        "sources": [{"title": "Davao Dining Directory (Cached)", "url": "https://example.org/davao/sukidesu-aurora-2025"}],
+        "results": [
+          {
+            "title": "Sukidesu Modern Japanese Cuisine - Aurora, Davao City",
+            "text": "Sukidesu Modern Japanese Cuisine - Aurora in Davao City is open daily serving ramen and sushi rolls.",
+            "url": "https://example.org/davao/sukidesu-aurora-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Davao Dining Live Update 2026", "url": "https://example.org/davao/sukidesu-aurora-2026"}],
+        "results": [
+          {
+            "title": "Sukidesu Modern Japanese Cuisine - Aurora Status Update",
+            "text": "Notice: Sukidesu Modern Japanese Cuisine - Aurora is permanently closed as of October 2026. Diners may visit Sukidesu Japanese Street Dining - Lanang or Ginkaku Japanese Restaurant - Matina in Davao City.",
+            "url": "https://example.org/davao/sukidesu-aurora-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL002",
+      "volatility_type": "closure",
+      "query": "Quiet coffee shops in Davao City",
+      "invalidated_venues": ["BO's Coffee - SM Davao"],
+      "expected_valid_alternatives": [
+        "Green Coffee - Marfori",
+        "Urbanica Milk Coffee - SM City Davao",
+        "Daily by Bo's Coffee - SM City Davao",
+        "The Coffee Bean & Tea Leaf - Abreeza Mall"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 48600,
+        "crawled_at": "2026-10-30T01:00:00Z",
+        "sources": [{"title": "SM Davao Mall Directory (Cached)", "url": "https://example.org/davao/bos-sm-davao-2025"}],
+        "results": [
+          {
+            "title": "BO's Coffee - SM Davao",
+            "text": "BO's Coffee - SM Davao is open daily from 10:00 AM to 9:00 PM in Ecoland, Davao City.",
+            "url": "https://example.org/davao/bos-sm-davao-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "SM Davao Tenant Advisory 2026", "url": "https://example.org/davao/bos-sm-davao-2026"}],
+        "results": [
+          {
+            "title": "BO's Coffee - SM Davao Advisory",
+            "text": "BO's Coffee - SM Davao is temporarily closed for renovation until further notice. Nearby open coffee shops include Daily by Bo's Coffee - SM City Davao and Green Coffee - Marfori.",
+            "url": "https://example.org/davao/bos-sm-davao-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL003",
+      "volatility_type": "closure",
+      "query": "Korean samgyupsal or Korean BBQ in Davao City",
+      "invalidated_venues": ["Samgyupsal & Chicken Korean Restaurant - Aurora"],
+      "expected_valid_alternatives": [
+        "Samgyupsal and Chicken Korean Restaurant - Catalunan Grande",
+        "Daghaus Korean Fusion - Roxas Avenue",
+        "Manna Korean Restaurant - Sm Lanang",
+        "MODOO KOREAN RESTAURANT - DAMOSA MARKET BASKET"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 52000,
+        "crawled_at": "2026-10-30T00:30:00Z",
+        "sources": [{"title": "Davao K-BBQ Guide (Cached)", "url": "https://example.org/davao/samgyup-aurora-2025"}],
+        "results": [
+          {
+            "title": "Samgyupsal & Chicken Korean Restaurant - Aurora",
+            "text": "Samgyupsal & Chicken Korean Restaurant - Aurora serves Korean BBQ platters in Poblacion, Davao City.",
+            "url": "https://example.org/davao/samgyup-aurora-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Poblacion Business Registry Update", "url": "https://example.org/davao/samgyup-aurora-2026"}],
+        "results": [
+          {
+            "title": "Samgyupsal & Chicken Korean Restaurant - Aurora Branch Update",
+            "text": "Samgyupsal & Chicken Korean Restaurant - Aurora has closed down and ceased operations at its Aurora street branch in Davao City.",
+            "url": "https://example.org/davao/samgyup-aurora-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL004",
+      "volatility_type": "price_drift",
+      "query": "Fried chicken meals under ₱180 in Davao City",
+      "max_price_php": 180,
+      "invalidated_venues": ["Gang Gang Boneless Fried Chicken - Bonifacio Street"],
+      "expected_valid_alternatives": [
+        "Chickenato Fried Chicken - Boulevard",
+        "24 Chicken - Bajada",
+        "Chicken Pete - Illustre",
+        "Marfori's Best Chicken - Marfori"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 49000,
+        "crawled_at": "2026-10-30T01:00:00Z",
+        "sources": [{"title": "Bonifacio Menu Snapshot (2025)", "url": "https://example.org/davao/ganggang-menu-2025"}],
+        "results": [
+          {
+            "title": "Gang Gang Boneless Fried Chicken - Bonifacio Street Menu",
+            "text": "Gang Gang Boneless Fried Chicken - Bonifacio Street solo rice meals are ₱149 to ₱165 in Davao City.",
+            "url": "https://example.org/davao/ganggang-menu-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Bonifacio Menu Price Update 2026", "url": "https://example.org/davao/ganggang-menu-2026"}],
+        "results": [
+          {
+            "title": "Gang Gang Boneless Fried Chicken - Bonifacio Street 2026 Menu",
+            "text": "Updated 2026 menu at Gang Gang Boneless Fried Chicken - Bonifacio Street: boneless chicken platters and meals are now ₱295 to ₱360.",
+            "url": "https://example.org/davao/ganggang-menu-2026"
+          },
+          {
+            "title": "Chickenato Fried Chicken - Boulevard Budget Menu",
+            "text": "Chickenato Fried Chicken - Boulevard offers crispy fried chicken rice meals at ₱139 to ₱159 in Davao City.",
+            "url": "https://example.org/davao/ganggang-menu-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL005",
+      "volatility_type": "price_drift",
+      "query": "Pasta and rolls under ₱160 in Davao City",
+      "max_price_php": 160,
+      "invalidated_venues": [
+        "EMS Pasta and Rolls - F Torres Street",
+        "Pasta Sorpresa - Matina"
+      ],
+      "expected_valid_alternatives": [
+        "Vera - Coffee and Bistro",
+        "Marrie's Kitchen - Davao",
+        "Pomodoro Pasta House - Artiaga"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 47000,
+        "crawled_at": "2026-10-30T01:00:00Z",
+        "sources": [{"title": "Matina Pasta Guide (Cached)", "url": "https://example.org/davao/pasta-sorpresa-2025"}],
+        "results": [
+          {
+            "title": "Pasta Sorpresa - Matina",
+            "text": "Pasta Sorpresa - Matina serves solo pasta boxes for ₱135 in Davao City.",
+            "url": "https://example.org/davao/pasta-sorpresa-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Matina Pasta Menu Update 2026", "url": "https://example.org/davao/pasta-sorpresa-2026"}],
+        "results": [
+          {
+            "title": "Pasta Sorpresa - Matina Updated 2026 Menu",
+            "text": "Pasta Sorpresa - Matina updated 2026 prices: solo pasta plates are now ₱275 to ₱340.",
+            "url": "https://example.org/davao/pasta-sorpresa-2026"
+          },
+          {
+            "title": "Vera - Coffee and Bistro Student Pasta Deals",
+            "text": "Vera - Coffee and Bistro offers pasta and bread rolls at ₱145 in Davao City.",
+            "url": "https://example.org/davao/pasta-sorpresa-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL006",
+      "volatility_type": "price_drift",
+      "query": "Cozy coffee shop in Davao City under ₱190",
+      "max_price_php": 190,
+      "invalidated_venues": ["Green Coffee - Marfori"],
+      "expected_valid_alternatives": [
+        "BO's Coffee - SM Davao",
+        "Urbanica Milk Coffee - SM City Davao",
+        "Daily by Bo's Coffee - SM City Davao",
+        "The Coffee Bean & Tea Leaf - Abreeza Mall"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 46000,
+        "crawled_at": "2026-10-30T01:30:00Z",
+        "sources": [{"title": "Marfori Cafe Prices (Cached)", "url": "https://example.org/davao/green-coffee-marfori-2025"}],
+        "results": [
+          {
+            "title": "Green Coffee - Marfori Menu",
+            "text": "Green Coffee - Marfori serves iced lattes and pastries at ₱150 to ₱175 in Davao City.",
+            "url": "https://example.org/davao/green-coffee-marfori-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Marfori Specialty Menu 2026", "url": "https://example.org/davao/green-coffee-marfori-2026"}],
+        "results": [
+          {
+            "title": "Green Coffee - Marfori 2026 Menu Revision",
+            "text": "Green Coffee - Marfori revised 2026 cafe menu: espresso drinks and signature blends now ₱245 to ₱310.",
+            "url": "https://example.org/davao/green-coffee-marfori-2026"
+          },
+          {
+            "title": "Urbanica Milk Coffee - SM City Davao",
+            "text": "Urbanica Milk Coffee - SM City Davao serves iced milk coffee at ₱125 to ₱160.",
+            "url": "https://example.org/davao/green-coffee-marfori-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL007",
+      "volatility_type": "price_drift",
+      "query": "Burgers and snacks under ₱200 in Davao City",
+      "max_price_php": 200,
+      "invalidated_venues": [
+        "Harley's Burgers and Shakes - C.M Recto",
+        "Burger King - Buhangin Davao",
+        "Army Navy - Abreeza Mall"
+      ],
+      "expected_valid_alternatives": [
+        "Jollibee - Davao Magsaysay",
+        "Minute Burger - Matina"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 51000,
+        "crawled_at": "2026-10-30T00:00:00Z",
+        "sources": [{"title": "Abreeza Burger Guide (Cached)", "url": "https://example.org/davao/armynavy-abreeza-2025"}],
+        "results": [
+          {
+            "title": "Army Navy - Abreeza Mall",
+            "text": "Army Navy - Abreeza Mall classic junior burgers start at ₱185 in Davao City.",
+            "url": "https://example.org/davao/armynavy-abreeza-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Abreeza Burger Price Update 2026", "url": "https://example.org/davao/armynavy-abreeza-2026"}],
+        "results": [
+          {
+            "title": "Army Navy - Abreeza Mall 2026 Menu",
+            "text": "Army Navy - Abreeza Mall updated 2026 burger prices: single burgers now ₱315 to ₱395.",
+            "url": "https://example.org/davao/armynavy-abreeza-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL008",
+      "volatility_type": "hours_change",
+      "query": "24 hours open late night food in Davao City",
+      "invalidated_venues": ["Black Plate Bistro - La Verna Bypass Road"],
+      "expected_valid_alternatives": [
+        "Wow Lechon - Katipunan Diner",
+        "Takodeal - Cabantian",
+        "Pirates Galley - Matina"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 50000,
+        "crawled_at": "2026-10-30T00:00:00Z",
+        "sources": [{"title": "La Verna Dining Hours (Cached)", "url": "https://example.org/davao/blackplate-2025"}],
+        "results": [
+          {
+            "title": "Black Plate Bistro - La Verna Bypass Road",
+            "text": "Black Plate Bistro - La Verna Bypass Road is open 24 hours daily in Davao City.",
+            "url": "https://example.org/davao/blackplate-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "La Verna Bistro Schedule Advisory 2026", "url": "https://example.org/davao/blackplate-2026"}],
+        "results": [
+          {
+            "title": "Black Plate Bistro - La Verna Bypass Road Hours Change",
+            "text": "Schedule advisory: Black Plate Bistro - La Verna Bypass Road is no longer 24 hours and now closes at 9:00 PM daily.",
+            "url": "https://example.org/davao/blackplate-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL009",
+      "volatility_type": "hours_change",
+      "query": "Midnight snacks or 24/7 dining in Poblacion Davao City",
+      "invalidated_venues": ["Snacks N' Bite Station"],
+      "expected_valid_alternatives": [
+        "Dulce's Kakanin - Mamay Road",
+        "Taters - Tulip Drive",
+        "JuJu - NCCC VP"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 49500,
+        "crawled_at": "2026-10-30T00:30:00Z",
+        "sources": [{"title": "Poblacion Late Night Guide (Cached)", "url": "https://example.org/davao/snacksnbite-2025"}],
+        "results": [
+          {
+            "title": "Snacks N' Bite Station",
+            "text": "Snacks N' Bite Station is open 24/7 in Poblacion, Davao City.",
+            "url": "https://example.org/davao/snacksnbite-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Poblacion Store Hours 2026", "url": "https://example.org/davao/snacksnbite-2026"}],
+        "results": [
+          {
+            "title": "Snacks N' Bite Station New Operating Hours",
+            "text": "Snacks N' Bite Station updated schedule: open 10:00 AM - 8:00 PM only; closed late night.",
+            "url": "https://example.org/davao/snacksnbite-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL010",
+      "volatility_type": "hours_change",
+      "query": "24/7 coffee shop or late night cafe in Davao City",
+      "invalidated_venues": ["Coffeemaybe Cafe - Artiaga"],
+      "expected_valid_alternatives": [
+        "Joe's Cafe - Ilustre",
+        "Vanitea Cafe - Rasay Street",
+        "Indoor Cafe - Cabantian",
+        "Fika Cafe - Buhangin"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 45000,
+        "crawled_at": "2026-10-30T01:00:00Z",
+        "sources": [{"title": "Artiaga Study Cafes (Cached)", "url": "https://example.org/davao/coffeemaybe-2025"}],
+        "results": [
+          {
+            "title": "Coffeemaybe Cafe - Artiaga",
+            "text": "Coffeemaybe Cafe - Artiaga is open 24/7 for night-shift workers and students in Davao City.",
+            "url": "https://example.org/davao/coffeemaybe-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Artiaga Cafe Hours Update 2026", "url": "https://example.org/davao/coffeemaybe-2026"}],
+        "results": [
+          {
+            "title": "Coffeemaybe Cafe - Artiaga Hours Advisory",
+            "text": "Coffeemaybe Cafe - Artiaga is no longer 24/7 and closes early at 8:00 PM daily.",
+            "url": "https://example.org/davao/coffeemaybe-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL011",
+      "volatility_type": "rating_shift",
+      "query": "Top rated 4.8+ seafood restaurants in Davao City",
+      "min_rating": 4.8,
+      "invalidated_venues": ["FoodBowls - Katipunan Diner"],
+      "expected_valid_alternatives": [
+        "Hangry Tuna - Matina Aplaya",
+        "Tuna Republik - La Verna Street",
+        "Hangry Tuna - Nova Tierra Village"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 50000,
+        "crawled_at": "2026-10-30T00:00:00Z",
+        "sources": [{"title": "Davao Seafood Ratings (Cached)", "url": "https://example.org/davao/foodbowls-2025"}],
+        "results": [
+          {
+            "title": "FoodBowls - Katipunan Diner Reviews",
+            "text": "FoodBowls - Katipunan Diner is rated 5.0 stars in Davao City.",
+            "url": "https://example.org/davao/foodbowls-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Davao Diner Review Aggregator 2026", "url": "https://example.org/davao/foodbowls-2026"}],
+        "results": [
+          {
+            "title": "FoodBowls - Katipunan Diner 2026 Customer Rating",
+            "text": "FoodBowls - Katipunan Diner rating dropped to 2.4 stars in 2026 customer reviews.",
+            "url": "https://example.org/davao/foodbowls-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL012",
+      "volatility_type": "rating_shift",
+      "query": "Highly rated 4.8+ pizza places in Davao City",
+      "min_rating": 4.8,
+      "invalidated_venues": ["S&R New York Style Pizza - Abreeza Ayala Mall"],
+      "expected_valid_alternatives": [
+        "Alberto's Pizza - Matina",
+        "S&R New York Style Pizza - SM City Davao",
+        "Alberto's Pizza - Ecoland",
+        "Shakey's Pizza - SM Lanang"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 48000,
+        "crawled_at": "2026-10-30T00:00:00Z",
+        "sources": [{"title": "Abreeza Pizza Reviews (Cached)", "url": "https://example.org/davao/snr-abreeza-2025"}],
+        "results": [
+          {
+            "title": "S&R New York Style Pizza - Abreeza Ayala Mall",
+            "text": "S&R New York Style Pizza - Abreeza Ayala Mall rated 5.0 stars in Davao City.",
+            "url": "https://example.org/davao/snr-abreeza-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Abreeza Pizza Reviews 2026", "url": "https://example.org/davao/snr-abreeza-2026"}],
+        "results": [
+          {
+            "title": "S&R New York Style Pizza - Abreeza Ayala Mall 2026 Rating",
+            "text": "S&R New York Style Pizza - Abreeza Ayala Mall current rating: 2.6 stars based on recent 2026 branch feedback.",
+            "url": "https://example.org/davao/snr-abreeza-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL013",
+      "volatility_type": "rating_shift",
+      "query": "Best 4.8+ milk tea shops in Lanang Davao City",
+      "min_rating": 4.8,
+      "invalidated_venues": ["LiberTea MilkTea – SM Lanang"],
+      "expected_valid_alternatives": [
+        "CoCo Fresh Tea & Juice - SM Lanang",
+        "Infinitea - Damosa Lanang"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 48000,
+        "crawled_at": "2026-10-30T00:00:00Z",
+        "sources": [{"title": "Lanang Boba Guide (Cached)", "url": "https://example.org/davao/libertea-lanang-2025"}],
+        "results": [
+          {
+            "title": "LiberTea MilkTea – SM Lanang",
+            "text": "LiberTea MilkTea – SM Lanang is rated 4.9 stars in Lanang, Davao City.",
+            "url": "https://example.org/davao/libertea-lanang-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Lanang Boba Reviews 2026", "url": "https://example.org/davao/libertea-lanang-2026"}],
+        "results": [
+          {
+            "title": "LiberTea MilkTea – SM Lanang Updated Rating",
+            "text": "LiberTea MilkTea – SM Lanang rating fell to 2.5 stars in 2026 customer reviews.",
+            "url": "https://example.org/davao/libertea-lanang-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL014",
+      "volatility_type": "compound_volatility",
+      "query": "Halal restaurants in Davao City under ₱220",
+      "max_price_php": 220,
+      "invalidated_venues": [
+        "Sunnypoint Halal Restaurant and Cafe - Maa",
+        "Indian Biryani Halal - DMSF"
+      ],
+      "expected_valid_alternatives": [
+        "Mamastill Atbp - J Luna Street",
+        "Zis Goods Halal - Boulevard",
+        "BEST Indian Food Davao Halal - Buhangin"
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 52000,
+        "crawled_at": "2026-10-30T00:00:00Z",
+        "sources": [{"title": "Davao Halal Guide (Cached)", "url": "https://example.org/davao/halal-guide-2025"}],
+        "results": [
+          {
+            "title": "Sunnypoint Halal Restaurant and Cafe - Maa",
+            "text": "Sunnypoint Halal Restaurant and Cafe - Maa is open daily with Halal meals at ₱180 in Davao City.",
+            "url": "https://example.org/davao/halal-guide-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Davao Halal Live Directory 2026", "url": "https://example.org/davao/halal-guide-2026"}],
+        "results": [
+          {
+            "title": "Sunnypoint Halal Restaurant and Cafe - Maa Closure Notice",
+            "text": "Sunnypoint Halal Restaurant and Cafe - Maa is temporarily closed for renovation in 2026.",
+            "url": "https://example.org/davao/halal-guide-2026"
+          },
+          {
+            "title": "Indian Biryani Halal - DMSF 2026 Menu",
+            "text": "Indian Biryani Halal - DMSF updated 2026 menu: biryani plates are now ₱310 to ₱380.",
+            "url": "https://example.org/davao/halal-guide-2026"
+          },
+          {
+            "title": "Mamastill Atbp - J Luna Street Halal Meals",
+            "text": "Mamastill Atbp - J Luna Street is open daily in Davao City with Halal rice bowls at ₱165.",
+            "url": "https://example.org/davao/halal-guide-2026"
+          }
+        ]
+      }
+    },
+    {
+      "id": "VOL015",
+      "volatility_type": "compound_volatility",
+      "query": "Healthy vegetarian salad in Davao City under ₱250",
+      "max_price_php": 250,
+      "invalidated_venues": [
+        "Fast Fresh By SKCO - Torres",
+        "Clean Cafe by SKCO - Torres"
+      ],
+      "expected_valid_alternatives": [
+        "The Green Bounty Kitchen - Ecoland",
+        "Fast Fresh by SKCO - Lanang",
+        "Soul Kitchen Co. - Torres St."
+      ],
+      "stale_evidence": {
+        "cache": "hit",
+        "cache_age_sec": 53000,
+        "crawled_at": "2026-10-30T00:00:00Z",
+        "sources": [{"title": "Davao Healthy Eats (Cached)", "url": "https://example.org/davao/skco-torres-2025"}],
+        "results": [
+          {
+            "title": "Fast Fresh By SKCO - Torres",
+            "text": "Fast Fresh By SKCO - Torres serves salads and wraps at ₱195 in Davao City.",
+            "url": "https://example.org/davao/skco-torres-2025"
+          }
+        ]
+      },
+      "fresh_evidence": {
+        "cache": "miss",
+        "cache_age_sec": 0,
+        "crawled_at": "2026-10-31T02:00:00Z",
+        "sources": [{"title": "Davao Healthy Eats Live Update 2026", "url": "https://example.org/davao/skco-torres-2026"}],
+        "results": [
+          {
+            "title": "Fast Fresh By SKCO - Torres Branch Consolidation",
+            "text": "Fast Fresh By SKCO - Torres is permanently closed after consolidating into Fast Fresh by SKCO - Lanang.",
+            "url": "https://example.org/davao/skco-torres-2026"
+          },
+          {
+            "title": "Clean Cafe by SKCO - Torres 2026 Menu",
+            "text": "Clean Cafe by SKCO - Torres updated 2026 salad bowls and entrees are now ₱340 to ₱420.",
+            "url": "https://example.org/davao/skco-torres-2026"
+          },
+          {
+            "title": "The Green Bounty Kitchen - Ecoland",
+            "text": "The Green Bounty Kitchen - Ecoland is open in Davao City with plant-based green salad bowls at ₱195.",
+            "url": "https://example.org/davao/skco-torres-2026"
+          }
+        ]
+      }
+    }
+  ]
+}
+

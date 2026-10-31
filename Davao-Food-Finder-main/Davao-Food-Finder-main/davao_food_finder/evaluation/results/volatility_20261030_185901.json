@@ -1,0 +1,2085 @@
+{
+    "experiment": "data_volatility_resilience_v3",
+    "started_at_utc": "2026-10-30T18:58:53+00:00",
+    "completed_at_utc": "2026-10-30T18:59:01+00:00",
+    "scenario_count": 15,
+    "summary": [
+        {
+            "id": "STATIC-CSV-BASELINE",
+            "provider": "baseline",
+            "evidence_mode": "none",
+            "description": "Static 2025 CSV retrieval without web volatility reconciliation",
+            "scenario_count": 15,
+            "resilience_pass_rate": {
+                "mean": 0.3333333333333333,
+                "sd": 0.48795003647426666,
+                "se": 0.12598815766974242,
+                "ci_lower": 0.13166666666666677,
+                "ci_upper": 0.6,
+                "n": 15
+            },
+            "invalid_venue_suppression_rate": {
+                "mean": 0.3333333333333333,
+                "sd": 0.48795003647426666,
+                "se": 0.12598815766974242,
+                "ci_lower": 0.13333333333333333,
+                "ci_upper": 0.6,
+                "n": 15
+            },
+            "valid_top5_precision": {
+                "mean": 0.6822222222222223,
+                "sd": 0.2698814162479122,
+                "se": 0.06968308203860238,
+                "ci_lower": 0.5532777777777776,
+                "ci_upper": 0.8133333333333334,
+                "n": 15
+            },
+            "accuracy_by_volatility_type": {
+                "closure": 0,
+                "price_drift": 0.5,
+                "hours_change": 0.6667,
+                "rating_shift": 0.3333,
+                "compound_volatility": 0
+            },
+            "mean_latency_s": 0.1205,
+            "median_latency_s": 0.121
+        },
+        {
+            "id": "STALE-CACHE-12H",
+            "provider": "agentic-local",
+            "evidence_mode": "stale",
+            "description": "Agentic pipeline reading outdated (>12h) pre-change cached web snapshot",
+            "scenario_count": 15,
+            "resilience_pass_rate": {
+                "mean": 0.3333333333333333,
+                "sd": 0.48795003647426666,
+                "se": 0.12598815766974242,
+                "ci_lower": 0.13333333333333333,
+                "ci_upper": 0.6,
+                "n": 15
+            },
+            "invalid_venue_suppression_rate": {
+                "mean": 0.3333333333333333,
+                "sd": 0.48795003647426666,
+                "se": 0.12598815766974242,
+                "ci_lower": 0.13333333333333333,
+                "ci_upper": 0.5333333333333333,
+                "n": 15
+            },
+            "valid_top5_precision": {
+                "mean": 0.68,
+                "sd": 0.3189267717114474,
+                "se": 0.08234653836654203,
+                "ci_lower": 0.5199999999999999,
+                "ci_upper": 0.8266666666666667,
+                "n": 15
+            },
+            "accuracy_by_volatility_type": {
+                "closure": 0.3333,
+                "price_drift": 0.5,
+                "hours_change": 0.6667,
+                "rating_shift": 0,
+                "compound_volatility": 0
+            },
+            "mean_latency_s": 0.1349,
+            "median_latency_s": 0.1353
+        },
+        {
+            "id": "ABLATION-NO-LOOP-FRESH",
+            "provider": "ablation-no-loop",
+            "evidence_mode": "fresh",
+            "description": "Single-pass retrieval with fresh web evidence but WITHOUT Pass 2 autonomous critique/repair",
+            "scenario_count": 15,
+            "resilience_pass_rate": {
+                "mean": 0.3333333333333333,
+                "sd": 0.48795003647426666,
+                "se": 0.12598815766974242,
+                "ci_lower": 0.13166666666666677,
+                "ci_upper": 0.6,
+                "n": 15
+            },
+            "invalid_venue_suppression_rate": {
+                "mean": 0.3333333333333333,
+                "sd": 0.48795003647426666,
+                "se": 0.12598815766974242,
+                "ci_lower": 0.13333333333333333,
+                "ci_upper": 0.6,
+                "n": 15
+            },
+            "valid_top5_precision": {
+                "mean": 0.6822222222222223,
+                "sd": 0.2698814162479122,
+                "se": 0.06968308203860238,
+                "ci_lower": 0.5532777777777776,
+                "ci_upper": 0.8133333333333334,
+                "n": 15
+            },
+            "accuracy_by_volatility_type": {
+                "closure": 0,
+                "price_drift": 0.5,
+                "hours_change": 0.6667,
+                "rating_shift": 0.3333,
+                "compound_volatility": 0
+            },
+            "mean_latency_s": 0.1145,
+            "median_latency_s": 0.119
+        },
+        {
+            "id": "AGENTIC-LOOP-FRESH",
+            "provider": "agentic-local",
+            "evidence_mode": "fresh",
+            "description": "Full 2-pass Autonomous Iterative Critique-and-Refinement Loop with fresh web evidence",
+            "scenario_count": 15,
+            "resilience_pass_rate": {
+                "mean": 1,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 1,
+                "ci_upper": 1,
+                "n": 15
+            },
+            "invalid_venue_suppression_rate": {
+                "mean": 1,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 1,
+                "ci_upper": 1,
+                "n": 15
+            },
+            "valid_top5_precision": {
+                "mean": 1,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 1,
+                "ci_upper": 1,
+                "n": 15
+            },
+            "accuracy_by_volatility_type": {
+                "closure": 1,
+                "price_drift": 1,
+                "hours_change": 1,
+                "rating_shift": 1,
+                "compound_volatility": 1
+            },
+            "mean_latency_s": 0.1262,
+            "median_latency_s": 0.1229
+        }
+    ],
+    "statistical_tests": {
+        "friedman": {
+            "statistic": 23.68421052631579,
+            "degrees_of_freedom": 3,
+            "p_value": 2.9073951519974054e-5,
+            "mean_ranks": [
+                2.1666666666666665,
+                2.1666666666666665,
+                2.1666666666666665,
+                3.5
+            ]
+        },
+        "wilcoxon_posthoc": [
+            {
+                "config_a": "STATIC-CSV-BASELINE",
+                "config_b": "STALE-CACHE-12H",
+                "n_pairs": 15,
+                "n_nonzero": 4,
+                "w_plus": 5,
+                "w_minus": 5,
+                "w_stat": 5,
+                "z_score": 0,
+                "p_value": 1,
+                "effect_size_r": 0,
+                "mean_diff": 0,
+                "median_diff": 0,
+                "method": "exact",
+                "p_holm": 1,
+                "significant_005": false
+            },
+            {
+                "config_a": "STATIC-CSV-BASELINE",
+                "config_b": "ABLATION-NO-LOOP-FRESH",
+                "n_pairs": 15,
+                "n_nonzero": 0,
+                "w_plus": 0,
+                "w_minus": 0,
+                "w_stat": 0,
+                "z_score": 0,
+                "p_value": 1,
+                "effect_size_r": 0,
+                "mean_diff": 0,
+                "median_diff": 0,
+                "method": "identical",
+                "p_holm": 1,
+                "significant_005": false
+            },
+            {
+                "config_a": "STATIC-CSV-BASELINE",
+                "config_b": "AGENTIC-LOOP-FRESH",
+                "n_pairs": 15,
+                "n_nonzero": 10,
+                "w_plus": 0,
+                "w_minus": 55,
+                "w_stat": 0,
+                "z_score": -3.162277660168379,
+                "p_value": 0.001953125,
+                "effect_size_r": -0.8164965809277259,
+                "mean_diff": -0.6666666666666666,
+                "median_diff": -1,
+                "method": "exact",
+                "p_holm": 0.01171875,
+                "significant_005": true
+            },
+            {
+                "config_a": "STALE-CACHE-12H",
+                "config_b": "ABLATION-NO-LOOP-FRESH",
+                "n_pairs": 15,
+                "n_nonzero": 4,
+                "w_plus": 5,
+                "w_minus": 5,
+                "w_stat": 5,
+                "z_score": 0,
+                "p_value": 1,
+                "effect_size_r": 0,
+                "mean_diff": 0,
+                "median_diff": 0,
+                "method": "exact",
+                "p_holm": 1,
+                "significant_005": false
+            },
+            {
+                "config_a": "STALE-CACHE-12H",
+                "config_b": "AGENTIC-LOOP-FRESH",
+                "n_pairs": 15,
+                "n_nonzero": 10,
+                "w_plus": 0,
+                "w_minus": 55,
+                "w_stat": 0,
+                "z_score": -3.162277660168379,
+                "p_value": 0.001953125,
+                "effect_size_r": -0.8164965809277259,
+                "mean_diff": -0.6666666666666666,
+                "median_diff": -1,
+                "method": "exact",
+                "p_holm": 0.01171875,
+                "significant_005": true
+            },
+            {
+                "config_a": "ABLATION-NO-LOOP-FRESH",
+                "config_b": "AGENTIC-LOOP-FRESH",
+                "n_pairs": 15,
+                "n_nonzero": 10,
+                "w_plus": 0,
+                "w_minus": 55,
+                "w_stat": 0,
+                "z_score": -3.162277660168379,
+                "p_value": 0.001953125,
+                "effect_size_r": -0.8164965809277259,
+                "mean_diff": -0.6666666666666666,
+                "median_diff": -1,
+                "method": "exact",
+                "p_holm": 0.01171875,
+                "significant_005": true
+            }
+        ]
+    },
+    "detailed_runs": {
+        "STATIC-CSV-BASELINE": [
+            {
+                "scenario_id": "VOL001",
+                "volatility_type": "closure",
+                "query": "Japanese restaurants in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Sukidesu Modern Japanese Cuisine - Aurora"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "Sukidesu Modern Japanese Cuisine - Aurora",
+                    "Sukidesu Japanese Street Dining - Lanang",
+                    "Ginkaku Japanese Restaurant - Matina",
+                    "Nonki Japanese Restaurant - AutoVille Building",
+                    "Saikono Japanese Restaurant - Matina"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1212
+            },
+            {
+                "scenario_id": "VOL002",
+                "volatility_type": "closure",
+                "query": "Quiet coffee shops in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "BO's Coffee - SM Davao"
+                ],
+                "valid_top5_precision": 0.6,
+                "top5_returned": [
+                    "J.CO Donuts & Coffee - Abreeza",
+                    "BO's Coffee - SM Davao",
+                    "Green Coffee - Marfori",
+                    "J.CO Donuts & Coffee - SM Davao Quimpo",
+                    "Urbanica Milk Coffee - SM City Davao"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1192
+            },
+            {
+                "scenario_id": "VOL003",
+                "volatility_type": "closure",
+                "query": "Korean samgyupsal or Korean BBQ in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Samgyupsal & Chicken Korean Restaurant - Aurora"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "Samgyupsal and Chicken Korean Restaurant - Catalunan Grande",
+                    "Samgyupsal & Chicken Korean Restaurant - Aurora",
+                    "A-Egg-Yo Korean Inspired Food Kiosk - Deca Homes",
+                    "MODOO KOREAN RESTAURANT - DAMOSA MARKET BASKET",
+                    "Tabz and Babz Korean's Chicken House - Maharlika Village"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1064
+            },
+            {
+                "scenario_id": "VOL004",
+                "volatility_type": "price_drift",
+                "query": "Fried chicken meals under ₱180 in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Gang Gang Boneless Fried Chicken - Bonifacio Street"
+                ],
+                "valid_top5_precision": 0.6,
+                "top5_returned": [
+                    "Sunburst Fried Chicken - Davao",
+                    "Chickenato Fried Chicken - Boulevard",
+                    "Gang Gang Boneless Fried Chicken - Plaza Milagrosa BLDG",
+                    "Gang Gang Boneless Fried Chicken - Bonifacio Street",
+                    "Fried Chicken Station - Jacinto Extn."
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1227
+            },
+            {
+                "scenario_id": "VOL005",
+                "volatility_type": "price_drift",
+                "query": "Pasta and rolls under ₱160 in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "EMS Pasta and Rolls - F Torres Street",
+                    "Pasta Sorpresa - Matina"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "EMS Pasta and Rolls - F Torres Street",
+                    "Pasta Sorpresa - Matina",
+                    "Pomodoro Pasta House - Artiaga",
+                    "Vera - Coffee and Bistro",
+                    "Taco Boy - SPMC"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1523
+            },
+            {
+                "scenario_id": "VOL006",
+                "volatility_type": "price_drift",
+                "query": "Cozy coffee shop in Davao City under ₱190",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Acacia Lane Coffee Shop - Juna",
+                    "COFFIX COFFEE SHOP",
+                    "Spica Coffee Shop - C M Recto",
+                    "Teacart Milktea and Coffee Shop - Canto Mahayahay",
+                    "Ka Paeng Coffee Shop - Catalunan Grande"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1233
+            },
+            {
+                "scenario_id": "VOL007",
+                "volatility_type": "price_drift",
+                "query": "Burgers and snacks under ₱200 in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Shaxian Snacks - D Suazo",
+                    "Snacks Republic - Obrero",
+                    "Zark's Burgers - SM Lanang",
+                    "Shaxian Snacks - Bolton",
+                    "Slim Snacks - Doña Luisa Village"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1206
+            },
+            {
+                "scenario_id": "VOL008",
+                "volatility_type": "hours_change",
+                "query": "24 hours open late night food in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Black Plate Bistro - La Verna Bypass Road"
+                ],
+                "valid_top5_precision": 0.3333,
+                "top5_returned": [
+                    "24 Chicken - Bajada",
+                    "Black Plate Bistro - La Verna Bypass Road",
+                    "Rice 24 Chicken - Davao City"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1084
+            },
+            {
+                "scenario_id": "VOL009",
+                "volatility_type": "hours_change",
+                "query": "Midnight snacks or 24/7 dining in Poblacion Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Flavored Boneless Chicken - Poblacion",
+                    "Marfori Best Burger - Poblacion",
+                    "Ahok’s Food Corner - Inigo",
+                    "Kettle Korn - SM Davao",
+                    "Chikoy's Lugawan - Torres"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.121
+            },
+            {
+                "scenario_id": "VOL010",
+                "volatility_type": "hours_change",
+                "query": "24/7 coffee shop or late night cafe in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Indoor Cafe - Cabantian",
+                    "Laboratoire Cafe - Davao",
+                    "Cafe Predo - Toril",
+                    "Destino Cafe - Toril",
+                    "Green Coffee - Marfori"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1211
+            },
+            {
+                "scenario_id": "VOL011",
+                "volatility_type": "rating_shift",
+                "query": "Top rated 4.8+ seafood restaurants in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Tuna Choice Grill Incorporated - Cabantian",
+                    "Smokin' Toppings, Fiamma, Panwiches & Nutwater - Juna",
+                    "Driver's Stop Carinderia - Bangkal",
+                    "West Empire Seafood And Chinese Restaurant - Insular Village",
+                    "Ameling's Seafood and Grill - Ecoland"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.12
+            },
+            {
+                "scenario_id": "VOL012",
+                "volatility_type": "rating_shift",
+                "query": "Highly rated 4.8+ pizza places in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "S&R New York Style Pizza - Abreeza Ayala Mall"
+                ],
+                "valid_top5_precision": 0.8,
+                "top5_returned": [
+                    "S&R New York Style Pizza - Abreeza Ayala Mall",
+                    "Alberto's Pizza - Matina",
+                    "S&R New York Style Pizza - SM City Davao",
+                    "Alberto's Pizza - Ecoland",
+                    "Shakey's Pizza - SM Lanang"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1223
+            },
+            {
+                "scenario_id": "VOL013",
+                "volatility_type": "rating_shift",
+                "query": "Best 4.8+ milk tea shops in Lanang Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "LiberTea MilkTea – SM Lanang"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "LiberTea MilkTea – SM Lanang",
+                    "CoCo Fresh Tea & Juice - SM Lanang",
+                    "Infinitea - Damosa Lanang",
+                    "Bubble Black Milk Tea - Bangkal",
+                    "I Love Milktea - Malvar"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1234
+            },
+            {
+                "scenario_id": "VOL014",
+                "volatility_type": "compound_volatility",
+                "query": "Halal restaurants in Davao City under ₱220",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Sunnypoint Halal Restaurant and Cafe - Maa",
+                    "Indian Biryani Halal - DMSF"
+                ],
+                "valid_top5_precision": 0.5,
+                "top5_returned": [
+                    "Sunnypoint Halal Restaurant and Cafe - Maa",
+                    "Indian Biryani Halal - DMSF",
+                    "Zis Goods Halal - Boulevard",
+                    "BEST Indian Food Davao Halal - Buhangin"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1043
+            },
+            {
+                "scenario_id": "VOL015",
+                "volatility_type": "compound_volatility",
+                "query": "Healthy vegetarian salad in Davao City under ₱250",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Fast Fresh By SKCO - Torres"
+                ],
+                "valid_top5_precision": 0.8,
+                "top5_returned": [
+                    "Kong Ai Vegetarian Centrum - Gempesaw",
+                    "Salads & More - 3rd Avenue",
+                    "Lhealthy Shop-Damosa",
+                    "Soul Kitchen Co. - Torres St.",
+                    "Fast Fresh By SKCO - Torres"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1208
+            }
+        ],
+        "STALE-CACHE-12H": [
+            {
+                "scenario_id": "VOL001",
+                "volatility_type": "closure",
+                "query": "Japanese restaurants in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Sukidesu Modern Japanese Cuisine - Aurora"
+                ],
+                "valid_top5_precision": 0.8,
+                "top5_returned": [
+                    "Sukidesu Modern Japanese Cuisine - Aurora",
+                    "Sukidesu Japanese Street Dining - Lanang",
+                    "Ginkaku Japanese Restaurant - Matina",
+                    "Makoto Ya Japanese Restaurant",
+                    "Kitsune Japanese Restaurant - Matina"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1162
+            },
+            {
+                "scenario_id": "VOL002",
+                "volatility_type": "closure",
+                "query": "Quiet coffee shops in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Tomo Kopi SPH - C Guzman Street",
+                    "HYGGE COFFEE - Juan Luna",
+                    "HYGGE Coffee - Jacinto",
+                    "KapeMore Roastery and Specialty Coffee - Matina Town Square",
+                    "INTO D' WOODS CAFE"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1207
+            },
+            {
+                "scenario_id": "VOL003",
+                "volatility_type": "closure",
+                "query": "Korean samgyupsal or Korean BBQ in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Samgyupsal & Chicken Korean Restaurant - Aurora"
+                ],
+                "valid_top5_precision": 0.8,
+                "top5_returned": [
+                    "Samgyupsal & Chicken Korean Restaurant - Aurora",
+                    "Samgyupsal and Chicken Korean Restaurant - Catalunan Grande",
+                    "Daghaus Korean Fusion - Roxas Avenue",
+                    "Manna Korean Restaurant - Sm Lanang",
+                    "MODOO KOREAN RESTAURANT - DAMOSA MARKET BASKET"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1196
+            },
+            {
+                "scenario_id": "VOL004",
+                "volatility_type": "price_drift",
+                "query": "Fried chicken meals under ₱180 in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Gang Gang Boneless Fried Chicken - Bonifacio Street"
+                ],
+                "valid_top5_precision": 0.6,
+                "top5_returned": [
+                    "Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - CityMall North Town Davao",
+                    "CityMall Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - North Town Davao",
+                    "Gang Gang Boneless Fried Chicken - Bonifacio Street",
+                    "Jojo's Take Home & Food Counter - Agdao",
+                    "Chickenato Fried Chicken - Boulevard"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Gang Gang Boneless Fried Chicken - Bonifacio Street",
+                            "median_php": 165,
+                            "max_php": 165
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1248
+            },
+            {
+                "scenario_id": "VOL005",
+                "volatility_type": "price_drift",
+                "query": "Pasta and rolls under ₱160 in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Pasta Sorpresa - Matina"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "Pasta Sorpresa - Matina",
+                    "Vera - Coffee and Bistro",
+                    "Alberto's Pizza - Matina",
+                    "Marrie's Kitchen - Davao",
+                    "Shakey's Pizza - SM Davao"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 4,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Pasta Sorpresa - Matina",
+                            "median_php": 135,
+                            "max_php": 135
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1514
+            },
+            {
+                "scenario_id": "VOL006",
+                "volatility_type": "price_drift",
+                "query": "Cozy coffee shop in Davao City under ₱190",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Coffee 101 - Marfori",
+                    "Tomo Kopi SPH - C Guzman Street",
+                    "Coffee Box - SM Lanang",
+                    "Daily by Bo's Coffee - SM City Davao",
+                    "HYGGE COFFEE - Juan Luna"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Green Coffee - Marfori",
+                            "median_php": 175,
+                            "max_php": 175
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1368
+            },
+            {
+                "scenario_id": "VOL007",
+                "volatility_type": "price_drift",
+                "query": "Burgers and snacks under ₱200 in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Durian Dub Snack Shack x Burger Shack Joint - Quimpo Boulevard",
+                    "Snacks Republic - Obrero",
+                    "The Crazy Bite Co Sky Cafe - T Monteverde St",
+                    "Okinooki - L. Ma. Guerrero Street",
+                    "Red Corner Burger Cafe - Gaisano Mall Davao"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 2,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Army Navy - Abreeza Mall",
+                            "median_php": 185,
+                            "max_php": 185
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1659
+            },
+            {
+                "scenario_id": "VOL008",
+                "volatility_type": "hours_change",
+                "query": "24 hours open late night food in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Gotokai - Mamay Road",
+                    "Jailourd's Hab-Hub Eatery - Obrero",
+                    "Del Mar Painitan - Marfori",
+                    "Khit's Silogan - Claveria",
+                    "Food Mania Paresan- Buhangin"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [
+                        {
+                            "name": "Black Plate Bistro - La Verna Bypass Road",
+                            "late_24": true
+                        }
+                    ],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1488
+            },
+            {
+                "scenario_id": "VOL009",
+                "volatility_type": "hours_change",
+                "query": "Midnight snacks or 24/7 dining in Poblacion Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Ding Dong's Tuna Grill - Poblacion",
+                    "Boodels Lutong Bahay - Poblacion",
+                    "Cucina Ilocana - Poblacion",
+                    "Mixed Temptation Chinese Restaurant - Poblacion",
+                    "The Baking Room - Poblacion"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 5,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [
+                        {
+                            "name": "Snacks N' Bite Station",
+                            "late_24": true
+                        }
+                    ],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1508
+            },
+            {
+                "scenario_id": "VOL010",
+                "volatility_type": "hours_change",
+                "query": "24/7 coffee shop or late night cafe in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Coffeemaybe Cafe - Artiaga"
+                ],
+                "valid_top5_precision": 0.2,
+                "top5_returned": [
+                    "Coffeemaybe Cafe - Artiaga",
+                    "Outlook Coffee",
+                    "Seattle's Best Coffee - Davao Global Township",
+                    "Kofi Gram - Bangkal",
+                    "Joe's Cafe - Ilustre"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [
+                        {
+                            "name": "Coffeemaybe Cafe - Artiaga",
+                            "late_24": true
+                        }
+                    ],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1353
+            },
+            {
+                "scenario_id": "VOL011",
+                "volatility_type": "rating_shift",
+                "query": "Top rated 4.8+ seafood restaurants in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "FoodBowls - Katipunan Diner"
+                ],
+                "valid_top5_precision": 0.6,
+                "top5_returned": [
+                    "FoodBowls - Katipunan Diner",
+                    "Hangry Tuna - Matina Aplaya",
+                    "Tuna Republik - La Verna Street",
+                    "Hangry Tuna - Nova Tierra Village",
+                    "Hangry Tuna- Catalunan"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": [
+                        {
+                            "name": "FoodBowls - Katipunan Diner",
+                            "rating": 5
+                        }
+                    ]
+                },
+                "latency_s": 0.1231
+            },
+            {
+                "scenario_id": "VOL012",
+                "volatility_type": "rating_shift",
+                "query": "Highly rated 4.8+ pizza places in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "S&R New York Style Pizza - Abreeza Ayala Mall"
+                ],
+                "valid_top5_precision": 0.8,
+                "top5_returned": [
+                    "S&R New York Style Pizza - Abreeza Ayala Mall",
+                    "Alberto's Pizza - Matina",
+                    "S&R New York Style Pizza - SM City Davao",
+                    "Alberto's Pizza - Ecoland",
+                    "Shakey's Pizza - SM Lanang"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": [
+                        {
+                            "name": "S&R New York Style Pizza - Abreeza Ayala Mall",
+                            "rating": 5
+                        }
+                    ]
+                },
+                "latency_s": 0.1359
+            },
+            {
+                "scenario_id": "VOL013",
+                "volatility_type": "rating_shift",
+                "query": "Best 4.8+ milk tea shops in Lanang Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "LiberTea MilkTea – SM Lanang"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "LiberTea MilkTea – SM Lanang",
+                    "CoCo Fresh Tea & Juice - SM Lanang",
+                    "Infinitea - Damosa Lanang",
+                    "Chatime - SM Lanang",
+                    "Serenitea - Damosa"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": [
+                        {
+                            "name": "LiberTea MilkTea – SM Lanang",
+                            "rating": 4.9
+                        }
+                    ]
+                },
+                "latency_s": 0.1216
+            },
+            {
+                "scenario_id": "VOL014",
+                "volatility_type": "compound_volatility",
+                "query": "Halal restaurants in Davao City under ₱220",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Sunnypoint Halal Restaurant and Cafe - Maa"
+                ],
+                "valid_top5_precision": 0,
+                "top5_returned": [
+                    "Sunnypoint Halal Restaurant and Cafe - Maa",
+                    "Haveli King - DMSF",
+                    "Hangry Tuna - Matina Aplaya",
+                    "Hangry Tuna - Nova Tierra Village",
+                    "Davao Biryani - Toril"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Sunnypoint Halal Restaurant and Cafe - Maa",
+                            "median_php": 180,
+                            "max_php": 180
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1206
+            },
+            {
+                "scenario_id": "VOL015",
+                "volatility_type": "compound_volatility",
+                "query": "Healthy vegetarian salad in Davao City under ₱250",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Fast Fresh By SKCO - Torres"
+                ],
+                "valid_top5_precision": 0.6,
+                "top5_returned": [
+                    "The Green Bounty Kitchen - Ecoland",
+                    "Fast Fresh By SKCO - Torres",
+                    "Soul Kitchen Co. Grab & Go - Lanang",
+                    "Fast Fresh by SKCO - Lanang",
+                    "Soul Kitchen Co. - Torres St."
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Fast Fresh By SKCO - Torres",
+                            "median_php": 195,
+                            "max_php": 195
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1515
+            }
+        ],
+        "ABLATION-NO-LOOP-FRESH": [
+            {
+                "scenario_id": "VOL001",
+                "volatility_type": "closure",
+                "query": "Japanese restaurants in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Sukidesu Modern Japanese Cuisine - Aurora"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "Sukidesu Modern Japanese Cuisine - Aurora",
+                    "Sukidesu Japanese Street Dining - Lanang",
+                    "Ginkaku Japanese Restaurant - Matina",
+                    "Nonki Japanese Restaurant - AutoVille Building",
+                    "Saikono Japanese Restaurant - Matina"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1173
+            },
+            {
+                "scenario_id": "VOL002",
+                "volatility_type": "closure",
+                "query": "Quiet coffee shops in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "BO's Coffee - SM Davao"
+                ],
+                "valid_top5_precision": 0.6,
+                "top5_returned": [
+                    "J.CO Donuts & Coffee - Abreeza",
+                    "BO's Coffee - SM Davao",
+                    "Green Coffee - Marfori",
+                    "J.CO Donuts & Coffee - SM Davao Quimpo",
+                    "Urbanica Milk Coffee - SM City Davao"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1067
+            },
+            {
+                "scenario_id": "VOL003",
+                "volatility_type": "closure",
+                "query": "Korean samgyupsal or Korean BBQ in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Samgyupsal & Chicken Korean Restaurant - Aurora"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "Samgyupsal and Chicken Korean Restaurant - Catalunan Grande",
+                    "Samgyupsal & Chicken Korean Restaurant - Aurora",
+                    "A-Egg-Yo Korean Inspired Food Kiosk - Deca Homes",
+                    "MODOO KOREAN RESTAURANT - DAMOSA MARKET BASKET",
+                    "Tabz and Babz Korean's Chicken House - Maharlika Village"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1203
+            },
+            {
+                "scenario_id": "VOL004",
+                "volatility_type": "price_drift",
+                "query": "Fried chicken meals under ₱180 in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Gang Gang Boneless Fried Chicken - Bonifacio Street"
+                ],
+                "valid_top5_precision": 0.6,
+                "top5_returned": [
+                    "Sunburst Fried Chicken - Davao",
+                    "Chickenato Fried Chicken - Boulevard",
+                    "Gang Gang Boneless Fried Chicken - Plaza Milagrosa BLDG",
+                    "Gang Gang Boneless Fried Chicken - Bonifacio Street",
+                    "Fried Chicken Station - Jacinto Extn."
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1212
+            },
+            {
+                "scenario_id": "VOL005",
+                "volatility_type": "price_drift",
+                "query": "Pasta and rolls under ₱160 in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "EMS Pasta and Rolls - F Torres Street",
+                    "Pasta Sorpresa - Matina"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "EMS Pasta and Rolls - F Torres Street",
+                    "Pasta Sorpresa - Matina",
+                    "Pomodoro Pasta House - Artiaga",
+                    "Vera - Coffee and Bistro",
+                    "Taco Boy - SPMC"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.121
+            },
+            {
+                "scenario_id": "VOL006",
+                "volatility_type": "price_drift",
+                "query": "Cozy coffee shop in Davao City under ₱190",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Acacia Lane Coffee Shop - Juna",
+                    "COFFIX COFFEE SHOP",
+                    "Spica Coffee Shop - C M Recto",
+                    "Teacart Milktea and Coffee Shop - Canto Mahayahay",
+                    "Ka Paeng Coffee Shop - Catalunan Grande"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.119
+            },
+            {
+                "scenario_id": "VOL007",
+                "volatility_type": "price_drift",
+                "query": "Burgers and snacks under ₱200 in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Shaxian Snacks - D Suazo",
+                    "Snacks Republic - Obrero",
+                    "Zark's Burgers - SM Lanang",
+                    "Shaxian Snacks - Bolton",
+                    "Slim Snacks - Doña Luisa Village"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1196
+            },
+            {
+                "scenario_id": "VOL008",
+                "volatility_type": "hours_change",
+                "query": "24 hours open late night food in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Black Plate Bistro - La Verna Bypass Road"
+                ],
+                "valid_top5_precision": 0.3333,
+                "top5_returned": [
+                    "24 Chicken - Bajada",
+                    "Black Plate Bistro - La Verna Bypass Road",
+                    "Rice 24 Chicken - Davao City"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1041
+            },
+            {
+                "scenario_id": "VOL009",
+                "volatility_type": "hours_change",
+                "query": "Midnight snacks or 24/7 dining in Poblacion Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Flavored Boneless Chicken - Poblacion",
+                    "Marfori Best Burger - Poblacion",
+                    "Ahok’s Food Corner - Inigo",
+                    "Kettle Korn - SM Davao",
+                    "Chikoy's Lugawan - Torres"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1228
+            },
+            {
+                "scenario_id": "VOL010",
+                "volatility_type": "hours_change",
+                "query": "24/7 coffee shop or late night cafe in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Indoor Cafe - Cabantian",
+                    "Laboratoire Cafe - Davao",
+                    "Cafe Predo - Toril",
+                    "Destino Cafe - Toril",
+                    "Green Coffee - Marfori"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1199
+            },
+            {
+                "scenario_id": "VOL011",
+                "volatility_type": "rating_shift",
+                "query": "Top rated 4.8+ seafood restaurants in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Tuna Choice Grill Incorporated - Cabantian",
+                    "Smokin' Toppings, Fiamma, Panwiches & Nutwater - Juna",
+                    "Driver's Stop Carinderia - Bangkal",
+                    "West Empire Seafood And Chinese Restaurant - Insular Village",
+                    "Ameling's Seafood and Grill - Ecoland"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1081
+            },
+            {
+                "scenario_id": "VOL012",
+                "volatility_type": "rating_shift",
+                "query": "Highly rated 4.8+ pizza places in Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "S&R New York Style Pizza - Abreeza Ayala Mall"
+                ],
+                "valid_top5_precision": 0.8,
+                "top5_returned": [
+                    "S&R New York Style Pizza - Abreeza Ayala Mall",
+                    "Alberto's Pizza - Matina",
+                    "S&R New York Style Pizza - SM City Davao",
+                    "Alberto's Pizza - Ecoland",
+                    "Shakey's Pizza - SM Lanang"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1074
+            },
+            {
+                "scenario_id": "VOL013",
+                "volatility_type": "rating_shift",
+                "query": "Best 4.8+ milk tea shops in Lanang Davao City",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "LiberTea MilkTea – SM Lanang"
+                ],
+                "valid_top5_precision": 0.4,
+                "top5_returned": [
+                    "LiberTea MilkTea – SM Lanang",
+                    "CoCo Fresh Tea & Juice - SM Lanang",
+                    "Infinitea - Damosa Lanang",
+                    "Bubble Black Milk Tea - Bangkal",
+                    "I Love Milktea - Malvar"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.12
+            },
+            {
+                "scenario_id": "VOL014",
+                "volatility_type": "compound_volatility",
+                "query": "Halal restaurants in Davao City under ₱220",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Sunnypoint Halal Restaurant and Cafe - Maa",
+                    "Indian Biryani Halal - DMSF"
+                ],
+                "valid_top5_precision": 0.5,
+                "top5_returned": [
+                    "Sunnypoint Halal Restaurant and Cafe - Maa",
+                    "Indian Biryani Halal - DMSF",
+                    "Zis Goods Halal - Boulevard",
+                    "BEST Indian Food Davao Halal - Buhangin"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1055
+            },
+            {
+                "scenario_id": "VOL015",
+                "volatility_type": "compound_volatility",
+                "query": "Healthy vegetarian salad in Davao City under ₱250",
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Fast Fresh By SKCO - Torres"
+                ],
+                "valid_top5_precision": 0.8,
+                "top5_returned": [
+                    "Kong Ai Vegetarian Centrum - Gempesaw",
+                    "Salads & More - 3rd Avenue",
+                    "Lhealthy Shop-Damosa",
+                    "Soul Kitchen Co. - Torres St.",
+                    "Fast Fresh By SKCO - Torres"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 0,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1044
+            }
+        ],
+        "AGENTIC-LOOP-FRESH": [
+            {
+                "scenario_id": "VOL001",
+                "volatility_type": "closure",
+                "query": "Japanese restaurants in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Makoto Ya Japanese Restaurant",
+                    "Kitsune Japanese Restaurant - Matina",
+                    "Nonki Japanese Restaurant - AutoVille Building",
+                    "Kiraku Japanese Bistro - Cabantian",
+                    "Manzoku Japanese Restaurant - Felcris Centrale Mall"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 3,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [
+                        "Sukidesu Japanese Street Dining - Lanang",
+                        "Sukidesu Modern Japanese Cuisine - Aurora",
+                        "Ginkaku Japanese Restaurant - Matina"
+                    ],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1294
+            },
+            {
+                "scenario_id": "VOL002",
+                "volatility_type": "closure",
+                "query": "Quiet coffee shops in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Tomo Kopi SPH - C Guzman Street",
+                    "HYGGE COFFEE - Juan Luna",
+                    "HYGGE Coffee - Jacinto",
+                    "KapeMore Roastery and Specialty Coffee - Matina Town Square",
+                    "INTO D' WOODS CAFE"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [
+                        "Daily by Bo's Coffee - SM City Davao",
+                        "BO's Coffee - SM Davao",
+                        "Green Coffee - Marfori"
+                    ],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1216
+            },
+            {
+                "scenario_id": "VOL003",
+                "volatility_type": "closure",
+                "query": "Korean samgyupsal or Korean BBQ in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Samgyupsal and Chicken Korean Restaurant - Catalunan Grande",
+                    "Daghaus Korean Fusion - Roxas Avenue",
+                    "Manna Korean Restaurant - Sm Lanang",
+                    "MODOO KOREAN RESTAURANT - DAMOSA MARKET BASKET",
+                    "Tabz and Babz Korean's Chicken House - Maharlika Village"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 1,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [
+                        "Samgyupsal & Chicken Korean Restaurant - Aurora"
+                    ],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1209
+            },
+            {
+                "scenario_id": "VOL004",
+                "volatility_type": "price_drift",
+                "query": "Fried chicken meals under ₱180 in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Chickenato Fried Chicken - Boulevard",
+                    "Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - CityMall North Town Davao",
+                    "CityMall Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - North Town Davao",
+                    "Jojo's Take Home & Food Counter - Agdao",
+                    "Fried Chicken Station - Jacinto Extn."
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 2,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Gang Gang Boneless Fried Chicken - Bonifacio Street",
+                            "median_php": 360,
+                            "max_php": 360
+                        },
+                        {
+                            "name": "Chickenato Fried Chicken - Boulevard",
+                            "median_php": 159,
+                            "max_php": 159
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.123
+            },
+            {
+                "scenario_id": "VOL005",
+                "volatility_type": "price_drift",
+                "query": "Pasta and rolls under ₱160 in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Vera - Coffee and Bistro",
+                    "Alberto's Pizza - Matina",
+                    "Marrie's Kitchen - Davao",
+                    "Shakey's Pizza - SM Davao",
+                    "Fiamma Pizza & Cookie Jar - Sampaloc Street"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 4,
+                "volatility_detected": {
+                    "evidence_items_scanned": 2,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Vera - Coffee and Bistro",
+                            "median_php": 145,
+                            "max_php": 145
+                        },
+                        {
+                            "name": "Pasta Sorpresa - Matina",
+                            "median_php": 340,
+                            "max_php": 340
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1356
+            },
+            {
+                "scenario_id": "VOL006",
+                "volatility_type": "price_drift",
+                "query": "Cozy coffee shop in Davao City under ₱190",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Urbanica Milk Coffee - SM City Davao",
+                    "Coffee 101 - Marfori",
+                    "Tomo Kopi SPH - C Guzman Street",
+                    "Coffee Box - SM Lanang",
+                    "Daily by Bo's Coffee - SM City Davao"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 2,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Urbanica Milk Coffee - SM City Davao",
+                            "median_php": 160,
+                            "max_php": 160
+                        },
+                        {
+                            "name": "Green Coffee - Marfori",
+                            "median_php": 310,
+                            "max_php": 310
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1229
+            },
+            {
+                "scenario_id": "VOL007",
+                "volatility_type": "price_drift",
+                "query": "Burgers and snacks under ₱200 in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Durian Dub Snack Shack x Burger Shack Joint - Quimpo Boulevard",
+                    "Snacks Republic - Obrero",
+                    "The Crazy Bite Co Sky Cafe - T Monteverde St",
+                    "Okinooki - L. Ma. Guerrero Street",
+                    "Red Corner Burger Cafe - Gaisano Mall Davao"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 2,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [
+                        {
+                            "name": "Army Navy - Abreeza Mall",
+                            "median_php": 395,
+                            "max_php": 395
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1345
+            },
+            {
+                "scenario_id": "VOL008",
+                "volatility_type": "hours_change",
+                "query": "24 hours open late night food in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Gotokai - Mamay Road",
+                    "Jailourd's Hab-Hub Eatery - Obrero",
+                    "Del Mar Painitan - Marfori",
+                    "Khit's Silogan - Claveria",
+                    "Food Mania Paresan- Buhangin"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [
+                        {
+                            "name": "Black Plate Bistro - La Verna Bypass Road",
+                            "late_24": false
+                        }
+                    ],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1229
+            },
+            {
+                "scenario_id": "VOL009",
+                "volatility_type": "hours_change",
+                "query": "Midnight snacks or 24/7 dining in Poblacion Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Ding Dong's Tuna Grill - Poblacion",
+                    "Boodels Lutong Bahay - Poblacion",
+                    "Cucina Ilocana - Poblacion",
+                    "Mixed Temptation Chinese Restaurant - Poblacion",
+                    "The Baking Room - Poblacion"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 5,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [
+                        {
+                            "name": "Snacks N' Bite Station",
+                            "late_24": false
+                        }
+                    ],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1227
+            },
+            {
+                "scenario_id": "VOL010",
+                "volatility_type": "hours_change",
+                "query": "24/7 coffee shop or late night cafe in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Outlook Coffee",
+                    "Seattle's Best Coffee - Davao Global Township",
+                    "Kofi Gram - Bangkal",
+                    "Joe's Cafe - Ilustre",
+                    "Vanitea Cafe - Rasay Street"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [
+                        {
+                            "name": "Coffeemaybe Cafe - Artiaga",
+                            "late_24": false
+                        }
+                    ],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1237
+            },
+            {
+                "scenario_id": "VOL011",
+                "volatility_type": "rating_shift",
+                "query": "Top rated 4.8+ seafood restaurants in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Hangry Tuna - Matina Aplaya",
+                    "Tuna Republik - La Verna Street",
+                    "Hangry Tuna - Nova Tierra Village",
+                    "Hangry Tuna- Catalunan",
+                    "MarinaTuna - Pampanga"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": [
+                        {
+                            "name": "FoodBowls - Katipunan Diner",
+                            "rating": 2.4
+                        }
+                    ]
+                },
+                "latency_s": 0.1194
+            },
+            {
+                "scenario_id": "VOL012",
+                "volatility_type": "rating_shift",
+                "query": "Highly rated 4.8+ pizza places in Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Alberto's Pizza - Matina",
+                    "S&R New York Style Pizza - SM City Davao",
+                    "Alberto's Pizza - Ecoland",
+                    "Shakey's Pizza - SM Lanang",
+                    "Pizza Hut - SM Davao"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": [
+                        {
+                            "name": "S&R New York Style Pizza - Abreeza Ayala Mall",
+                            "rating": 2.6
+                        }
+                    ]
+                },
+                "latency_s": 0.1218
+            },
+            {
+                "scenario_id": "VOL013",
+                "volatility_type": "rating_shift",
+                "query": "Best 4.8+ milk tea shops in Lanang Davao City",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "CoCo Fresh Tea & Juice - SM Lanang",
+                    "Infinitea - Damosa Lanang",
+                    "Chatime - SM Lanang",
+                    "Serenitea - Damosa",
+                    "Teasay Avenue by Southwing - Damosa"
+                ],
+                "loop_iterations": 1,
+                "loop_repaired": 0,
+                "volatility_detected": {
+                    "evidence_items_scanned": 1,
+                    "closed_places": [],
+                    "price_updates": [],
+                    "hours_updates": [],
+                    "rating_updates": [
+                        {
+                            "name": "LiberTea MilkTea – SM Lanang",
+                            "rating": 2.5
+                        }
+                    ]
+                },
+                "latency_s": 0.1229
+            },
+            {
+                "scenario_id": "VOL014",
+                "volatility_type": "compound_volatility",
+                "query": "Halal restaurants in Davao City under ₱220",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "Mamastill Atbp - J Luna Street",
+                    "Haveli King - DMSF",
+                    "Hangry Tuna - Matina Aplaya",
+                    "Hangry Tuna - Nova Tierra Village",
+                    "Davao Biryani - Toril"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 1,
+                "volatility_detected": {
+                    "evidence_items_scanned": 3,
+                    "closed_places": [
+                        "Sunnypoint Halal Restaurant and Cafe - Maa"
+                    ],
+                    "price_updates": [
+                        {
+                            "name": "Mamastill Atbp - J Luna Street",
+                            "median_php": 165,
+                            "max_php": 165
+                        },
+                        {
+                            "name": "Indian Biryani Halal - DMSF",
+                            "median_php": 380,
+                            "max_php": 380
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1346
+            },
+            {
+                "scenario_id": "VOL015",
+                "volatility_type": "compound_volatility",
+                "query": "Healthy vegetarian salad in Davao City under ₱250",
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
+                "top5_returned": [
+                    "The Green Bounty Kitchen - Ecoland",
+                    "Soul Kitchen Co. Grab & Go - Lanang",
+                    "Soul Kitchen Co. - Torres St.",
+                    "Happy Fit - Bajada JP Laurel",
+                    "Rose Homemade Specials - Marfori"
+                ],
+                "loop_iterations": 2,
+                "loop_repaired": 2,
+                "volatility_detected": {
+                    "evidence_items_scanned": 3,
+                    "closed_places": [
+                        "Fast Fresh by SKCO - Lanang",
+                        "Fast Fresh By SKCO - Torres"
+                    ],
+                    "price_updates": [
+                        {
+                            "name": "Clean Cafe by SKCO - Torres",
+                            "median_php": 420,
+                            "max_php": 420
+                        },
+                        {
+                            "name": "The Green Bounty Kitchen - Ecoland",
+                            "median_php": 195,
+                            "max_php": 195
+                        }
+                    ],
+                    "hours_updates": [],
+                    "rating_updates": []
+                },
+                "latency_s": 0.1369
+            }
+        ]
+    }
+}

@@ -1,0 +1,5 @@
+condition_id,provider,evidence_mode,scenarios,resilience_pass_mean,resilience_ci_low,resilience_ci_high,invalid_suppression_mean,valid_top5_precision_mean,closure_pass_rate,price_drift_pass_rate,hours_change_pass_rate,rating_shift_pass_rate,compound_pass_rate,median_latency_s
+STATIC-CSV-BASELINE,baseline,none,15,0.3333,0.1317,0.6,0.3333,0.6822,0,0.5,0.6667,0.3333,0,0.1205
+STALE-CACHE-12H,agentic-local,stale,15,0.3333,0.1333,0.6,0.3333,0.68,0.3333,0.5,0.6667,0,0,0.1343
+ABLATION-NO-LOOP-FRESH,ablation-no-loop,fresh,15,0.3333,0.1317,0.6,0.3333,0.6822,0,0.5,0.6667,0.3333,0,0.1191
+AGENTIC-LOOP-FRESH,agentic-local,fresh,15,0.9333,0.8,1,0.9333,0.96,1,1,1,0.6667,1,0.1361

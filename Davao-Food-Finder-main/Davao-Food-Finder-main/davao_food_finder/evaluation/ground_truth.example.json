@@ -1,0 +1,109 @@
+{
+  "version": "3.0.0",
+  "dataset_version": "ph_restos_2025+ph_reviews_2025",
+  "labeling_rule": "Ordered relevance grades: 3 = exact Davao City multi-constraint/price-ceiling/disambiguation match, 2 = primary intent match, 1 = partial match, 0 = non-relevant or lexical polysemy trap.",
+  "disambiguation_schema": {
+    "lexical_polysemy": "Surface token matches brand names in unrelated categories (e.g., 'green' -> Greenwich/Green Coffee vs. healthy greens; '24' -> 24 Chicken vs. 24-hour dining; 'tokyo' -> Tokyo Waffle vs. Japanese).",
+    "category_confusion": "Overlapping food vs. beverage or dessert vs. meal categories (e.g., milk tea vs. coffee shop, bakery/pastry vs. rice meal restaurant).",
+    "spelling_synonym": "Davao Bisaya/Taglish vernacular and common culinary misspellings (e.g., kan-anan/karinderya, sinugba/sutukil, sangyup, shwarma, briyani, ramyun).",
+    "mixed_intent": "Single utterance combining distinct culinary/thematic intents (e.g., pasalubong + durian, wifi study spot + meal).",
+    "anaphoric_followup": "Multi-turn pronoun/comparative references ('those', 'them', 'the cheaper ones under 180 pesos').",
+    "underspecified_ambiguous": "Broad colloquial prompts ('date night', 'quick solo lunch') requiring thematic intent resolution."
+  },
+  "cases": [
+    {
+      "id": "Q001",
+      "split": "test",
+      "category": "multi_constraint",
+      "query": "Quiet and affordable coffee shops in Davao City",
+      "relevant_names": [
+        "Daily by Bo's Coffee - SM City Davao",
+        "Tomo Kopi SPH - C Guzman Street"
+      ],
+      "relevance_grades": {
+        "Daily by Bo's Coffee - SM City Davao": 3,
+        "Tomo Kopi SPH - C Guzman Street": 3
+      },
+      "constraints": {
+        "city": "Davao City",
+        "food_types": ["Coffee"],
+        "budget_tier": "affordable",
+        "ambiance": "quiet_study"
+      }
+    },
+    {
+      "id": "D001",
+      "split": "test",
+      "category": "disambiguation",
+      "disambiguation_type": "lexical_polysemy",
+      "query": "Fresh green salad and healthy vegetarian food in Davao City",
+      "relevant_names": [
+        "The Green Bounty Kitchen - Juna Subdivision"
+      ],
+      "relevance_grades": {
+        "The Green Bounty Kitchen - Juna Subdivision": 3
+      },
+      "constraints": {
+        "city": "Davao City",
+        "food_types": ["Healthy"],
+        "dietary": ["healthy_veg"],
+        "forbidden_names": [
+          "Greenwich - Abreeza Mall",
+          "Green Coffee - Lanang"
+        ]
+      }
+    },
+    {
+      "id": "PC001",
+      "split": "test",
+      "category": "complex",
+      "query": "Cozy coffee shop or snack spot in Davao City with items under 180 pesos",
+      "relevant_names": [
+        "Coffee 101 - Tulip Drive",
+        "Jenny's Snack Corner - Buhangin"
+      ],
+      "relevance_grades": {
+        "Coffee 101 - Tulip Drive": 3,
+        "Jenny's Snack Corner - Buhangin": 3
+      },
+      "constraints": {
+        "city": "Davao City",
+        "max_price_php": 180
+      }
+    },
+    {
+      "id": "MT001",
+      "split": "test",
+      "category": "multi_turn",
+      "query": "Show me more options that were not listed yet",
+      "turns": [
+        {
+          "query": "Japanese restaurants in Davao City",
+          "assistant_summary": "Here are Japanese restaurants in Davao City: Nonki Japanese Restaurant - AutoVille Building.",
+          "shown_names": ["Nonki Japanese Restaurant - AutoVille Building"]
+        },
+        {
+          "query": "Show me more options that were not listed yet"
+        }
+      ],
+      "relevant_names": ["Marugame Udon - SM Lanang"],
+      "relevance_grades": {
+        "Marugame Udon - SM Lanang": 3
+      },
+      "constraints": {
+        "city": "Davao City",
+        "food_types": ["Japanese", "Ramen", "Sushi"],
+        "exclude_names": ["Nonki Japanese Restaurant - AutoVille Building"]
+      }
+    }
+  ],
+  "scope_cases": [
+    {
+      "id": "S001",
+      "split": "test",
+      "category": "out_of_scope_region",
+      "target_location": "Tagum City",
+      "query": "Japanese restaurants in Tagum City"
+    }
+  ]
+}

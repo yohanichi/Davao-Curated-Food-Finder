@@ -1,0 +1,1376 @@
+{
+    "reproducibility_manifest": {
+        "evaluator_version": "2.0.0",
+        "started_at_utc": "2026-10-30T18:35:23+00:00",
+        "completed_at_utc": "2026-10-30T18:44:21+00:00",
+        "php_version": "8.2.12",
+        "os": "Windows",
+        "api_url": "http://127.0.0.1:8080/api.php",
+        "ground_truth_path": "ground_truth.json",
+        "ground_truth_version": "2.0.0",
+        "ground_truth_sha256": "3482d000cc6f774b2ba6ee6b09394fb914e07582b05dfe67d41b08234591e196",
+        "dataset_files": {
+            "ph_restos_2025.csv": {
+                "size_bytes": 917011,
+                "sha256": "bdd741dc8d83d3ba119e7a99ea6a69c2228aa0d458389a09543576a0cef8caaa"
+            },
+            "ph_reviews_2025.csv": {
+                "size_bytes": 46579295,
+                "sha256": "1b95b980334534314d8c918457de5eea5751f7a121af7b39c7c3a1c21d161070"
+            }
+        },
+        "split": "test",
+        "in_scope_case_count": 25,
+        "scope_case_count": 6,
+        "trials": 1,
+        "seed": 42,
+        "cache_policy": "cold",
+        "live_turns": false
+    },
+    "annotator_agreement": {
+        "source": "rubric_criteria_audit",
+        "annotator_count": 3,
+        "overlapping_items": 80,
+        "cohens_kappa_unweighted": {
+            "kappa": 0.5238095238095235,
+            "observed_agreement": 0.8624999999999999,
+            "expected_agreement": 0.71125,
+            "n_items": 80,
+            "weighted": false,
+            "interpretation": "moderate"
+        },
+        "cohens_kappa_weighted": {
+            "kappa": 0.761006289308176,
+            "observed_agreement": 0.9736111111111111,
+            "expected_agreement": 0.8895833333333334,
+            "n_items": 80,
+            "weighted": true,
+            "interpretation": "substantial"
+        },
+        "fleiss_kappa": {
+            "kappa": 0.6402971458360478,
+            "observed_agreement": 0.9041666666666665,
+            "expected_agreement": 0.7335763888888888,
+            "n_items": 80,
+            "n_raters": 3,
+            "interpretation": "substantial"
+        }
+    },
+    "summary": [
+        {
+            "provider": "hybrid",
+            "id": "HYBRID-T0.0-BASE",
+            "temperature": 0,
+            "top_p": 1,
+            "prompt_style": "baseline",
+            "agentic": true,
+            "trials": 1,
+            "total_requests": 31,
+            "failures": 30,
+            "ai_successes": 1,
+            "error_rate": 0.967741935483871,
+            "p5": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 24
+            },
+            "r5": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 24
+            },
+            "r10": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 24
+            },
+            "ndcg5": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 24
+            },
+            "mrr": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 24
+            },
+            "local_p5_mean": 0,
+            "local_ndcg5_mean": 0,
+            "web_p5_mean": null,
+            "web_ndcg5_mean": null,
+            "web_active_queries": 0,
+            "constraint_item_rate": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 24
+            },
+            "constraint_strict_pass_rate": 0,
+            "scope_rejection_accuracy": 0,
+            "scope_violations": 0,
+            "followup_resolution_rate": 0,
+            "factual_correctness": {
+                "mean": 0.041666666666666664,
+                "sd": 0.20412414523193165,
+                "se": 0.0416666666666667,
+                "ci_lower": 0,
+                "ci_upper": 0.125,
+                "n": 24
+            },
+            "faithfulness": {
+                "mean": 0.041666666666666664,
+                "sd": 0.20412414523193165,
+                "se": 0.0416666666666667,
+                "ci_lower": 0,
+                "ci_upper": 0.125,
+                "n": 24
+            },
+            "web_source_support_rate": null,
+            "repeat_consistency": null,
+            "latency": {
+                "mean_s": 17.32801523516255,
+                "median_p50_s": 2.031925916671753,
+                "p95_s": 120.00721645355225,
+                "p99_s": 120.01129252910613,
+                "cold_mean_s": 94.19355583190918,
+                "cold_p50_s": 94.19355583190918,
+                "cold_p95_s": 94.19355583190918,
+                "warm_mean_s": null,
+                "warm_p50_s": null,
+                "warm_p95_s": null,
+                "dataset_mean_ms": 0.6451612903225806,
+                "playwright_mean_ms": 175.67741935483872,
+                "ai_mean_ms": 1250.3870967741937
+            },
+            "playwright_successes": 1,
+            "playwright_requests": 1,
+            "playwright_cache_hits": 0,
+            "playwright_cache_misses": 1,
+            "playwright_evidence_count": 5,
+            "provider_successes": 1,
+            "provider_requests": 31,
+            "mean_cost_usd": 0.00012331935483870967,
+            "total_cost_usd": 0.0038229,
+            "total_tokens": 17764,
+            "error_taxonomy": {
+                "duplicates": 0,
+                "wrong_locations": 0,
+                "missing_sources": 0,
+                "fabricated_details": 0,
+                "unsupported_claims": 0,
+                "constraint_failures": 1,
+                "scope_violations": 0,
+                "examples": [
+                    "Q005 (cuisine): failed constraints [empty_results]"
+                ]
+            },
+            "mean_precision": 0,
+            "mean_latency": 17.32801523516255,
+            "median_latency": 2.031925916671753
+        }
+    ],
+    "statistical_tests": {
+        "friedman": {
+            "ndcg5": null,
+            "p5": null,
+            "mrr": null,
+            "constraint": null
+        },
+        "wilcoxon_posthoc": []
+    },
+    "detailed_runs": {
+        "HYBRID-T0.0-BASE": {
+            "cases": {
+                "Q005": [
+                    {
+                        "trial": 1,
+                        "failed": false,
+                        "false_out_of_scope": true,
+                        "latency": 94.19355583190918,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "hits_at_5": 0,
+                            "hits_at_10": 0,
+                            "returned_count": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "hits_at_5": 0,
+                            "hits_at_10": 0,
+                            "returned_count": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "hits_at_5": 0,
+                            "hits_at_10": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": true,
+                            "strict_pass": false,
+                            "item_pass_rate": 0,
+                            "dimension_scores": [],
+                            "failed_dimensions": [
+                                "empty_results"
+                            ]
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 1,
+                            "evidence_support_rate": 1,
+                            "web_source_support_rate": null,
+                            "source_fresh": true,
+                            "duplicate_count": 0,
+                            "wrong_location_count": 0,
+                            "missing_source_count": 0,
+                            "fabricated_detail_count": 0,
+                            "unsupported_claim_count": 0,
+                            "local_items": [],
+                            "web_items": [],
+                            "issues": []
+                        },
+                        "scope_passed": false,
+                        "followup_passed": null,
+                        "top5_names": [],
+                        "sample_answer": "Here are some highly-rated pizza places in Davao City:\n\n1. **S&R New York Style Pizza - Abreeza Ayala Mall**\n   - Rating: 5\n   - Review Count: 6855\n   - Description: Pizza\n   - Source: 2025_local_dataset\n\n2. **Alberto's Pizza - Matina**\n   - Rating: 5\n   - Review Count: 5179\n   - Description: Pizza\n   - Source: 2025_local_dataset\n\n3. **S&R New York Style Pizza - SM City Davao**\n   - Rating: 5\n   - Review Count: 4381\n   - Description: Pizza\n   - Source: 2025_local_dataset\n\n4. **Alberto's Pizza - Ecoland**\n   - Rating: 5\n   - Review Count: 3040\n   - Description: Pizza\n   - Source: 2025_local_dat",
+                        "sample_top5_display": []
+                    }
+                ],
+                "Q006": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Operation timed out after 120012 milliseconds with 0 bytes received",
+                        "latency": 120.01261496543884,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q008": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Operation timed out after 120006 milliseconds with 0 bytes received",
+                        "latency": 120.00622606277466,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q009": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Operation timed out after 120008 milliseconds with 0 bytes received",
+                        "latency": 120.00820684432983,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q010": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Recv failure: Connection was reset",
+                        "latency": 30.161232948303223,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q012": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2030 ms: Couldn't connect to server",
+                        "latency": 2.031096935272217,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q016": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2037 ms: Couldn't connect to server",
+                        "latency": 2.0373220443725586,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q019": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2041 ms: Couldn't connect to server",
+                        "latency": 2.0414299964904785,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q020": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2026 ms: Couldn't connect to server",
+                        "latency": 2.026870012283325,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q021": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2037 ms: Couldn't connect to server",
+                        "latency": 2.03764009475708,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q023": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2016 ms: Couldn't connect to server",
+                        "latency": 2.0164520740509033,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q024": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2031 ms: Couldn't connect to server",
+                        "latency": 2.031609058380127,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q026": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2025 ms: Couldn't connect to server",
+                        "latency": 2.0249531269073486,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q028": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2034 ms: Couldn't connect to server",
+                        "latency": 2.034714937210083,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q029": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2042 ms: Couldn't connect to server",
+                        "latency": 2.0421509742736816,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q030": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2030 ms: Couldn't connect to server",
+                        "latency": 2.030745029449463,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q031": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2029 ms: Couldn't connect to server",
+                        "latency": 2.029855966567993,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q032": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2030 ms: Couldn't connect to server",
+                        "latency": 2.0301570892333984,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q033": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2023 ms: Couldn't connect to server",
+                        "latency": 2.023714065551758,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q034": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2033 ms: Couldn't connect to server",
+                        "latency": 2.033843994140625,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q036": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2033 ms: Couldn't connect to server",
+                        "latency": 2.0330660343170166,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT001": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2018 ms: Couldn't connect to server",
+                        "latency": 2.018965005874634,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT002": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2021 ms: Couldn't connect to server",
+                        "latency": 2.0220189094543457,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT004": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2030 ms: Couldn't connect to server",
+                        "latency": 2.0310561656951904,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Connection failed: Failed to connect to 127.0.0.1 port 8080 after 2033 ms: Couldn't connect to server",
+                        "latency": 2.0369789600372314,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ]
+            },
+            "scope_cases": {
+                "S005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "scope_passed": false,
+                        "latency": 2.031925916671753
+                    }
+                ],
+                "S006": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "scope_passed": false,
+                        "latency": 2.020688056945801
+                    }
+                ],
+                "S007": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "scope_passed": false,
+                        "latency": 2.021078109741211
+                    }
+                ],
+                "S008": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "scope_passed": false,
+                        "latency": 2.0276379585266113
+                    }
+                ],
+                "S009": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "scope_passed": false,
+                        "latency": 2.034785032272339
+                    }
+                ],
+                "S010": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "scope_passed": false,
+                        "latency": 2.0358800888061523
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -58,7 +58,7 @@ Open a **second PowerShell window** (keep this window open for Steps 2–4):
 
 ```powershell
 # 1. Go to the davao_food_finder directory:
-Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\Davao-Food-Finder-main\Davao-Food-Finder-main\davao_food_finder'
+Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\Davao-Food-Finder-main\davao_food_finder'
 
 # 2. Set your OpenAI API key (keep on server only; never commit to git):
 $env:OPENAI_API_KEY = "sk-proj-YOUR_OPENAI_API_KEY_HERE"
@@ -99,7 +99,7 @@ Now open **[http://127.0.0.1:8080/Main.html](http://127.0.0.1:8080/Main.html)** 
 Once Ollama is running (`deepseek-r1:8b` pulled), you can paste this single block into PowerShell to configure and start everything at once:
 
 ```powershell
-Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\Davao-Food-Finder-main\Davao-Food-Finder-main\davao_food_finder'
+Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\davao_food_finder'
 $env:OPENAI_API_KEY = "sk-proj-YOUR_OPENAI_API_KEY_HERE"
 $env:OPENAI_MODEL = "gpt-4o-mini"
 $env:DEEPSEEK_BASE_URL = "http://127.0.0.1:11434"

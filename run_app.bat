@@ -20,7 +20,7 @@ if not exist "%PHP_CMD%" (
     )
 )
 
-set "APP_DIR=%~dp0Davao-Food-Finder-main\Davao-Food-Finder-main\davao_food_finder"
+set "APP_DIR=%~dp0davao_food_finder"
 if not exist "%APP_DIR%" (
     set "APP_DIR=%~dp0davao_food_finder"
 )

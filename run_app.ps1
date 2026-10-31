@@ -15,7 +15,7 @@ if (-not (Test-Path $phpPath)) {
     }
 }
 
-$appDir = Join-Path $PSScriptRoot "Davao-Food-Finder-main\Davao-Food-Finder-main\davao_food_finder"
+$appDir = Join-Path $PSScriptRoot "davao_food_finder"
 if (-not (Test-Path $appDir)) {
     $appDir = Join-Path $PSScriptRoot "davao_food_finder"
 }

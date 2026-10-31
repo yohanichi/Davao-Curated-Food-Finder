@@ -1,6 +1,0 @@
-/vendor/
-/data/*
-!/data/README.txt
-/src/config.local.php
-.env
-/data/.places-cache.json

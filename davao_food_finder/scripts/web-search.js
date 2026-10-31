@@ -1,6 +1,9 @@
 const https = require('https');
 const { chromium } = require('playwright');
 
+const PLAYWRIGHT_STEP_TIMEOUT = parseInt(process.env.PLAYWRIGHT_STEP_TIMEOUT, 10) || 10000;
+const HTTP_TIMEOUT = Math.min(8000, PLAYWRIGHT_STEP_TIMEOUT);
+
 function decodeRedirectUrl(rawUrl) {
   if (!rawUrl) return '';
   try {
@@ -59,7 +62,7 @@ function fetchDuckDuckGoHttp(searchQuery) {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9'
       },
-      timeout: 8000
+      timeout: HTTP_TIMEOUT
     }, res => {
       if (res.statusCode < 200 || res.statusCode >= 300) {
         return resolve([]);
@@ -98,10 +101,10 @@ function parseDuckDuckGoHtml(html) {
 
 async function collectDuckDuckGoBrowser(context, searchQuery) {
   const page = await context.newPage();
-  await page.setDefaultTimeout(9000);
+  await page.setDefaultTimeout(PLAYWRIGHT_STEP_TIMEOUT);
   try {
     const ddgUrl = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(searchQuery) + '&kl=ph-en';
-    await page.goto(ddgUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.goto(ddgUrl, { waitUntil: 'domcontentloaded', timeout: PLAYWRIGHT_STEP_TIMEOUT });
     const rawItems = await page.locator('.result, .results_links').evaluateAll(nodes =>
       nodes.slice(0, 12).map(node => {
         const a = node.querySelector('a.result__a, h2 a');
@@ -132,7 +135,7 @@ function fetchBingHttp(searchQuery) {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9'
       },
-      timeout: 8000
+      timeout: HTTP_TIMEOUT
     }, res => {
       if (res.statusCode !== 200) return resolve([]);
       let html = '';
@@ -161,10 +164,10 @@ function fetchBingHttp(searchQuery) {
 
 async function collectBingBrowser(context, searchQuery) {
   const page = await context.newPage();
-  await page.setDefaultTimeout(9000);
+  await page.setDefaultTimeout(PLAYWRIGHT_STEP_TIMEOUT);
   try {
     const bingUrl = 'https://www.bing.com/search?q=' + encodeURIComponent(searchQuery);
-    await page.goto(bingUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.goto(bingUrl, { waitUntil: 'domcontentloaded', timeout: PLAYWRIGHT_STEP_TIMEOUT });
     const rawItems = await page.locator('li.b_algo').evaluateAll(nodes =>
       nodes.slice(0, 12).map(node => {
         const a = node.querySelector('h2 a');
@@ -270,8 +273,8 @@ async function run() {
       try {
         const ctx = await getContext();
         const newPage = await ctx.newPage();
-        await newPage.setDefaultTimeout(3500);
-        await newPage.goto(link.url, { waitUntil: 'domcontentloaded', timeout: 4000 });
+        await newPage.setDefaultTimeout(Math.min(PLAYWRIGHT_STEP_TIMEOUT, 5000));
+        await newPage.goto(link.url, { waitUntil: 'domcontentloaded', timeout: Math.min(PLAYWRIGHT_STEP_TIMEOUT, 6000) });
         const fetchedTitle = await newPage.title().catch(() => '');
         if (fetchedTitle && !/^(loading|just a moment|attention required|access denied|suspicious activity|security check|cloudflare|robot|verify)/i.test(fetchedTitle.trim())) {
           pageTitle = fetchedTitle.trim();

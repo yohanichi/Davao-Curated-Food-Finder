@@ -1,0 +1,19 @@
+"TABLE 1: RANKING & INTENT MATCHING METRICS (Combined Web+Local, n=38)"
+"Config ID","P@5 Mean","P@5 CI Lower","P@5 CI Upper","NDCG@5 Mean","NDCG@5 CI Lower","NDCG@5 CI Upper",MRR,"R@5 Mean","R@5 CI Lower","R@5 CI Upper","R@10 Mean","Local P@5","Web P@5","Web Active Queries"
+AGENTIC-LOOP-LOCAL,0.9579,0.9105,0.9947,0.8535,0.7953,0.9047,0.9868,0.1159,0.0843,0.1576,0.2112,0.9579,0.0133,30
+
+"TABLE 2: CONSTRAINT ADHERENCE, SCOPE SAFETY, MULTI-TURN, FAITHFULNESS, RELIABILITY & COST"
+"Config ID","Constraint Item Pass Rate","Scope Rejection Accuracy","Follow-up Resolution Rate","Faithfulness Mean","Factual Correctness Mean","Repeat Consistency","Error Rate","Mean Cost USD"
+AGENTIC-LOOP-LOCAL,0.9526,1,1,0.9989,0.9989,N/A,0,0
+
+"TABLE 3: LATENCY DECOMPOSITION & CACHE BEHAVIOR"
+"Config ID","Mean Latency (s)","P50 Latency (s)","P95 Latency (s)","P99 Latency (s)","Cold P50 (s)","Warm P50 (s)","Dataset Mean (ms)","Playwright Mean (ms)","AI Mean (ms)","Playwright Cache Hits","Playwright Cache Misses"
+AGENTIC-LOOP-LOCAL,0.1195,0.1195,0.1416,0.1488,N/A,0.1248,21.62,0.84,0,38,0
+
+"TABLE 4: QUALITATIVE ERROR & GROUNDING AUDIT COUNTS"
+"Config ID",Duplicates,"Wrong Locations","Missing Sources","Fabricated Details","Unsupported Claims","Constraint Failures","Scope Violations"
+AGENTIC-LOOP-LOCAL,0,0,1,0,1,1,0
+
+"TABLE 5: STUDY OBJECTIVES BREAKDOWN — DISAMBIGUATION, NUMERIC PRICE CEILINGS & AUTONOMOUS ITERATIVE LOOP"
+"Config ID","Disambiguation Accuracy","Trap-Free Rate","Price Ceiling Accuracy","Price Ceiling NDCG@5","Loop Initial Compliance","Loop Final Compliance","Violations Repaired","Violations Detected","Re-Retrieval Rate"
+AGENTIC-LOOP-LOCAL,0.9231,1,1,0.6529,0.9789,1,5,5,0.1053

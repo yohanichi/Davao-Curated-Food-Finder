@@ -1,0 +1,2167 @@
+{
+    "reproducibility_manifest": {
+        "evaluator_version": "3.0.0",
+        "started_at_utc": "2026-10-31T10:56:23+00:00",
+        "completed_at_utc": "2026-10-31T10:56:25+00:00",
+        "php_version": "8.2.12",
+        "os": "Windows",
+        "api_url": "http://127.0.0.1:8080/api.php",
+        "ground_truth_path": "ground_truth.json",
+        "ground_truth_version": "3.0.0",
+        "ground_truth_sha256": "479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06",
+        "dataset_files": {
+            "ph_restos_2025.csv": {
+                "size_bytes": 917011,
+                "sha256": "bdd741dc8d83d3ba119e7a99ea6a69c2228aa0d458389a09543576a0cef8caaa"
+            },
+            "ph_reviews_2025.csv": {
+                "size_bytes": 46579295,
+                "sha256": "1b95b980334534314d8c918457de5eea5751f7a121af7b39c7c3a1c21d161070"
+            }
+        },
+        "split": "test",
+        "in_scope_case_count": 39,
+        "scope_case_count": 6,
+        "trials": 1,
+        "seed": 42,
+        "cache_policy": "default",
+        "live_turns": false
+    },
+    "annotator_agreement": {
+        "source": "rubric_criteria_audit",
+        "annotator_count": 3,
+        "overlapping_items": 80,
+        "cohens_kappa_unweighted": {
+            "kappa": 0.5519348268839104,
+            "observed_agreement": 0.8625,
+            "expected_agreement": 0.6931250000000001,
+            "n_items": 80,
+            "weighted": false,
+            "interpretation": "moderate"
+        },
+        "cohens_kappa_weighted": {
+            "kappa": 0.763681592039801,
+            "observed_agreement": 0.9736111111111111,
+            "expected_agreement": 0.8883333333333333,
+            "n_items": 80,
+            "weighted": true,
+            "interpretation": "substantial"
+        },
+        "fleiss_kappa": {
+            "kappa": 0.6637017180455701,
+            "observed_agreement": 0.9041666666666665,
+            "expected_agreement": 0.7150347222222222,
+            "n_items": 80,
+            "n_raters": 3,
+            "interpretation": "substantial"
+        }
+    },
+    "usability_study": {
+        "source": "awaiting_human_participants",
+        "participant_count": 0,
+        "sus_ci95": null,
+        "task_completion_ci95": null,
+        "mean_task_time_sec": null,
+        "median_task_time_sec": null,
+        "mean_perceived_relevance_1_5": null,
+        "mean_price_source_trust_1_5": null,
+        "per_task": {
+            "UT1": {
+                "title": "Complex Multi-Constraint Search",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT2": {
+                "title": "Hard Numeric Peso Price Ceiling",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT3": {
+                "title": "Thematic Keywords & Ambiance",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT4": {
+                "title": "Lexical & Bisaya Disambiguation",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT5": {
+                "title": "Multi-Turn Conversational Refinement",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT6": {
+                "title": "Geographic Scope Boundary Verification",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            }
+        },
+        "participants": []
+    },
+    "summary": [
+        {
+            "provider": "deepseek-api",
+            "id": "DEEPSEEK-API-T0.2-STRICT",
+            "temperature": 0.2,
+            "top_p": 1,
+            "prompt_style": "strict_grounding",
+            "agentic": true,
+            "trials": 1,
+            "total_requests": 45,
+            "failures": 45,
+            "ai_successes": 0,
+            "error_rate": 1,
+            "p5": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "r5": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "r10": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "ndcg5": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "mrr": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "local_p5_mean": 0,
+            "local_ndcg5_mean": 0,
+            "web_p5_mean": null,
+            "web_ndcg5_mean": null,
+            "web_active_queries": 0,
+            "constraint_item_rate": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "constraint_strict_pass_rate": 0,
+            "disambiguation_accuracy": 0,
+            "disambiguation_trap_free_rate": 1,
+            "disambiguation_by_subtype": {
+                "underspecified_ambiguous": 0,
+                "lexical_polysemy": 0,
+                "category_confusion": 0,
+                "spelling_synonym": 0,
+                "mixed_intent": 0,
+                "anaphoric_followup": 0
+            },
+            "price_ceiling_compliance_rate": 0,
+            "price_ceiling_ndcg5": 0,
+            "agentic_loop_stats": {
+                "enabled": false,
+                "mean_iterations": 0,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "compliance_gain": null,
+                "re_retrieval_rate": 0,
+                "violations_detected": 0,
+                "violations_repaired": 0
+            },
+            "scope_rejection_accuracy": 0,
+            "scope_violations": 0,
+            "followup_resolution_rate": 0,
+            "factual_correctness": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "faithfulness": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "web_source_support_rate": null,
+            "repeat_consistency": null,
+            "latency": {
+                "mean_s": 0.037259446250067815,
+                "median_p50_s": 0.03682398796081543,
+                "p95_s": 0.05690760612487793,
+                "p99_s": 0.062106122970581074,
+                "cold_mean_s": null,
+                "cold_p50_s": null,
+                "cold_p95_s": null,
+                "warm_mean_s": 0.040189266204833984,
+                "warm_p50_s": 0.040576934814453125,
+                "warm_p95_s": 0.05734232664108276,
+                "dataset_mean_ms": 16.177777777777777,
+                "playwright_mean_ms": 0.044444444444444446,
+                "ai_mean_ms": 0.13333333333333333
+            },
+            "playwright_successes": 38,
+            "playwright_requests": 38,
+            "playwright_cache_hits": 38,
+            "playwright_cache_misses": 0,
+            "playwright_evidence_count": 186,
+            "provider_successes": 0,
+            "provider_requests": 45,
+            "mean_cost_usd": 0,
+            "total_cost_usd": 0,
+            "total_tokens": 0,
+            "error_taxonomy": {
+                "duplicates": 0,
+                "wrong_locations": 0,
+                "missing_sources": 0,
+                "fabricated_details": 0,
+                "unsupported_claims": 0,
+                "constraint_failures": 0,
+                "scope_violations": 0,
+                "examples": []
+            },
+            "mean_precision": 0,
+            "mean_latency": 0.037259446250067815,
+            "median_latency": 0.03682398796081543
+        }
+    ],
+    "error_reason_breakdown": {
+        "deepseek-api": {
+            "timeout": 0,
+            "ollama_unreachable": 0,
+            "empty_response": 0,
+            "invalid_json": 0,
+            "schema_validation": 0,
+            "php_exception": 0,
+            "http_error": 45,
+            "total_errors": 45,
+            "total_requests": 45
+        }
+    },
+    "hybrid_curation": {
+        "total_requests": 0,
+        "invoked_count": 0,
+        "invoked_percent": 0,
+        "triggers": []
+    },
+    "statistical_tests": {
+        "friedman": [],
+        "wilcoxon_posthoc": []
+    },
+    "detailed_runs": {
+        "DEEPSEEK-API-T0.2-STRICT": {
+            "cases": {
+                "Q005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.04859209060668945,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q006": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.03627204895019531,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q008": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.029766082763671875,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q009": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.057106971740722656,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q010": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.04052996635437012,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q012": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.04509401321411133,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q016": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.06480121612548828,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q019": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.05611014366149902,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q020": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.04754495620727539,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q021": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.055783987045288086,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q023": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.036386966705322266,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q024": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.03496694564819336,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q026": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.041335105895996094,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q028": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.05023813247680664,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q029": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.035370826721191406,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q030": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.03682398796081543,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q031": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.022946834564208984,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q032": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.03709292411804199,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q033": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.03827810287475586,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q034": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.030660152435302734,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q036": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.019676923751831055,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D001": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.0463709831237793,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D002": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.042244911193847656,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D003": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.04062390327453613,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.04954409599304199,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D006": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.03521108627319336,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D008": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.04214596748352051,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D009": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.05867600440979004,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D010": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.04909706115722656,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D012": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.03334498405456543,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D014": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.031054019927978516,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "PC001": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.05035591125488281,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "PC002": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.04177093505859375,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "PC003": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.05309796333312988,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT001": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.021194934844970703,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT002": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.022742033004760742,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT004": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.021939992904663086,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.0200040340423584,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT007": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.022398948669433594,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ]
+            },
+            "scope_cases": {
+                "S005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "scope_passed": false,
+                        "latency": 0.021111011505126953
+                    }
+                ],
+                "S006": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "scope_passed": false,
+                        "latency": 0.020184040069580078
+                    }
+                ],
+                "S007": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "scope_passed": false,
+                        "latency": 0.025470972061157227
+                    }
+                ],
+                "S008": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "scope_passed": false,
+                        "latency": 0.02028799057006836
+                    }
+                ],
+                "S009": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "scope_passed": false,
+                        "latency": 0.021205902099609375
+                    }
+                ],
+                "S010": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "scope_passed": false,
+                        "latency": 0.02121901512145996
+                    }
+                ]
+            }
+        }
+    }
+}

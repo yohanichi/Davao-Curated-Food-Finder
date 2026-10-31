@@ -140,8 +140,9 @@ echo "[4] TESTING DEEPSEEK R1 REASONER (Stage 4)\n";
 echo "------------------------------------------\n";
 if ($deepSeekKey !== '') {
     $base = rtrim($deepSeekBase !== '' && $deepSeekBase !== 'http://127.0.0.1:11434' ? $deepSeekBase : 'https://api.deepseek.com', '/');
+    $testModel = ($deepSeekModel !== '' && $deepSeekModel !== 'deepseek-r1:8b') ? $deepSeekModel : 'deepseek-reasoner';
     $ch = curl_init($base . '/chat/completions');
-    $payload = json_encode(['model' => $deepSeekModel, 'messages' => [['role' => 'user', 'content' => 'Say OK']], 'max_tokens' => 20]);
+    $payload = json_encode(['model' => $testModel, 'messages' => [['role' => 'user', 'content' => 'Say OK']]]);
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $deepSeekKey],
@@ -154,9 +155,15 @@ if ($deepSeekKey !== '') {
     curl_close($ch);
     if ($code === 200) {
         $deepSeekOk = true;
-        echo "  [OK] Hosted DeepSeek R1 ({$deepSeekModel}) responded!\n\n";
+        echo "  [OK] Hosted DeepSeek R1 ({$testModel}) responded!\n\n";
     } else {
-        echo "  [FAIL] Hosted DeepSeek API returned HTTP {$code}.\n\n";
+        echo "  [FAIL] Hosted DeepSeek API returned HTTP {$code}.\n";
+        if ($res !== false && $res !== '') {
+            $errData = json_decode((string)$res, true);
+            $msg = $errData['error']['message'] ?? substr((string)$res, 0, 300);
+            echo "         Details: {$msg}\n";
+        }
+        echo "\n";
     }
 } else {
     $ch = curl_init(rtrim($deepSeekBase, '/') . '/api/tags');

@@ -1,0 +1,19 @@
+"TABLE 1: RANKING & INTENT MATCHING METRICS (Combined Web+Local, n=38)"
+"Config ID","P@5 Mean","P@5 CI Lower","P@5 CI Upper","NDCG@5 Mean","NDCG@5 CI Lower","NDCG@5 CI Upper",MRR,"R@5 Mean","R@5 CI Lower","R@5 CI Upper","R@10 Mean","Local P@5","Web P@5","Web Active Queries"
+DEEPSEEK-API-T0.2-STRICT,0.8842,0.8263,0.9368,0.823,0.7618,0.8806,0.9868,0.1069,0.0759,0.1484,0.1475,0.8842,0.0111,18
+
+"TABLE 2: CONSTRAINT ADHERENCE, SCOPE SAFETY, MULTI-TURN, FAITHFULNESS, RELIABILITY & COST"
+"Config ID","Constraint Item Pass Rate","Scope Rejection Accuracy","Follow-up Resolution Rate","Faithfulness Mean","Factual Correctness Mean","Repeat Consistency","Error Rate",Retries,"Mean Cost USD"
+DEEPSEEK-API-T0.2-STRICT,0.9355,1,1,1,1,N/A,0,0,0.00044503
+
+"TABLE 3: LATENCY DECOMPOSITION & CACHE BEHAVIOR"
+"Config ID","Mean Latency (s)","P50 Latency (s)","P95 Latency (s)","P99 Latency (s)","Cold P50 (s)","Warm P50 (s)","Dataset Mean (ms)","Playwright Mean (ms)","AI Mean (ms)","Playwright Cache Hits","Playwright Cache Misses"
+DEEPSEEK-API-T0.2-STRICT,13.148,8.9622,30.3232,35.3381,23.0938,7.8318,21.18,6156.73,6878.62,23,15
+
+"TABLE 4: QUALITATIVE ERROR & GROUNDING AUDIT COUNTS"
+"Config ID",Duplicates,"Wrong Locations","Missing Sources","Fabricated Details","Unsupported Claims","Constraint Failures","Scope Violations"
+DEEPSEEK-API-T0.2-STRICT,0,0,0,0,0,1,0
+
+"TABLE 5: STUDY OBJECTIVES BREAKDOWN — DISAMBIGUATION, NUMERIC PRICE CEILINGS & AUTONOMOUS ITERATIVE LOOP"
+"Config ID","Disambiguation Accuracy","Trap-Free Rate","Price Ceiling Accuracy","Price Ceiling NDCG@5","Loop Initial Compliance","Loop Final Compliance","Violations Repaired","Violations Detected","Re-Retrieval Rate"
+DEEPSEEK-API-T0.2-STRICT,0.9231,1,1,0.7624,1,1,0,0,0.4474

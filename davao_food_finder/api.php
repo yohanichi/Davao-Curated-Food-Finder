@@ -1,7 +1,8 @@
 <?php
 declare(strict_types=1);
 ob_start();
-set_time_limit(240);
+set_time_limit(defined('TIMEOUT_PHP_MAX_EXECUTION') ? TIMEOUT_PHP_MAX_EXECUTION : 300);
+@ini_set('max_execution_time', (string)(defined('TIMEOUT_PHP_MAX_EXECUTION') ? TIMEOUT_PHP_MAX_EXECUTION : 300));
 if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli') {
     session_start();
 }
@@ -19,6 +20,20 @@ try {
     $requestStartedAt = microtime(true);
     resetAiTelemetry();
     $GLOBALS['providerErrors'] = [];
+
+    // Fallback: propagate API keys from incoming headers if server environment lacks them
+    if (empty(getenv('DEEPSEEK_API_KEY')) && !empty($_SERVER['HTTP_X_DEEPSEEK_API_KEY'])) {
+        $inDs = trim((string)$_SERVER['HTTP_X_DEEPSEEK_API_KEY']);
+        putenv("DEEPSEEK_API_KEY={$inDs}");
+        $_ENV['DEEPSEEK_API_KEY'] = $inDs;
+        $_SERVER['DEEPSEEK_API_KEY'] = $inDs;
+    }
+    if (empty(getenv('OPENAI_API_KEY')) && !empty($_SERVER['HTTP_X_OPENAI_API_KEY'])) {
+        $inOa = trim((string)$_SERVER['HTTP_X_OPENAI_API_KEY']);
+        putenv("OPENAI_API_KEY={$inOa}");
+        $_ENV['OPENAI_API_KEY'] = $inOa;
+        $_SERVER['OPENAI_API_KEY'] = $inOa;
+    }
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); throw new RuntimeException('Use POST for searches.'); }
     $rawInput = file_get_contents('php://input');
@@ -56,10 +71,22 @@ try {
         if (isset($evaluation['evidenceOverride']) && is_array($evaluation['evidenceOverride'])) {
             $evidenceOverride = $evaluation['evidenceOverride'];
         }
+        if (!empty($evaluation['deepseek_api_key'])) {
+            $inDs = trim((string)$evaluation['deepseek_api_key']);
+            putenv("DEEPSEEK_API_KEY={$inDs}");
+            $_ENV['DEEPSEEK_API_KEY'] = $inDs;
+            $_SERVER['DEEPSEEK_API_KEY'] = $inDs;
+        }
+        if (!empty($evaluation['openai_api_key'])) {
+            $inOa = trim((string)$evaluation['openai_api_key']);
+            putenv("OPENAI_API_KEY={$inOa}");
+            $_ENV['OPENAI_API_KEY'] = $inOa;
+            $_SERVER['OPENAI_API_KEY'] = $inOa;
+        }
 
         if (!is_numeric($temperature) || (float)$temperature < 0 || (float)$temperature > 2
             || !in_array($promptStyle, ['baseline', 'strict_grounding'], true)
-            || !in_array($provider, ['baseline', 'ablation-no-loop', 'agentic-local', 'deepseek', 'gpt-4o-mini', 'hybrid', 'non-agentic'], true)
+            || !in_array($provider, ['baseline', 'ablation-no-loop', 'agentic-local', 'deepseek', 'deepseek-api', 'gpt-4o-mini', 'hybrid', 'non-agentic'], true)
             || !in_array($requestedCachePolicy, ['default', 'cold', 'bypass', 'warm', 'none'], true)) {
             http_response_code(422);
             throw new RuntimeException('Invalid evaluation configuration.');
@@ -188,6 +215,8 @@ try {
         [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithGPT4oMini($query, $history, $candidates, $evidence, $openAIOptions);
     } elseif ($reasoningProvider === 'deepseek') {
         [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithDeepSeek($query, $history, $candidates, $evidence, $openAIOptions);
+    } elseif ($reasoningProvider === 'deepseek-api') {
+        [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithDeepSeekApi($query, $history, $candidates, $evidence, $openAIOptions);
     } elseif ($reasoningProvider === 'non-agentic') {
         $nonAgenticOpts = $openAIOptions;
         $nonAgenticOpts['agentic'] = false;
@@ -226,8 +255,8 @@ try {
     ];
     $isInteractiveLlm = !isset($body['evaluation'])
         && $assistantStatus === 'ready'
-        && in_array($reasoningProvider, ['deepseek', 'gpt-4o-mini', 'hybrid'], true);
-    if ($useIterativeLoop && !$outOfScope && ($assistantStatus === 'ready' || !in_array($reasoningProvider, ['deepseek', 'gpt-4o-mini', 'hybrid'], true) || !isset($body['evaluation']))) {
+        && in_array($reasoningProvider, ['deepseek', 'deepseek-api', 'gpt-4o-mini', 'hybrid'], true);
+    if ($useIterativeLoop && !$outOfScope && ($assistantStatus === 'ready' || !in_array($reasoningProvider, ['deepseek', 'deepseek-api', 'gpt-4o-mini', 'hybrid'], true) || !isset($body['evaluation']))) {
         [$answer, $rankedIds, $webResults, $loopTelemetry] = runAutonomousRefinementLoop(
             $query,
             $answer,
@@ -275,11 +304,16 @@ try {
         $results = [];
     }
     $results = array_slice($results, 0, 20);
-    foreach ($results as &$r) unset($r['_id'], $r['store_id'], $r['source']); unset($r);
+    foreach ($results as &$r) {
+        if (empty($r['record_id'])) {
+            $r['record_id'] = $r['_id'] ?? $r['store_id'] ?? '';
+        }
+        $r['source_reference'] = $r['record_id'];
+        $r['unsupported'] = empty($r['record_id']) && empty($r['source_url']);
+        unset($r['_id'], $r['store_id'], $r['source']);
+    }
+    unset($r);
 
-    // Reconcile cross-list duplicates with Online-First priority:
-    // 1) Keep online finds in $webResults (enriching blank fields from matching local records when available).
-    // 2) Remove any place from $results (local finds) if it is already shown in $webResults so cards are never redundant.
     $normAlnum = static fn(string $s): string => mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $s) ?? '', 'UTF-8');
     $normCoreName = static function (string $name) use ($normAlnum): string {
         $core = preg_replace('/\s*(?:[-–|]\s*[^-–|]+|\([^)]*\))\s*$/u', '', trim($name)) ?? trim($name);
@@ -307,6 +341,20 @@ try {
         if ($wContext !== '' && str_contains($wContext, $lBranch)) return true;
         return $wBranch === '' && $localCoreCount === 1;
     };
+
+    // Deduplicate local places by normalized name + branch/location so no venue appears twice
+    $dedupedResults = [];
+    $seenLocalVenues = [];
+    foreach ($results as $lr) {
+        $name = (string)($lr['name'] ?? '');
+        $branch = extractBranchArea($name);
+        $core = $normCoreName($name);
+        $vKey = $core . '::' . $normAlnum($branch);
+        if ($vKey !== '::' && isset($seenLocalVenues[$vKey])) continue;
+        if ($vKey !== '::') $seenLocalVenues[$vKey] = true;
+        $dedupedResults[] = $lr;
+    }
+    $results = $dedupedResults;
 
     if ($webResults) {
         $localCoreCounts = [];
@@ -344,29 +392,75 @@ try {
                     if (empty($wp['maps_url']) && !empty($pubLocal['maps_url'])) {
                         $wp['maps_url'] = $pubLocal['maps_url'];
                     }
+                    if (empty($wp['record_id']) && !empty($lp['_id'])) {
+                        $wp['record_id'] = $lp['_id'];
+                    }
                     break;
                 }
             }
         }
         unset($wp);
 
-        // In interactive mode, strip any local find already displayed in Online Finds to avoid redundant cards
-        if (!isset($body['evaluation'])) {
-            if (!empty($intent['online_only'])) {
-                $results = [];
-            } elseif ($results && $webResults) {
-                $results = array_values(array_filter($results, function ($lr) use ($webResults, $venuesMatch, $normCoreName, $localCoreCounts) {
-                    $ck = $normCoreName((string)($lr['name'] ?? ''));
-                    $cnt = $localCoreCounts[$ck] ?? 1;
-                    foreach ($webResults as $wp) {
-                        if ($venuesMatch($wp, $lr, $cnt)) {
-                            return false;
-                        }
-                    }
-                    return true;
-                }));
+        // Deduplicate web results and merge web results that repeat a local record into it
+        $dedupedWeb = [];
+        $seenWebVenues = [];
+        foreach ($webResults as $wp) {
+            $wName = trim((string)($wp['name'] ?? ''));
+            if ($wName === '') continue;
+            $wBranch = extractBranchArea($wName);
+            $wCore = $normCoreName($wName);
+            $wKey = $wCore . '::' . $normAlnum($wBranch);
+
+            // Check if this web result repeats a local record in $results
+            $matchedLocalIdx = null;
+            foreach ($results as $idx => $lr) {
+                $ck = $normCoreName((string)($lr['name'] ?? ''));
+                if ($venuesMatch($wp, $lr, $localCoreCounts[$ck] ?? 1)) {
+                    $matchedLocalIdx = $idx;
+                    break;
+                }
             }
+
+            if ($matchedLocalIdx !== null) {
+                // Web result repeats a local record: merge into it!
+                if (!empty($wp['source_url']) && empty($results[$matchedLocalIdx]['source_url'])) {
+                    $results[$matchedLocalIdx]['source_url'] = $wp['source_url'];
+                }
+                if (!empty($wp['maps_url']) && empty($results[$matchedLocalIdx]['maps_url'])) {
+                    $results[$matchedLocalIdx]['maps_url'] = $wp['maps_url'];
+                }
+                if (!empty($wp['description']) && empty($results[$matchedLocalIdx]['description'])) {
+                    $results[$matchedLocalIdx]['description'] = $wp['description'];
+                }
+                // Do not keep in $webResults to prevent duplicate cross-list appearance
+                continue;
+            }
+
+            if ($wKey !== '::' && isset($seenWebVenues[$wKey])) continue;
+            if ($wKey !== '::') $seenWebVenues[$wKey] = true;
+
+            // Every returned place must carry at least one source reference (URL or dataset record id)
+            $hasUrl = !empty($wp['source_url']) && filter_var($wp['source_url'], FILTER_VALIDATE_URL) !== false;
+            $hasId = !empty($wp['record_id']) || !empty($wp['dataset_id']) || !empty($wp['id']);
+            if (!$hasUrl && !$hasId) {
+                $wp['unsupported'] = true;
+                $wp['source_status'] = 'unsupported';
+            } else {
+                $wp['unsupported'] = false;
+                $wp['source_status'] = 'supported';
+                if ($hasUrl) {
+                    $wp['source_reference'] = $wp['source_url'];
+                } elseif ($hasId) {
+                    $wp['source_reference'] = (string)($wp['record_id'] ?? $wp['dataset_id'] ?? $wp['id']);
+                }
+            }
+            $dedupedWeb[] = $wp;
         }
+        $webResults = $dedupedWeb;
+    }
+
+    if (!empty($intent['online_only'])) {
+        $results = [];
     }
 
     ob_clean();
@@ -439,7 +533,15 @@ try {
             'configured'=>DEEPSEEK_API_KEY !== '' || DEEPSEEK_BASE_URL !== '',
             'success'=>$assistantStatus === 'ready' && ($reasoningProvider === 'deepseek' || str_contains((string)$modelUsed, DEEPSEEK_MODEL)),
             'model'=>str_contains((string)$modelUsed, DEEPSEEK_MODEL) ? DEEPSEEK_MODEL : '',
-            'error'=>$GLOBALS['providerErrors']['deepseek'] ?? null,
+            'error'=>$GLOBALS['providerErrors']['deepseek'] ?? (!empty($GLOBALS['last_deepseek_error']) ? ['http'=>0, 'message'=>$GLOBALS['last_deepseek_error']] : null),
+            'retries'=>$GLOBALS['aiTelemetry']['deepseek_retries'] ?? 0,
+            'done_reason'=>$GLOBALS['aiTelemetry']['deepseek_done_reason'] ?? 'unknown',
+        ],
+        'deepseek_api'=>[
+            'configured'=>getenv('DEEPSEEK_API_KEY') !== false && trim((string)getenv('DEEPSEEK_API_KEY')) !== '',
+            'success'=>$assistantStatus === 'ready' && $reasoningProvider === 'deepseek-api',
+            'model'=>$reasoningProvider === 'deepseek-api' ? (string)($modelUsed ?: 'deepseek-reasoner') : '',
+            'error'=>$GLOBALS['providerErrors']['deepseek_api'] ?? $GLOBALS['providerErrors']['deepseek-api'] ?? null,
         ],
         'gpt4o'=>[
             'configured'=>OPENAI_API_KEY !== '',
@@ -447,7 +549,12 @@ try {
             'model'=>OPENAI_MODEL,
             'error'=>$GLOBALS['providerErrors']['gpt4o'] ?? null,
         ],
+        'deepseek_curation'=>$telemetry['hybrid_curation'] ?? [
+            'invoked'=>false,
+            'trigger'=>'none',
+        ],
     ];
+    if (ob_get_level() > 0) ob_clean();
     echo json_encode([
         'answer'=>$answer,
         'assistantStatus'=>$assistantStatus,

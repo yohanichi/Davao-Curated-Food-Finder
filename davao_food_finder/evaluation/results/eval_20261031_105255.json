@@ -1,0 +1,2167 @@
+{
+    "reproducibility_manifest": {
+        "evaluator_version": "3.0.0",
+        "started_at_utc": "2026-10-31T10:52:50+00:00",
+        "completed_at_utc": "2026-10-31T10:52:55+00:00",
+        "php_version": "8.2.12",
+        "os": "Windows",
+        "api_url": "local",
+        "ground_truth_path": "ground_truth.json",
+        "ground_truth_version": "3.0.0",
+        "ground_truth_sha256": "479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06",
+        "dataset_files": {
+            "ph_restos_2025.csv": {
+                "size_bytes": 917011,
+                "sha256": "bdd741dc8d83d3ba119e7a99ea6a69c2228aa0d458389a09543576a0cef8caaa"
+            },
+            "ph_reviews_2025.csv": {
+                "size_bytes": 46579295,
+                "sha256": "1b95b980334534314d8c918457de5eea5751f7a121af7b39c7c3a1c21d161070"
+            }
+        },
+        "split": "test",
+        "in_scope_case_count": 39,
+        "scope_case_count": 6,
+        "trials": 1,
+        "seed": 42,
+        "cache_policy": "default",
+        "live_turns": false
+    },
+    "annotator_agreement": {
+        "source": "rubric_criteria_audit",
+        "annotator_count": 3,
+        "overlapping_items": 80,
+        "cohens_kappa_unweighted": {
+            "kappa": 0.5519348268839104,
+            "observed_agreement": 0.8625,
+            "expected_agreement": 0.6931250000000001,
+            "n_items": 80,
+            "weighted": false,
+            "interpretation": "moderate"
+        },
+        "cohens_kappa_weighted": {
+            "kappa": 0.763681592039801,
+            "observed_agreement": 0.9736111111111111,
+            "expected_agreement": 0.8883333333333333,
+            "n_items": 80,
+            "weighted": true,
+            "interpretation": "substantial"
+        },
+        "fleiss_kappa": {
+            "kappa": 0.6637017180455701,
+            "observed_agreement": 0.9041666666666665,
+            "expected_agreement": 0.7150347222222222,
+            "n_items": 80,
+            "n_raters": 3,
+            "interpretation": "substantial"
+        }
+    },
+    "usability_study": {
+        "source": "awaiting_human_participants",
+        "participant_count": 0,
+        "sus_ci95": null,
+        "task_completion_ci95": null,
+        "mean_task_time_sec": null,
+        "median_task_time_sec": null,
+        "mean_perceived_relevance_1_5": null,
+        "mean_price_source_trust_1_5": null,
+        "per_task": {
+            "UT1": {
+                "title": "Complex Multi-Constraint Search",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT2": {
+                "title": "Hard Numeric Peso Price Ceiling",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT3": {
+                "title": "Thematic Keywords & Ambiance",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT4": {
+                "title": "Lexical & Bisaya Disambiguation",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT5": {
+                "title": "Multi-Turn Conversational Refinement",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT6": {
+                "title": "Geographic Scope Boundary Verification",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            }
+        },
+        "participants": []
+    },
+    "summary": [
+        {
+            "provider": "deepseek-api",
+            "id": "DEEPSEEK-API-T0.2-STRICT",
+            "temperature": 0.2,
+            "top_p": 1,
+            "prompt_style": "strict_grounding",
+            "agentic": true,
+            "trials": 1,
+            "total_requests": 45,
+            "failures": 45,
+            "ai_successes": 0,
+            "error_rate": 1,
+            "p5": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "r5": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "r10": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "ndcg5": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "mrr": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "local_p5_mean": 0,
+            "local_ndcg5_mean": 0,
+            "web_p5_mean": null,
+            "web_ndcg5_mean": null,
+            "web_active_queries": 0,
+            "constraint_item_rate": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "constraint_strict_pass_rate": 0,
+            "disambiguation_accuracy": 0,
+            "disambiguation_trap_free_rate": 1,
+            "disambiguation_by_subtype": {
+                "underspecified_ambiguous": 0,
+                "lexical_polysemy": 0,
+                "category_confusion": 0,
+                "spelling_synonym": 0,
+                "mixed_intent": 0,
+                "anaphoric_followup": 0
+            },
+            "price_ceiling_compliance_rate": 0,
+            "price_ceiling_ndcg5": 0,
+            "agentic_loop_stats": {
+                "enabled": false,
+                "mean_iterations": 0,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "compliance_gain": null,
+                "re_retrieval_rate": 0,
+                "violations_detected": 0,
+                "violations_repaired": 0
+            },
+            "scope_rejection_accuracy": 0,
+            "scope_violations": 0,
+            "followup_resolution_rate": 0,
+            "factual_correctness": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "faithfulness": {
+                "mean": 0,
+                "sd": 0,
+                "se": 0,
+                "ci_lower": 0,
+                "ci_upper": 0,
+                "n": 38
+            },
+            "web_source_support_rate": null,
+            "repeat_consistency": null,
+            "latency": {
+                "mean_s": 0.1188807487487793,
+                "median_p50_s": 0.11758708953857422,
+                "p95_s": 0.1426514625549316,
+                "p99_s": 0.15050598144531252,
+                "cold_mean_s": null,
+                "cold_p50_s": null,
+                "cold_p95_s": null,
+                "warm_mean_s": null,
+                "warm_p50_s": null,
+                "warm_p95_s": null,
+                "dataset_mean_ms": 0,
+                "playwright_mean_ms": 0,
+                "ai_mean_ms": 0
+            },
+            "playwright_successes": 0,
+            "playwright_requests": 0,
+            "playwright_cache_hits": 0,
+            "playwright_cache_misses": 0,
+            "playwright_evidence_count": 0,
+            "provider_successes": 0,
+            "provider_requests": 45,
+            "mean_cost_usd": 0,
+            "total_cost_usd": 0,
+            "total_tokens": 0,
+            "error_taxonomy": {
+                "duplicates": 0,
+                "wrong_locations": 0,
+                "missing_sources": 0,
+                "fabricated_details": 0,
+                "unsupported_claims": 0,
+                "constraint_failures": 0,
+                "scope_violations": 0,
+                "examples": []
+            },
+            "mean_precision": 0,
+            "mean_latency": 0.1188807487487793,
+            "median_latency": 0.11758708953857422
+        }
+    ],
+    "error_reason_breakdown": {
+        "deepseek-api": {
+            "timeout": 0,
+            "ollama_unreachable": 0,
+            "empty_response": 0,
+            "invalid_json": 45,
+            "schema_validation": 0,
+            "php_exception": 0,
+            "http_error": 0,
+            "total_errors": 45,
+            "total_requests": 45
+        }
+    },
+    "hybrid_curation": {
+        "total_requests": 0,
+        "invoked_count": 0,
+        "invoked_percent": 0,
+        "triggers": []
+    },
+    "statistical_tests": {
+        "friedman": [],
+        "wilcoxon_posthoc": []
+    },
+    "detailed_runs": {
+        "DEEPSEEK-API-T0.2-STRICT": {
+            "cases": {
+                "Q005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.12348699569702148,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q006": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11758708953857422,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q008": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11935281753540039,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q009": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.14443182945251465,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q010": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.12208390235900879,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q012": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.1295490264892578,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q016": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.14988994598388672,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q019": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.1355299949645996,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q020": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.13184189796447754,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q021": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.1323409080505371,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q023": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.1151270866394043,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q024": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11682391166687012,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q026": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11609411239624023,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q028": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.13384103775024414,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q029": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11330389976501465,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q030": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.12204599380493164,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q031": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.09986305236816406,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q032": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11661005020141602,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q033": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.1165919303894043,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q034": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11658096313476562,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q036": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.10168194770812988,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D001": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.13164496421813965,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D002": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.1331501007080078,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D003": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.13226914405822754,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.13420391082763672,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D006": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11654305458068848,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D008": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.13033509254455566,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D009": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.15099000930786133,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D010": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.1324160099029541,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D012": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11550402641296387,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "D014": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11840701103210449,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "PC001": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.1352858543395996,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "PC002": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.13323593139648438,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "PC003": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.1332850456237793,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT001": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.09896302223205566,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT002": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.10081887245178223,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT004": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.09985494613647461,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.08576297760009766,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "MT007": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "latency": 0.11409115791320801,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ]
+            },
+            "scope_cases": {
+                "S005": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "scope_passed": false,
+                        "latency": 0.10091710090637207
+                    }
+                ],
+                "S006": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "scope_passed": false,
+                        "latency": 0.09797406196594238
+                    }
+                ],
+                "S007": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "scope_passed": false,
+                        "latency": 0.09991192817687988
+                    }
+                ],
+                "S008": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "scope_passed": false,
+                        "latency": 0.0857090950012207
+                    }
+                ],
+                "S009": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "scope_passed": false,
+                        "latency": 0.09238195419311523
+                    }
+                ],
+                "S010": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Invalid JSON response (HTTP 200).",
+                        "error_reason": "invalid_json",
+                        "raw_message": "Invalid JSON response (HTTP 200).",
+                        "scope_passed": false,
+                        "latency": 0.10132002830505371
+                    }
+                ]
+            }
+        }
+    }
+}

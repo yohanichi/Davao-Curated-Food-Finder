@@ -24,7 +24,7 @@ npm install
 npx playwright install chromium
 
 # 2. Install PHP dependencies inside davao_food_finder:
-Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\Davao-Food-Finder-main\Davao-Food-Finder-main\davao_food_finder'
+Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\davao_food_finder'
 & 'C:\xampp\php\php.exe' 'C:\xampp\php\composer' install
 
 # 3. Download the local DeepSeek R1 model in Ollama:
@@ -58,7 +58,7 @@ Open a **second PowerShell window** (keep this window open for Steps 2–4):
 
 ```powershell
 # 1. Go to the davao_food_finder directory:
-Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\Davao-Food-Finder-main\davao_food_finder'
+Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\davao_food_finder'
 
 # 2. Set your OpenAI API key (keep on server only; never commit to git):
 $env:OPENAI_API_KEY = "sk-proj-YOUR_OPENAI_API_KEY_HERE"
@@ -162,7 +162,7 @@ The CLI evaluation runner (`evaluation/run_evaluation.php`) supports seven contr
 - `hybrid`: Full 5-stage agentic pipeline (GPT-4o mini query planner → Playwright active web scraper → GPT-4o mini raw evidence structurer → DeepSeek-R1 reasoner & curator → GPT-4o mini final user reply → Pass 2 autonomous critique & repair)
 
 ```powershell
-Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\Davao-Food-Finder-main\Davao-Food-Finder-main\davao_food_finder'
+Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\davao_food_finder'
 
 # Run the automated 52-assertion unit & integration test suite:
 & 'C:\xampp\php\php.exe' .\evaluation\test_evaluation_suite.php

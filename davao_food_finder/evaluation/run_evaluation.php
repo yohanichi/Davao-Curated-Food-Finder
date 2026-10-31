@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 $appRoot = dirname(__DIR__);
 require_once $appRoot . '/vendor/autoload.php';
+require_once $appRoot . '/src/config.php';
 require_once $appRoot . '/src/search.php';
 require_once __DIR__ . '/statistics.php';
 require_once __DIR__ . '/metrics.php';
@@ -22,6 +23,7 @@ function parseArguments(array $arguments): array {
         'no_save'=>false,
         'local_cli'=>false,
         'api_url'=>'http://127.0.0.1:8080/api.php',
+        'api_url_explicit'=>false,
         'ground_truth'=>__DIR__ . '/ground_truth.json',
         'providers'=>['deepseek'],
         'providers_explicit'=>false,
@@ -48,9 +50,11 @@ function parseArguments(array $arguments): array {
         } elseif ($argument === '--local-cli') {
             $options['local_cli'] = true;
             $options['api_url'] = 'local';
+            $options['api_url_explicit'] = true;
         } elseif ($argument === '--local-ablation') {
             $options['local_cli'] = true;
             $options['api_url'] = 'local';
+            $options['api_url_explicit'] = true;
             $options['research'] = true;
             if (!$options['providers_explicit']) {
                 $options['providers'] = ['baseline', 'ablation-no-loop', 'agentic-local'];
@@ -58,6 +62,7 @@ function parseArguments(array $arguments): array {
             }
         } elseif (str_starts_with($argument, '--api-url=')) {
             $options['api_url'] = substr($argument, strlen('--api-url='));
+            $options['api_url_explicit'] = true;
             if (strtolower(trim($options['api_url'])) === 'local') {
                 $options['local_cli'] = true;
                 $options['api_url'] = 'local';
@@ -84,7 +89,7 @@ function parseArguments(array $arguments): array {
         } elseif (str_starts_with($argument, '--output=')) {
             $options['output'] = trim(substr($argument, strlen('--output=')));
         } else {
-            fail("Unknown option {$argument}. Supported: --quick, --research, --local-cli, --local-ablation, --require-ai, --live-turns, --no-save, --api-url=URL, --ground-truth=PATH, --provider=..., --providers=baseline,ablation-no-loop,agentic-local,non-agentic,deepseek,gpt-4o-mini,hybrid, --split=all|train|dev|test, --trials=N, --cache-policy=default|cold|warm|none, --seed=N, --limit=N, --output=PATH.");
+            fail("Unknown option {$argument}. Supported: --quick, --research, --local-cli, --local-ablation, --require-ai, --live-turns, --no-save, --api-url=URL, --ground-truth=PATH, --provider=..., --providers=baseline,ablation-no-loop,agentic-local,non-agentic,deepseek,deepseek-api,gpt-4o-mini,hybrid, --split=all|train|dev|test, --trials=N, --cache-policy=default|cold|warm|none, --seed=N, --limit=N, --output=PATH.");
         }
     }
 
@@ -98,6 +103,18 @@ function parseArguments(array $arguments): array {
     }
 
     if (!$options['local_cli']) {
+        if (!$options['api_url_explicit']) {
+            $fp = @fsockopen('127.0.0.1', 8080, $errno, $errstr, 0.2);
+            if ($fp) {
+                fclose($fp);
+            } else {
+                $options['local_cli'] = true;
+                $options['api_url'] = 'local';
+            }
+        }
+    }
+
+    if (!$options['local_cli']) {
         $url = filter_var($options['api_url'], FILTER_VALIDATE_URL);
         $host = strtolower((string)parse_url($options['api_url'], PHP_URL_HOST));
         if (!$url || !in_array($host, ['127.0.0.1', 'localhost', '[::1]', '::1'], true)
@@ -106,7 +123,7 @@ function parseArguments(array $arguments): array {
         }
     }
 
-    $allowedProviders = ['baseline', 'ablation-no-loop', 'agentic-local', 'non-agentic', 'deepseek', 'gpt-4o-mini', 'hybrid'];
+    $allowedProviders = ['baseline', 'ablation-no-loop', 'agentic-local', 'non-agentic', 'deepseek', 'deepseek-api', 'gpt-4o-mini', 'hybrid'];
     foreach ($options['providers'] as $provider) {
         if (!in_array($provider, $allowedProviders, true)) {
             fail('Provider must be one of: ' . implode(', ', $allowedProviders) . '.');
@@ -122,20 +139,76 @@ function parseArguments(array $arguments): array {
     return $options;
 }
 
+/**
+ * Classify a failed request into exactly one of the 7 specified error reasons:
+ * timeout, ollama_unreachable, empty_response, invalid_json, schema_validation, php_exception, http_error.
+ * Truncates raw message to 300 chars.
+ */
+function classifyErrorReason(?string $failure, int $httpStatus = 0, mixed $providerError = null, ?string $rawResponse = null): array {
+    $rawMsg = '';
+    if (is_array($providerError)) {
+        $rawMsg = (string)($providerError['message'] ?? $providerError['error'] ?? '');
+    } elseif (is_string($providerError) && $providerError !== '') {
+        $rawMsg = $providerError;
+    }
+    if ($rawMsg === '' && $failure !== null) {
+        $rawMsg = $failure;
+    }
+    if ($rawMsg === '' && $rawResponse !== null) {
+        $rawMsg = trim($rawResponse);
+    }
+    $rawMsgTruncated = mb_substr(trim($rawMsg), 0, 300);
+    $lower = strtolower($rawMsgTruncated);
+
+    if (str_contains($lower, 'timed out') || str_contains($lower, 'timeout') || str_contains($lower, 'operation timed out') || str_contains($lower, 'maximum execution time')) {
+        $category = 'timeout';
+    } elseif (str_contains($lower, 'ollama') || str_contains($lower, '11434') || str_contains($lower, 'connection refused') || str_contains($lower, 'could not connect to host') || str_contains($lower, 'ollama_unreachable')) {
+        $category = 'ollama_unreachable';
+    } elseif (($rawResponse !== null && trim($rawResponse) === '') || str_contains($lower, 'empty output') || str_contains($lower, 'empty response')) {
+        $category = 'empty_response';
+    } elseif (str_contains($lower, 'invalid json') || str_contains($lower, 'json_error') || str_contains($lower, 'syntax error')) {
+        $category = 'invalid_json';
+    } elseif (str_contains($lower, 'schema') || str_contains($lower, 'validation') || str_contains($lower, 'missing required')) {
+        $category = 'schema_validation';
+    } elseif (str_contains($lower, 'fatal error') || str_contains($lower, 'uncaught') || str_contains($lower, 'exception') || str_contains($lower, 'php_exception') || str_contains($lower, 'stack trace') || str_contains($lower, 'could not launch')) {
+        $category = 'php_exception';
+    } else {
+        $category = 'http_error';
+    }
+
+    return [$category, $rawMsgTruncated];
+}
+
 function sendSingleApiRequest(string $apiUrl, string $query, array $history, array $shownNames, array $config, string $cachePolicy, int $seed): array {
+    $evalPayload = [
+        'provider'=>$config['provider'],
+        'temperature'=>$config['temperature'],
+        'promptStyle'=>$config['prompt_style'],
+        'agentic'=>$config['agentic'] ?? ($config['provider'] !== 'baseline' && $config['provider'] !== 'non-agentic'),
+        'cachePolicy'=>$cachePolicy,
+        'seed'=>$seed,
+    ];
+    $headers = ['Content-Type: application/json'];
+
+    $dsKey = trim((string)(getenv('DEEPSEEK_API_KEY') ?: (defined('DEEPSEEK_API_KEY') ? DEEPSEEK_API_KEY : '')));
+    if ($dsKey !== '') {
+        $evalPayload['deepseek_api_key'] = $dsKey;
+        $headers[] = 'X-DeepSeek-Api-Key: ' . $dsKey;
+    }
+    $oaKey = trim((string)(getenv('OPENAI_API_KEY') ?: (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : '')));
+    if ($oaKey !== '') {
+        $evalPayload['openai_api_key'] = $oaKey;
+        $headers[] = 'X-OpenAI-Api-Key: ' . $oaKey;
+    }
+
     $body = json_encode([
         'query'=>$query,
         'history'=>$history,
         'shownNames'=>$shownNames,
-        'evaluation'=>[
-            'provider'=>$config['provider'],
-            'temperature'=>$config['temperature'],
-            'promptStyle'=>$config['prompt_style'],
-            'agentic'=>$config['agentic'] ?? ($config['provider'] !== 'baseline' && $config['provider'] !== 'non-agentic'),
-            'cachePolicy'=>$cachePolicy,
-            'seed'=>$seed,
-        ],
+        'evaluation'=>$evalPayload,
     ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+
+    $timeoutConfig = getTimeoutConfig();
 
     if ($apiUrl === 'local') {
         $apiFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'api.php';
@@ -145,7 +218,8 @@ function sendSingleApiRequest(string $apiUrl, string $query, array $history, arr
         $pipes = [];
         $proc = proc_open([$phpBin, '-r', $runnerCode], [0=>['pipe', 'r'], 1=>['pipe', 'w'], 2=>['pipe', 'w']], $pipes);
         if (!is_resource($proc)) {
-            return ['latency'=>0.0, 'failure'=>'Could not launch local PHP CLI worker.', 'data'=>null];
+            [$reason, $rawMsg] = classifyErrorReason('Could not launch local PHP CLI worker.', 500, null, '');
+            return ['latency'=>0.0, 'failure'=>'Could not launch local PHP CLI worker.', 'error_reason'=>$reason, 'raw_message'=>$rawMsg, 'data'=>null];
         }
         fwrite($pipes[0], $body);
         fclose($pipes[0]);
@@ -156,7 +230,9 @@ function sendSingleApiRequest(string $apiUrl, string $query, array $history, arr
         $exitCode = proc_close($proc);
         $latency = microtime(true) - $startedAt;
         if ($raw === false || trim($raw) === '') {
-            return ['latency'=>$latency, 'failure'=>'Local CLI worker returned empty output: ' . trim((string)$stderr), 'data'=>null];
+            $failureMsg = 'Local CLI worker returned empty output: ' . trim((string)$stderr);
+            [$reason, $rawMsg] = classifyErrorReason($failureMsg, 500, null, (string)$stderr);
+            return ['latency'=>$latency, 'failure'=>$failureMsg, 'error_reason'=>$reason, 'raw_message'=>$rawMsg, 'data'=>null];
         }
         $status = $exitCode === 0 ? 200 : 500;
     } else {
@@ -164,10 +240,11 @@ function sendSingleApiRequest(string $apiUrl, string $query, array $history, arr
         if ($handle === false) throw new RuntimeException('Could not initialize cURL.');
         curl_setopt_array($handle, [
             CURLOPT_POST=>true,
-            CURLOPT_HTTPHEADER=>['Content-Type: application/json'],
+            CURLOPT_HTTPHEADER=>$headers,
             CURLOPT_POSTFIELDS=>$body,
             CURLOPT_RETURNTRANSFER=>true,
-            CURLOPT_TIMEOUT=>180,
+            CURLOPT_CONNECTTIMEOUT=>$timeoutConfig['curl_connect'],
+            CURLOPT_TIMEOUT=>$timeoutConfig['curl'],
         ]);
 
         $startedAt = microtime(true);
@@ -178,39 +255,55 @@ function sendSingleApiRequest(string $apiUrl, string $query, array $history, arr
         curl_close($handle);
 
         if ($raw === false) {
-            return ['latency'=>$latency, 'failure'=>'Connection failed: ' . $curlError, 'data'=>null];
+            $failureMsg = 'Connection failed: ' . $curlError;
+            [$reason, $rawMsg] = classifyErrorReason($failureMsg, $status, null, $raw);
+            return ['latency'=>$latency, 'failure'=>$failureMsg, 'error_reason'=>$reason, 'raw_message'=>$rawMsg, 'data'=>null];
         }
     }
     $data = json_decode($raw, true);
     if (!is_array($data)) {
-        return ['latency'=>$latency, 'failure'=>"Invalid JSON response (HTTP {$status}).", 'data'=>null];
+        $failureMsg = "Invalid JSON response (HTTP {$status}).";
+        [$reason, $rawMsg] = classifyErrorReason($failureMsg, $status, null, $raw);
+        return ['latency'=>$latency, 'failure'=>$failureMsg, 'error_reason'=>$reason, 'raw_message'=>$rawMsg, 'data'=>null];
     }
     if ($status < 200 || $status >= 300) {
-        return ['latency'=>$latency, 'failure'=>(string)($data['error'] ?? "HTTP {$status}."), 'data'=>$data];
+        $failureMsg = (string)($data['error'] ?? "HTTP {$status}.");
+        [$reason, $rawMsg] = classifyErrorReason($failureMsg, $status, $data['error'] ?? null, $raw);
+        return ['latency'=>$latency, 'failure'=>$failureMsg, 'error_reason'=>$reason, 'raw_message'=>$rawMsg, 'data'=>$data];
     }
     if (($data['assistantStatus'] ?? '') !== 'ready') {
         $provider = (string)($config['provider'] ?? 'deepseek');
-        $statusMessage = match ($data['assistantStatus'] ?? '') {
-            'not_configured' => in_array($provider, ['gpt-4o-mini', 'hybrid'], true)
-                ? 'OpenAI is not configured: set OPENAI_API_KEY on the PHP server.'
-                : 'DeepSeek R1 is not configured: run Ollama or set DEEPSEEK_API_KEY.',
-            'error' => in_array($provider, ['gpt-4o-mini', 'hybrid'], true)
-                ? 'GPT-4o mini / hybrid pipeline failed; check the PHP server error log.'
-                : 'DeepSeek R1 failed; check Ollama or PHP server error log.',
-            default => 'The API did not report a ready response.',
-        };
-        $providerError = $data['metrics']['gpt4o']['error'] ?? null;
+        $providerError = $data['metrics']['deepseek_api']['error']
+            ?? $data['metrics']['deepseek']['error']
+            ?? $data['metrics']['gpt4o']['error']
+            ?? null;
         if (is_array($providerError)) {
-            $http = (int)($providerError['http'] ?? 0);
-            $message = trim((string)($providerError['message'] ?? ''));
+            $http = (int)($providerError['http'] ?? $providerError['code'] ?? 0);
+            $message = trim((string)($providerError['message'] ?? $providerError['error'] ?? ''));
             $statusMessage = 'Provider failed'
                 . ($http > 0 ? ' with HTTP ' . $http : '')
                 . ($message !== '' ? ': ' . mb_substr($message, 0, 240) : '')
                 . '.';
+        } else {
+            $statusMessage = match ($data['assistantStatus'] ?? '') {
+                'not_configured' => match ($provider) {
+                    'gpt-4o-mini', 'hybrid' => 'OpenAI is not configured: set OPENAI_API_KEY on the PHP server.',
+                    'deepseek-api' => 'DeepSeek API is not configured: set DEEPSEEK_API_KEY on the PHP server.',
+                    default => 'DeepSeek R1 is not configured: run Ollama or set DEEPSEEK_API_KEY.',
+                },
+                'error' => match ($provider) {
+                    'gpt-4o-mini' => 'GPT-4o mini pipeline failed; check the PHP server error log.',
+                    'hybrid' => 'Hybrid pipeline failed; check the PHP server error log.',
+                    'deepseek-api' => 'DeepSeek API failed; check the PHP server error log.',
+                    default => 'DeepSeek R1 failed; check Ollama or PHP server error log.',
+                },
+                default => 'The API did not report a ready response.',
+            };
         }
-        return ['latency'=>$latency, 'failure'=>$statusMessage, 'data'=>$data];
+        [$reason, $rawMsg] = classifyErrorReason($statusMessage, $status, $providerError, $raw);
+        return ['latency'=>$latency, 'failure'=>$statusMessage, 'error_reason'=>$reason, 'raw_message'=>$rawMsg, 'data'=>$data];
     }
-    return ['latency'=>$latency, 'failure'=>null, 'data'=>$data];
+    return ['latency'=>$latency, 'failure'=>null, 'error_reason'=>null, 'raw_message'=>null, 'data'=>$data];
 }
 
 /**
@@ -504,6 +597,17 @@ try {
     echo 'Systems / Providers: ' . implode(', ', $options['providers']) . "\n";
     echo 'Configurations     : ' . count($configurations) . " | Trials/config: {$trials} | Seed: {$options['seed']} | Cache policy: {$options['cache_policy']}\n";
     echo 'Total HTTP Requests: ' . ($totalCasesPerTrial * count($configurations) * $trials) . "\n";
+    $timeoutCfg = getTimeoutConfig();
+    echo sprintf(
+        "Timeouts           : PHP max=%ds | cURL connect=%ds, total=%ds | LLM=%ds | Ollama connect=%ds | Playwright proc=%ds, step=%dms\n",
+        $timeoutCfg['php_max_execution'],
+        $timeoutCfg['curl_connect'],
+        $timeoutCfg['curl'],
+        $timeoutCfg['llm'],
+        $timeoutCfg['ollama_connect'],
+        $timeoutCfg['playwright_proc'],
+        $timeoutCfg['playwright_step_ms']
+    );
     if ($agreementReport['cohens_kappa_weighted'] !== null) {
         printf(
             "Annotator Agreement: source=%s (n=%d) | Cohen's k=%.3f (weighted k=%.3f, %s)%s\n",
@@ -527,6 +631,27 @@ try {
     $detailedRuns = [];
     $anyAiFailure = false;
 
+    $providerErrorBreakdown = [];
+    foreach ($options['providers'] as $pName) {
+        $providerErrorBreakdown[$pName] = [
+            'timeout' => 0,
+            'ollama_unreachable' => 0,
+            'empty_response' => 0,
+            'invalid_json' => 0,
+            'schema_validation' => 0,
+            'php_exception' => 0,
+            'http_error' => 0,
+            'total_errors' => 0,
+            'total_requests' => 0,
+        ];
+    }
+    $hybridCurationStats = [
+        'total_requests' => 0,
+        'invoked_count' => 0,
+        'invoked_percent' => 0.0,
+        'triggers' => [],
+    ];
+
     foreach ($configurations as $config) {
         $effectiveTrials = $config['provider'] === 'baseline' ? 1 : $trials;
         echo "\n--- CONFIG: {$config['id']} | Provider={$config['provider']} | Agentic=" . (($config['agentic'] ?? true) ? 'YES' : 'NO') . " | Temp={$config['temperature']} | Prompt={$config['prompt_style']} | Trials={$effectiveTrials} ---\n";
@@ -542,6 +667,7 @@ try {
 
         $failures = 0;
         $totalExecutedRequests = 0;
+        $totalRetries = 0;
         $playwrightSuccesses = 0;
         $playwrightRequests = 0;
         $playwrightCacheHits = 0;
@@ -549,6 +675,12 @@ try {
         $playwrightEvidenceCount = 0;
         $providerSuccesses = 0;
         $providerRequests = 0;
+
+        // Circuit breaker: abort run after N consecutive provider errors with identical signature
+        $circuitBreakerLimit = 5;
+        $consecutiveErrors = 0;
+        $lastErrorMessage = '';
+        $circuitBroken = false;
 
         $errorTaxonomy = [
             'duplicates'=>0,
@@ -575,6 +707,16 @@ try {
 
             foreach ($allCases as $index => $case) {
                 $totalExecutedRequests++;
+                $pName = (string)$config['provider'];
+                if (!isset($providerErrorBreakdown[$pName])) {
+                    $providerErrorBreakdown[$pName] = [
+                        'timeout' => 0, 'ollama_unreachable' => 0, 'empty_response' => 0,
+                        'invalid_json' => 0, 'schema_validation' => 0, 'php_exception' => 0,
+                        'http_error' => 0, 'total_errors' => 0, 'total_requests' => 0,
+                    ];
+                }
+                $providerErrorBreakdown[$pName]['total_requests']++;
+
                 $response = executeCaseEvaluation($options['api_url'], $case, $config, $options['cache_policy'], $trialSeed, $options['live_turns']);
                 $data = $response['data'];
                 $latency = (float)$response['latency'];
@@ -615,10 +757,21 @@ try {
                 if ($failure !== null) {
                     $failures++;
                     if ($config['provider'] !== 'baseline') $anyAiFailure = true;
+                    $errorReason = $response['error_reason'] ?? 'http_error';
+                    $rawMsg = $response['raw_message'] ?? mb_substr($failure, 0, 300);
+                    $providerErrorBreakdown[$pName][$errorReason]++;
+                    $providerErrorBreakdown[$pName]['total_errors']++;
+
+                    // Circuit Breaker tracking
+                    $consecutiveErrors = ($rawMsg === $lastErrorMessage && $lastErrorMessage !== '') ? ($consecutiveErrors + 1) : 1;
+                    $lastErrorMessage = $rawMsg;
+
                     $record = [
                         'trial'=>$trial,
                         'failed'=>true,
                         'failure'=>$failure,
+                        'error_reason'=>$errorReason,
+                        'raw_message'=>$rawMsg,
                         'latency'=>$latency,
                         'combined'=>['precision_at_5'=>0.0, 'recall_at_5'=>0.0, 'recall_at_10'=>0.0, 'ndcg_at_5'=>0.0, 'mrr'=>0.0],
                         'local'=>['precision_at_5'=>0.0, 'recall_at_5'=>0.0, 'recall_at_10'=>0.0, 'ndcg_at_5'=>0.0, 'mrr'=>0.0],
@@ -630,8 +783,32 @@ try {
                         'top5_names'=>[],
                     ];
                     $perCaseTrialRecords[$case['id']][] = $record;
-                    printf("  [%d/%d] %-6s (%-16s) | ERROR: %s (%.2fs)\n", $index + 1, count($allCases), $case['id'], $case['category'], $failure, $latency);
+                    printf("  [%d/%d] %-6s (%-16s) | ERROR [%s]: %s (%.2fs)\n", $index + 1, count($allCases), $case['id'], $case['category'], $errorReason, $failure, $latency);
+
+                    if ($consecutiveErrors >= $circuitBreakerLimit) {
+                        fwrite(STDERR, "\n" . str_repeat('!', 80) . "\n");
+                        fwrite(STDERR, sprintf("  [CIRCUIT BREAKER TRIGGERED] Provider '%s' aborted after %d consecutive identical errors:\n    [%s] %s\n", $config['provider'], $consecutiveErrors, $errorReason, $rawMsg));
+                        fwrite(STDERR, str_repeat('!', 80) . "\n\n");
+                        $circuitBroken = true;
+                        break 2;
+                    }
                     continue;
+                }
+
+                // Reset circuit breaker on successful request
+                $consecutiveErrors = 0;
+                $lastErrorMessage = '';
+                $caseRetries = (int)($data['metrics']['deepseek']['retries'] ?? 0);
+                $totalRetries += $caseRetries;
+
+                if ($config['provider'] === 'hybrid' && is_array($data['metrics']['deepseek_curation'] ?? null)) {
+                    $cur = $data['metrics']['deepseek_curation'];
+                    $hybridCurationStats['total_requests']++;
+                    if (!empty($cur['invoked'])) {
+                        $hybridCurationStats['invoked_count']++;
+                        $trig = (string)($cur['trigger'] ?? 'unspecified');
+                        $hybridCurationStats['triggers'][$trig] = ($hybridCurationStats['triggers'][$trig] ?? 0) + 1;
+                    }
                 }
 
                 $localResults = is_array($data['results'] ?? null) ? $data['results'] : [];
@@ -729,8 +906,9 @@ try {
                 ];
                 $perCaseTrialRecords[$case['id']][] = $record;
 
+                $retryTag = $caseRetries > 0 ? " [RETRY: {$caseRetries}]" : "";
                 printf(
-                    "  [%d/%d] %-6s (%-16s) | P@5 %5.1f%% | NDCG@5 %5.1f%% | MRR %.2f | Constr %5.1f%% | Faith %5.1f%% | %.2fs (%s)\n",
+                    "  [%d/%d] %-6s (%-16s) | P@5 %5.1f%% | NDCG@5 %5.1f%% | MRR %.2f | Constr %5.1f%% | Faith %5.1f%% | %.2fs (%s)%s\n",
                     $index + 1,
                     count($allCases),
                     $case['id'],
@@ -741,12 +919,27 @@ try {
                     $constraintEval['item_pass_rate'] * 100,
                     $validation['evidence_support_rate'] * 100,
                     $latency,
-                    $pwCache
+                    $pwCache,
+                    $retryTag
                 );
+            }
+
+            if ($circuitBroken) {
+                break;
             }
 
             foreach ($allScopeCases as $scopeCase) {
                 $totalExecutedRequests++;
+                $pName = (string)$config['provider'];
+                if (!isset($providerErrorBreakdown[$pName])) {
+                    $providerErrorBreakdown[$pName] = [
+                        'timeout' => 0, 'ollama_unreachable' => 0, 'empty_response' => 0,
+                        'invalid_json' => 0, 'schema_validation' => 0, 'php_exception' => 0,
+                        'http_error' => 0, 'total_errors' => 0, 'total_requests' => 0,
+                    ];
+                }
+                $providerErrorBreakdown[$pName]['total_requests']++;
+
                 $response = sendSingleApiRequest($options['api_url'], $scopeCase['query'], [], [], $config, $options['cache_policy'], $trialSeed);
                 $latency = (float)$response['latency'];
                 $allLatencies[] = $latency;
@@ -770,10 +963,40 @@ try {
                 if ($failure !== null) {
                     $failures++;
                     if ($config['provider'] !== 'baseline') $anyAiFailure = true;
-                    $perScopeTrialRecords[$scopeCase['id']][] = ['trial'=>$trial, 'failed'=>true, 'scope_passed'=>false, 'latency'=>$latency];
-                    printf("  [Scope %-4s] ERROR: %s (%.2fs)\n", $scopeCase['id'], $failure, $latency);
+                    $errorReason = $response['error_reason'] ?? 'http_error';
+                    $rawMsg = $response['raw_message'] ?? mb_substr($failure, 0, 300);
+                    $providerErrorBreakdown[$pName][$errorReason]++;
+                    $providerErrorBreakdown[$pName]['total_errors']++;
+
+                    $consecutiveErrors = ($rawMsg === $lastErrorMessage && $lastErrorMessage !== '') ? ($consecutiveErrors + 1) : 1;
+                    $lastErrorMessage = $rawMsg;
+
+                    $perScopeTrialRecords[$scopeCase['id']][] = [
+                        'trial'=>$trial,
+                        'failed'=>true,
+                        'failure'=>$failure,
+                        'error_reason'=>$errorReason,
+                        'raw_message'=>$rawMsg,
+                        'scope_passed'=>false,
+                        'latency'=>$latency
+                    ];
+                    printf("  [Scope %-4s] ERROR [%s]: %s (%.2fs)\n", $scopeCase['id'], $errorReason, $failure, $latency);
+
+                    if ($consecutiveErrors >= $circuitBreakerLimit) {
+                        fwrite(STDERR, "\n" . str_repeat('!', 80) . "\n");
+                        fwrite(STDERR, sprintf("  [CIRCUIT BREAKER TRIGGERED] Provider '%s' aborted after %d consecutive identical errors:\n    [%s] %s\n", $config['provider'], $consecutiveErrors, $errorReason, $rawMsg));
+                        fwrite(STDERR, str_repeat('!', 80) . "\n\n");
+                        $circuitBroken = true;
+                        break 2;
+                    }
                     continue;
                 }
+
+                // Reset circuit breaker on success
+                $consecutiveErrors = 0;
+                $lastErrorMessage = '';
+                $scopeRetries = (int)($data['metrics']['deepseek']['retries'] ?? 0);
+                $totalRetries += $scopeRetries;
 
                 $results = is_array($data['results'] ?? null) ? $data['results'] : [];
                 $webResults = is_array($data['webResults'] ?? null) ? $data['webResults'] : [];
@@ -941,6 +1164,8 @@ try {
             'failures'=>$failures,
             'ai_successes'=>$totalExecutedRequests - $failures,
             'error_rate'=>$errorRate,
+            'total_retries'=>$totalRetries,
+            'retry_rate'=>$totalExecutedRequests > 0 ? ($totalRetries / $totalExecutedRequests) : 0.0,
             'p5'=>$ciP5,
             'r5'=>$ciR5,
             'r10'=>$ciR10,
@@ -1046,13 +1271,13 @@ try {
     echo " TABLE 2: CONSTRAINT ADHERENCE, SCOPE SAFETY, MULTI-TURN, FAITHFULNESS, RELIABILITY & COST\n";
     echo "======================================================================================================================================\n";
     printf(
-        "%-22s | %-12s | %-10s | %-11s | %-12s | %-11s | %-11s | %-10s | %-12s\n",
-        'Config ID', 'Constr Item%', 'Scope Acc%', 'Follow-up%', 'Faithful%', 'Fact Corr%', 'Consistency', 'Error Rate', 'Cost/Query'
+        "%-22s | %-12s | %-10s | %-11s | %-12s | %-11s | %-11s | %-10s | %-8s | %-12s\n",
+        'Config ID', 'Constr Item%', 'Scope Acc%', 'Follow-up%', 'Faithful%', 'Fact Corr%', 'Consistency', 'Error Rate', 'Retries', 'Cost/Query'
     );
-    echo str_repeat('-', 134) . "\n";
+    echo str_repeat('-', 145) . "\n";
     foreach ($summary as $row) {
         printf(
-            "%-22s | %11.1f%% | %9.1f%% | %11s | %11.1f%% | %10.1f%% | %11s | %9.1f%% | %12s\n",
+            "%-22s | %11.1f%% | %9.1f%% | %11s | %11.1f%% | %10.1f%% | %11s | %9.1f%% | %8d | %12s\n",
             $row['id'],
             $row['constraint_item_rate']['mean'] * 100,
             $row['scope_rejection_accuracy'] * 100,
@@ -1061,6 +1286,7 @@ try {
             $row['factual_correctness']['mean'] * 100,
             $row['repeat_consistency'] !== null ? sprintf('%.1f%%', $row['repeat_consistency'] * 100) : 'N/A (1x)',
             $row['error_rate'] * 100,
+            $row['total_retries'] ?? 0,
             sprintf('$%.6f', $row['mean_cost_usd'])
         );
     }
@@ -1148,25 +1374,73 @@ try {
         }
     }
 
+    // ==================== ERROR REASON BREAKDOWN ====================
+    echo "\n======================================================================================================================================\n";
+    echo " ERROR REASON BREAKDOWN PER PROVIDER\n";
+    echo "======================================================================================================================================\n";
+    printf(
+        "%-16s | %-10s | %-10s | %-7s | %-16s | %-10s | %-12s | %-12s | %-10s | %-10s\n",
+        'Provider', 'Total Req', 'Total Err', 'Timeout', 'Ollama Unreach', 'Empty Resp', 'Invalid JSON', 'Schema Valid', 'PHP Except', 'HTTP Error'
+    );
+    echo str_repeat('-', 134) . "\n";
+    foreach ($providerErrorBreakdown as $pName => $eb) {
+        printf(
+            "%-16s | %10d | %10d | %7d | %16d | %10d | %12d | %12d | %10d | %10d\n",
+            $pName,
+            $eb['total_requests'],
+            $eb['total_errors'],
+            $eb['timeout'],
+            $eb['ollama_unreachable'],
+            $eb['empty_response'],
+            $eb['invalid_json'],
+            $eb['schema_validation'],
+            $eb['php_exception'],
+            $eb['http_error']
+        );
+    }
+
+    if ($hybridCurationStats['total_requests'] > 0) {
+        echo "\n======================================================================================================================================\n";
+        echo " HYBRID PIPELINE DEEPSEEK CURATION TELEMETRY\n";
+        echo "======================================================================================================================================\n";
+        $hybridCurationStats['invoked_percent'] = round(($hybridCurationStats['invoked_count'] / $hybridCurationStats['total_requests']) * 100.0, 1);
+        printf(
+            "Total Hybrid Requests: %d | Curation Invoked: %d (%.1f%%)\n",
+            $hybridCurationStats['total_requests'],
+            $hybridCurationStats['invoked_count'],
+            $hybridCurationStats['invoked_percent']
+        );
+        if ($hybridCurationStats['triggers']) {
+            echo "Triggers Breakdown:\n";
+            foreach ($hybridCurationStats['triggers'] as $trig => $cnt) {
+                printf("  - %-32s: %d (%.1f%%)\n", $trig, $cnt, ($cnt / max(1, $hybridCurationStats['invoked_count'])) * 100.0);
+            }
+        }
+    }
+
     // ==================== STATISTICAL TESTS ====================
     $statisticalTests = ['friedman'=>[], 'wilcoxon_posthoc'=>[]];
     echo "\n======================================================================================================================================\n";
     echo " STATISTICAL SIGNIFICANCE ANALYSIS (Friedman Omnibus + Pairwise Wilcoxon Signed-Rank with Holm-Bonferroni)\n";
     echo "======================================================================================================================================\n";
 
-    foreach (['ndcg5'=>'NDCG@5', 'p5'=>'Precision@5', 'mrr'=>'MRR', 'constraint'=>'Constraint Pass Rate'] as $mKey => $mLabel) {
-        $fTest = friedmanTest($pairedScores[$mKey], count($inScopeRetrievalCases));
-        $statisticalTests['friedman'][$mKey] = $fTest;
-        if ($fTest !== null) {
-            printf(
-                "Friedman Omnibus [%-20s]: Q = %8.4f, df = %d, p = %.6f %s\n",
-                $mLabel,
-                $fTest['statistic'],
-                $fTest['degrees_of_freedom'],
-                $fTest['p_value'],
-                $fTest['p_value'] < 0.05 ? '(SIGNIFICANT at alpha=0.05)' : '(ns)'
-            );
+    if (count($configIds) >= 3) {
+        foreach (['ndcg5'=>'NDCG@5', 'p5'=>'Precision@5', 'mrr'=>'MRR', 'constraint'=>'Constraint Pass Rate'] as $mKey => $mLabel) {
+            $fTest = friedmanTest($pairedScores[$mKey], count($inScopeRetrievalCases));
+            $statisticalTests['friedman'][$mKey] = $fTest;
+            if ($fTest !== null) {
+                printf(
+                    "Friedman Omnibus [%-20s]: Q = %8.4f, df = %d, p = %.6f %s\n",
+                    $mLabel,
+                    $fTest['statistic'],
+                    $fTest['degrees_of_freedom'],
+                    $fTest['p_value'],
+                    $fTest['p_value'] < 0.05 ? '(SIGNIFICANT at alpha=0.05)' : '(ns)'
+                );
+            }
         }
+    } else {
+        echo "Friedman omnibus test skipped: requires at least 3 configurations (observed " . count($configIds) . ").\n";
     }
 
     if (count($configIds) >= 2) {
@@ -1219,6 +1493,104 @@ try {
         echo "Best configuration not selected: every configuration failed all requests.\n";
     }
 
+    // Helper to export clean CSV representation of Tables 1 through 5
+    $exportTables1To5 = static function(string $filePath, array $summaryRows, array $retrievalCases): void {
+        $fp = @fopen($filePath, 'wb');
+        if (!$fp) return;
+
+        fputcsv($fp, ['TABLE 1: RANKING & INTENT MATCHING METRICS (Combined Web+Local, n=' . count($retrievalCases) . ')']);
+        fputcsv($fp, ['Config ID', 'P@5 Mean', 'P@5 CI Lower', 'P@5 CI Upper', 'NDCG@5 Mean', 'NDCG@5 CI Lower', 'NDCG@5 CI Upper', 'MRR', 'R@5 Mean', 'R@5 CI Lower', 'R@5 CI Upper', 'R@10 Mean', 'Local P@5', 'Web P@5', 'Web Active Queries']);
+        foreach ($summaryRows as $r) {
+            fputcsv($fp, [
+                $r['id'],
+                round($r['p5']['mean'], 4), round($r['p5']['ci_lower'], 4), round($r['p5']['ci_upper'], 4),
+                round($r['ndcg5']['mean'], 4), round($r['ndcg5']['ci_lower'], 4), round($r['ndcg5']['ci_upper'], 4),
+                round($r['mrr']['mean'], 4),
+                round($r['r5']['mean'], 4), round($r['r5']['ci_lower'], 4), round($r['r5']['ci_upper'], 4),
+                round($r['r10']['mean'], 4),
+                round($r['local_p5_mean'], 4),
+                $r['web_p5_mean'] !== null ? round($r['web_p5_mean'], 4) : 'N/A',
+                $r['web_active_queries'] ?? 0
+            ]);
+        }
+        fputcsv($fp, []);
+
+        fputcsv($fp, ['TABLE 2: CONSTRAINT ADHERENCE, SCOPE SAFETY, MULTI-TURN, FAITHFULNESS, RELIABILITY & COST']);
+        fputcsv($fp, ['Config ID', 'Constraint Item Pass Rate', 'Scope Rejection Accuracy', 'Follow-up Resolution Rate', 'Faithfulness Mean', 'Factual Correctness Mean', 'Repeat Consistency', 'Error Rate', 'Retries', 'Mean Cost USD']);
+        foreach ($summaryRows as $r) {
+            fputcsv($fp, [
+                $r['id'],
+                round($r['constraint_item_rate']['mean'], 4),
+                round($r['scope_rejection_accuracy'], 4),
+                $r['followup_resolution_rate'] !== null ? round($r['followup_resolution_rate'], 4) : 'N/A',
+                round($r['faithfulness']['mean'], 4),
+                round($r['factual_correctness']['mean'], 4),
+                $r['repeat_consistency'] !== null ? round($r['repeat_consistency'], 4) : 'N/A',
+                round($r['error_rate'], 4),
+                $r['total_retries'] ?? 0,
+                round($r['mean_cost_usd'], 8)
+            ]);
+        }
+        fputcsv($fp, []);
+
+        fputcsv($fp, ['TABLE 3: LATENCY DECOMPOSITION & CACHE BEHAVIOR']);
+        fputcsv($fp, ['Config ID', 'Mean Latency (s)', 'P50 Latency (s)', 'P95 Latency (s)', 'P99 Latency (s)', 'Cold P50 (s)', 'Warm P50 (s)', 'Dataset Mean (ms)', 'Playwright Mean (ms)', 'AI Mean (ms)', 'Playwright Cache Hits', 'Playwright Cache Misses']);
+        foreach ($summaryRows as $r) {
+            $lat = $r['latency'];
+            fputcsv($fp, [
+                $r['id'],
+                round($lat['mean_s'], 4),
+                round($lat['median_p50_s'], 4),
+                round($lat['p95_s'], 4),
+                round($lat['p99_s'], 4),
+                $lat['cold_p50_s'] !== null ? round($lat['cold_p50_s'], 4) : 'N/A',
+                $lat['warm_p50_s'] !== null ? round($lat['warm_p50_s'], 4) : 'N/A',
+                round($lat['dataset_mean_ms'], 2),
+                round($lat['playwright_mean_ms'], 2),
+                round($lat['ai_mean_ms'], 2),
+                $r['playwright_cache_hits'] ?? 0,
+                $r['playwright_cache_misses'] ?? 0
+            ]);
+        }
+        fputcsv($fp, []);
+
+        fputcsv($fp, ['TABLE 4: QUALITATIVE ERROR & GROUNDING AUDIT COUNTS']);
+        fputcsv($fp, ['Config ID', 'Duplicates', 'Wrong Locations', 'Missing Sources', 'Fabricated Details', 'Unsupported Claims', 'Constraint Failures', 'Scope Violations']);
+        foreach ($summaryRows as $r) {
+            $et = $r['error_taxonomy'];
+            fputcsv($fp, [
+                $r['id'],
+                $et['duplicates'] ?? 0,
+                $et['wrong_locations'] ?? 0,
+                $et['missing_sources'] ?? 0,
+                $et['fabricated_details'] ?? 0,
+                $et['unsupported_claims'] ?? 0,
+                $et['constraint_failures'] ?? 0,
+                $et['scope_violations'] ?? 0
+            ]);
+        }
+        fputcsv($fp, []);
+
+        fputcsv($fp, ['TABLE 5: STUDY OBJECTIVES BREAKDOWN — DISAMBIGUATION, NUMERIC PRICE CEILINGS & AUTONOMOUS ITERATIVE LOOP']);
+        fputcsv($fp, ['Config ID', 'Disambiguation Accuracy', 'Trap-Free Rate', 'Price Ceiling Accuracy', 'Price Ceiling NDCG@5', 'Loop Initial Compliance', 'Loop Final Compliance', 'Violations Repaired', 'Violations Detected', 'Re-Retrieval Rate']);
+        foreach ($summaryRows as $r) {
+            $al = $r['agentic_loop_stats'] ?? [];
+            fputcsv($fp, [
+                $r['id'],
+                $r['disambiguation_accuracy'] !== null ? round($r['disambiguation_accuracy'], 4) : 'N/A',
+                $r['disambiguation_trap_free_rate'] !== null ? round($r['disambiguation_trap_free_rate'], 4) : 'N/A',
+                $r['price_ceiling_compliance_rate'] !== null ? round($r['price_ceiling_compliance_rate'], 4) : 'N/A',
+                $r['price_ceiling_ndcg5'] !== null ? round($r['price_ceiling_ndcg5'], 4) : 'N/A',
+                !empty($al['enabled']) ? round($al['initial_compliance_rate'] ?? 0, 4) : 'disabled',
+                !empty($al['enabled']) ? round($al['final_compliance_rate'] ?? 0, 4) : 'disabled',
+                !empty($al['enabled']) ? ($al['violations_repaired'] ?? 0) : '-',
+                !empty($al['enabled']) ? ($al['violations_detected'] ?? 0) : '-',
+                !empty($al['enabled']) ? round($al['re_retrieval_rate'] ?? 0, 4) : '-'
+            ]);
+        }
+        fclose($fp);
+    };
+
     // ==================== SAVE REPRODUCIBILITY ARTIFACTS ====================
     if (!$options['no_save']) {
         $resultsDir = __DIR__ . DIRECTORY_SEPARATOR . 'results';
@@ -1251,6 +1623,8 @@ try {
             'annotator_agreement'=>$agreementReport,
             'usability_study'=>aggregateUsabilityStudy(),
             'summary'=>$summary,
+            'error_reason_breakdown'=>$providerErrorBreakdown,
+            'hybrid_curation'=>$hybridCurationStats,
             'statistical_tests'=>$statisticalTests,
             'detailed_runs'=>$detailedRuns,
         ];
@@ -1298,9 +1672,16 @@ try {
                 ]);
             }
             fclose($fp);
+            @copy($csvPath, $resultsDir . DIRECTORY_SEPARATOR . 'latest_run_summary.csv');
         }
+
+        $tablesCsvPath = preg_replace('/\.json$/i', '', $jsonOutPath) . '_tables_1_5.csv';
+        $exportTables1To5($tablesCsvPath, $summary, $inScopeRetrievalCases);
+        $exportTables1To5($resultsDir . DIRECTORY_SEPARATOR . 'latest_tables_1_5.csv', $summary, $inScopeRetrievalCases);
+
         echo "Saved reproducible evaluation report: {$jsonOutPath}\n";
         echo "Saved CSV thesis summary table      : {$csvPath}\n";
+        echo "Saved CSV Tables 1-5 report         : {$tablesCsvPath}\n";
     }
 
     if ($options['require_ai'] && $anyAiFailure) {

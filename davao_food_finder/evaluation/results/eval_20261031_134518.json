@@ -1,0 +1,1376 @@
+{
+    "reproducibility_manifest": {
+        "evaluator_version": "3.0.0",
+        "started_at_utc": "2026-10-31T13:44:28+00:00",
+        "completed_at_utc": "2026-10-31T13:45:18+00:00",
+        "php_version": "8.2.12",
+        "os": "Windows",
+        "api_url": "http://127.0.0.1:8080/api.php",
+        "ground_truth_path": "ground_truth.json",
+        "ground_truth_version": "3.0.0",
+        "ground_truth_sha256": "479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06",
+        "dataset_files": {
+            "ph_restos_2025.csv": {
+                "size_bytes": 917011,
+                "sha256": "bdd741dc8d83d3ba119e7a99ea6a69c2228aa0d458389a09543576a0cef8caaa"
+            },
+            "ph_reviews_2025.csv": {
+                "size_bytes": 46579295,
+                "sha256": "1b95b980334534314d8c918457de5eea5751f7a121af7b39c7c3a1c21d161070"
+            }
+        },
+        "split": "test",
+        "in_scope_case_count": 39,
+        "scope_case_count": 6,
+        "trials": 1,
+        "seed": 42,
+        "cache_policy": "default",
+        "live_turns": false
+    },
+    "annotator_agreement": {
+        "source": "rubric_criteria_audit",
+        "annotator_count": 3,
+        "overlapping_items": 80,
+        "cohens_kappa_unweighted": {
+            "kappa": 0.5519348268839104,
+            "observed_agreement": 0.8625,
+            "expected_agreement": 0.6931250000000001,
+            "n_items": 80,
+            "weighted": false,
+            "interpretation": "moderate"
+        },
+        "cohens_kappa_weighted": {
+            "kappa": 0.763681592039801,
+            "observed_agreement": 0.9736111111111111,
+            "expected_agreement": 0.8883333333333333,
+            "n_items": 80,
+            "weighted": true,
+            "interpretation": "substantial"
+        },
+        "fleiss_kappa": {
+            "kappa": 0.6637017180455701,
+            "observed_agreement": 0.9041666666666665,
+            "expected_agreement": 0.7150347222222222,
+            "n_items": 80,
+            "n_raters": 3,
+            "interpretation": "substantial"
+        }
+    },
+    "usability_study": {
+        "source": "awaiting_human_participants",
+        "participant_count": 0,
+        "sus_ci95": null,
+        "task_completion_ci95": null,
+        "mean_task_time_sec": null,
+        "median_task_time_sec": null,
+        "mean_perceived_relevance_1_5": null,
+        "mean_price_source_trust_1_5": null,
+        "per_task": {
+            "UT1": {
+                "title": "Complex Multi-Constraint Search",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT2": {
+                "title": "Hard Numeric Peso Price Ceiling",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT3": {
+                "title": "Thematic Keywords & Ambiance",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT4": {
+                "title": "Lexical & Bisaya Disambiguation",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT5": {
+                "title": "Multi-Turn Conversational Refinement",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            },
+            "UT6": {
+                "title": "Geographic Scope Boundary Verification",
+                "n": 0,
+                "strict_completion_rate": null,
+                "mean_time_sec": null,
+                "median_time_sec": null,
+                "mean_relevance_1_5": null,
+                "mean_trust_1_5": null
+            }
+        },
+        "participants": []
+    },
+    "summary": [
+        {
+            "provider": "deepseek-api",
+            "id": "DEEPSEEK-API-T0.2-STRICT",
+            "temperature": 0.2,
+            "top_p": 1,
+            "prompt_style": "strict_grounding",
+            "agentic": true,
+            "trials": 1,
+            "total_requests": 10,
+            "failures": 5,
+            "ai_successes": 5,
+            "error_rate": 0.5,
+            "total_retries": 0,
+            "retry_rate": 0,
+            "p5": {
+                "mean": 0.13157894736842105,
+                "sd": 0.34256998745010414,
+                "se": 0.055572190200903385,
+                "ci_lower": 0.02631578947368421,
+                "ci_upper": 0.23684210526315788,
+                "n": 38
+            },
+            "r5": {
+                "mean": 0.01852464248586132,
+                "sd": 0.05214671152631456,
+                "se": 0.008459313651094664,
+                "ci_lower": 0.0043859649122807015,
+                "ci_upper": 0.03638397613466865,
+                "n": 38
+            },
+            "r10": {
+                "mean": 0.023241716732021443,
+                "sd": 0.06624383429448925,
+                "se": 0.010746168940402792,
+                "ci_lower": 0.005263157894736841,
+                "ci_upper": 0.045687318221944245,
+                "n": 38
+            },
+            "ndcg5": {
+                "mean": 0.11622715173979523,
+                "sd": 0.30713720331199706,
+                "se": 0.04982423360340012,
+                "ci_lower": 0.02631578947368421,
+                "ci_upper": 0.2215047363357066,
+                "n": 38
+            },
+            "mrr": {
+                "mean": 0.13157894736842105,
+                "sd": 0.34256998745010414,
+                "se": 0.055572190200903385,
+                "ci_lower": 0.02631578947368421,
+                "ci_upper": 0.23684210526315788,
+                "n": 38
+            },
+            "local_p5_mean": 0.13157894736842105,
+            "local_ndcg5_mean": 0.11622715173979523,
+            "web_p5_mean": 0.04,
+            "web_ndcg5_mean": 0.014535437368869262,
+            "web_active_queries": 5,
+            "constraint_item_rate": {
+                "mean": 0.13157894736842105,
+                "sd": 0.34256998745010414,
+                "se": 0.055572190200903385,
+                "ci_lower": 0.02631578947368421,
+                "ci_upper": 0.23684210526315788,
+                "n": 38
+            },
+            "constraint_strict_pass_rate": 0.13157894736842105,
+            "disambiguation_accuracy": 0,
+            "disambiguation_trap_free_rate": 0,
+            "disambiguation_by_subtype": {
+                "underspecified_ambiguous": 0,
+                "lexical_polysemy": 0,
+                "category_confusion": 0,
+                "spelling_synonym": 0,
+                "mixed_intent": 0,
+                "anaphoric_followup": 0
+            },
+            "price_ceiling_compliance_rate": 0,
+            "price_ceiling_ndcg5": 0,
+            "agentic_loop_stats": {
+                "enabled": true,
+                "mean_iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "compliance_gain": 0,
+                "re_retrieval_rate": 0,
+                "violations_detected": 0,
+                "violations_repaired": 0
+            },
+            "scope_rejection_accuracy": 0,
+            "scope_violations": 0,
+            "followup_resolution_rate": 0,
+            "factual_correctness": {
+                "mean": 0.12828947368421054,
+                "sd": 0.33451109203883345,
+                "se": 0.054264864734542874,
+                "ci_lower": 0.02631578947368421,
+                "ci_upper": 0.2500822368421048,
+                "n": 38
+            },
+            "faithfulness": {
+                "mean": 0.12828947368421054,
+                "sd": 0.33451109203883345,
+                "se": 0.054264864734542874,
+                "ci_lower": 0.02631578947368421,
+                "ci_upper": 0.23708881578947233,
+                "n": 38
+            },
+            "web_source_support_rate": 0.9,
+            "repeat_consistency": null,
+            "latency": {
+                "mean_s": 5.001273036003113,
+                "median_p50_s": 1.6990325450897217,
+                "p95_s": 19.85789673328398,
+                "p99_s": 25.628853020668032,
+                "cold_mean_s": null,
+                "cold_p50_s": null,
+                "cold_p95_s": null,
+                "warm_mean_s": 5.001273036003113,
+                "warm_p50_s": 1.6990325450897217,
+                "warm_p95_s": 19.85789673328398,
+                "dataset_mean_ms": 18.7,
+                "playwright_mean_ms": 0.3,
+                "ai_mean_ms": 4949.9
+            },
+            "playwright_successes": 10,
+            "playwright_requests": 10,
+            "playwright_cache_hits": 10,
+            "playwright_cache_misses": 0,
+            "playwright_evidence_count": 50,
+            "provider_successes": 5,
+            "provider_requests": 10,
+            "mean_cost_usd": 0.000336616,
+            "total_cost_usd": 0.00336616,
+            "total_tokens": 15151,
+            "error_taxonomy": {
+                "duplicates": 0,
+                "wrong_locations": 0,
+                "missing_sources": 1,
+                "fabricated_details": 0,
+                "unsupported_claims": 1,
+                "constraint_failures": 0,
+                "scope_violations": 0,
+                "examples": [
+                    "Q009: missing_web_source (Bam's Grilled Chicken and Liempo, Lechon Belly | Davao City)"
+                ]
+            },
+            "mean_precision": 0.13157894736842105,
+            "mean_latency": 5.001273036003113,
+            "median_latency": 1.6990325450897217
+        }
+    ],
+    "error_reason_breakdown": {
+        "deepseek-api": {
+            "timeout": 0,
+            "ollama_unreachable": 0,
+            "empty_response": 0,
+            "invalid_json": 0,
+            "schema_validation": 0,
+            "php_exception": 0,
+            "http_error": 5,
+            "total_errors": 5,
+            "total_requests": 10
+        }
+    },
+    "hybrid_curation": {
+        "total_requests": 0,
+        "invoked_count": 0,
+        "invoked_percent": 0,
+        "triggers": []
+    },
+    "statistical_tests": {
+        "friedman": [],
+        "wilcoxon_posthoc": []
+    },
+    "detailed_runs": {
+        "DEEPSEEK-API-T0.2-STRICT": {
+            "cases": {
+                "Q005": [
+                    {
+                        "trial": 1,
+                        "failed": false,
+                        "false_out_of_scope": false,
+                        "latency": 3.3240320682525635,
+                        "combined": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.08771929824561403,
+                            "recall_at_10": 0.10526315789473684,
+                            "ndcg_at_5": 1,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 6,
+                            "returned_count": 8
+                        },
+                        "local": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.08771929824561403,
+                            "recall_at_10": 0.10526315789473684,
+                            "ndcg_at_5": 1,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 6,
+                            "returned_count": 6
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "hits_at_5": 0,
+                            "hits_at_10": 0,
+                            "returned_count": 2
+                        },
+                        "constraint": {
+                            "davao_only_pass": true,
+                            "strict_pass": true,
+                            "item_pass_rate": 1,
+                            "numeric_price_compliant": null,
+                            "verified_price_hit_rate": null,
+                            "disambiguation_trap_free": true,
+                            "dimension_scores": {
+                                "city_davao": 1,
+                                "cuisine": 1
+                            },
+                            "failed_dimensions": []
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 1,
+                            "evidence_support_rate": 1,
+                            "web_source_support_rate": 1,
+                            "source_fresh": true,
+                            "duplicate_count": 0,
+                            "wrong_location_count": 0,
+                            "missing_source_count": 0,
+                            "fabricated_detail_count": 0,
+                            "unsupported_claim_count": 0,
+                            "local_items": [
+                                {
+                                    "name": "S&R New York Style Pizza - Abreeza Ayala Mall",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Alberto's Pizza - Matina",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "S&R New York Style Pizza - SM City Davao",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Alberto's Pizza - Ecoland",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Shakey's Pizza - SM Lanang",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Pizza Hut - SM Davao",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                }
+                            ],
+                            "web_items": [
+                                {
+                                    "name": "THE 10 BEST Pizza Places",
+                                    "origin": "web",
+                                    "relevance_grade": 0,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true,
+                                    "source_url": "https://www.tripadvisor.com/Restaurants-g298459-c31-Davao_City_Davao_del_Sur_Province_Mindanao.html"
+                                },
+                                {
+                                    "name": "THE BEST 10 PIZZA PLACES",
+                                    "origin": "web",
+                                    "relevance_grade": 0,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true,
+                                    "source_url": "https://www.yelp.com/search?cflt=pizza&find_loc=Davao+City%2C+Davao+del+Sur"
+                                }
+                            ],
+                            "issues": []
+                        },
+                        "agentic_loop": {
+                            "enabled": true,
+                            "iterations": 1,
+                            "initial_compliance_rate": 1,
+                            "final_compliance_rate": 1,
+                            "violations_detected": [],
+                            "violations_repaired": 0,
+                            "re_retrieved": false
+                        },
+                        "scope_passed": true,
+                        "followup_passed": null,
+                        "top5_names": [
+                            "srnewyorkstylepizzaabreezaayalamall",
+                            "albertospizzamatina",
+                            "srnewyorkstylepizzasmcitydavao",
+                            "albertospizzaecoland",
+                            "shakeyspizzasmlanang"
+                        ],
+                        "sample_answer": "Here are pizza places in Davao City from the supplied local records: S&R New York Style Pizza - Abreeza Ayala Mall, Alberto's Pizza - Matina, S&R New York Style Pizza - SM City Davao, Alberto's Pizza - Ecoland, Shakey's Pizza - SM Lanang, and Pizza Hut - SM Davao.",
+                        "sample_top5_display": [
+                            "S&R New York Style Pizza - Abreeza Ayala Mall",
+                            "Alberto's Pizza - Matina",
+                            "S&R New York Style Pizza - SM City Davao",
+                            "Alberto's Pizza - Ecoland",
+                            "Shakey's Pizza - SM Lanang"
+                        ]
+                    }
+                ],
+                "Q006": [
+                    {
+                        "trial": 1,
+                        "failed": false,
+                        "false_out_of_scope": false,
+                        "latency": 4.74350118637085,
+                        "combined": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.19230769230769232,
+                            "recall_at_10": 0.23076923076923078,
+                            "ndcg_at_5": 1,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 6,
+                            "returned_count": 8
+                        },
+                        "local": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.19230769230769232,
+                            "recall_at_10": 0.23076923076923078,
+                            "ndcg_at_5": 1,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 6,
+                            "returned_count": 6
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "hits_at_5": 0,
+                            "hits_at_10": 0,
+                            "returned_count": 2
+                        },
+                        "constraint": {
+                            "davao_only_pass": true,
+                            "strict_pass": true,
+                            "item_pass_rate": 1,
+                            "numeric_price_compliant": null,
+                            "verified_price_hit_rate": null,
+                            "disambiguation_trap_free": true,
+                            "dimension_scores": {
+                                "city_davao": 1,
+                                "cuisine": 1
+                            },
+                            "failed_dimensions": []
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 1,
+                            "evidence_support_rate": 1,
+                            "web_source_support_rate": 1,
+                            "source_fresh": true,
+                            "duplicate_count": 0,
+                            "wrong_location_count": 0,
+                            "missing_source_count": 0,
+                            "fabricated_detail_count": 0,
+                            "unsupported_claim_count": 0,
+                            "local_items": [
+                                {
+                                    "name": "Hangry Tuna - Matina Aplaya",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Tuna Republik - La Verna Street",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Hangry Tuna - Nova Tierra Village",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Hangry Tuna- Catalunan",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "MarinaTuna - Pampanga",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Martina Tuna Grill (Tuna Choice) - Roxas Street",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                }
+                            ],
+                            "web_items": [
+                                {
+                                    "name": "Marinatuna Seafood Restaurant",
+                                    "origin": "web",
+                                    "relevance_grade": 0,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true,
+                                    "source_url": "https://restaurantguru.com/Davao-Marinatuna-Corporation-Davao-City"
+                                },
+                                {
+                                    "name": "THE BEST 10 SEAFOOD RESTAURANTS",
+                                    "origin": "web",
+                                    "relevance_grade": 0,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true,
+                                    "source_url": "https://www.yelp.com/search?cflt=seafood&find_loc=Davao+City%2C+Davao+del+Sur"
+                                }
+                            ],
+                            "issues": []
+                        },
+                        "agentic_loop": {
+                            "enabled": true,
+                            "iterations": 1,
+                            "initial_compliance_rate": 1,
+                            "final_compliance_rate": 1,
+                            "violations_detected": [],
+                            "violations_repaired": 0,
+                            "re_retrieved": false
+                        },
+                        "scope_passed": true,
+                        "followup_passed": null,
+                        "top5_names": [
+                            "hangrytunamatinaaplaya",
+                            "tunarepubliklavernastreet",
+                            "hangrytunanovatierravillage",
+                            "hangrytunacatalunan",
+                            "marinatunapampanga"
+                        ],
+                        "sample_answer": "Here are seafood and tuna-focused restaurants in Davao City from the local records: Hangry Tuna locations (Matina Aplaya, Nova Tierra Village, Catalunan), Tuna Republik - La Verna Street, MarinaTuna - Pampanga, and Martina Tuna Grill (Tuna Choice) - Roxas Street.",
+                        "sample_top5_display": [
+                            "Hangry Tuna - Matina Aplaya",
+                            "Tuna Republik - La Verna Street",
+                            "Hangry Tuna - Nova Tierra Village",
+                            "Hangry Tuna- Catalunan",
+                            "MarinaTuna - Pampanga"
+                        ]
+                    }
+                ],
+                "Q008": [
+                    {
+                        "trial": 1,
+                        "failed": false,
+                        "false_out_of_scope": false,
+                        "latency": 3.5404279232025146,
+                        "combined": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.16666666666666666,
+                            "recall_at_10": 0.2,
+                            "ndcg_at_5": 1,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 6,
+                            "returned_count": 7
+                        },
+                        "local": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.16666666666666666,
+                            "recall_at_10": 0.2,
+                            "ndcg_at_5": 1,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 6,
+                            "returned_count": 6
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "hits_at_5": 0,
+                            "hits_at_10": 0,
+                            "returned_count": 1
+                        },
+                        "constraint": {
+                            "davao_only_pass": true,
+                            "strict_pass": true,
+                            "item_pass_rate": 1,
+                            "numeric_price_compliant": null,
+                            "verified_price_hit_rate": null,
+                            "disambiguation_trap_free": true,
+                            "dimension_scores": {
+                                "city_davao": 1,
+                                "cuisine": 1
+                            },
+                            "failed_dimensions": []
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 1,
+                            "evidence_support_rate": 1,
+                            "web_source_support_rate": 1,
+                            "source_fresh": true,
+                            "duplicate_count": 0,
+                            "wrong_location_count": 0,
+                            "missing_source_count": 0,
+                            "fabricated_detail_count": 0,
+                            "unsupported_claim_count": 0,
+                            "local_items": [
+                                {
+                                    "name": "Harley's Burgers and Shakes - C.M Recto",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Burger King - J.P. Laurel Davao",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Burger King - Buhangin Davao",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Red Corner Burger Cafe - Mabini",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Scarlette's Burger Station - Mintal",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Durian Dub Snack Shack x Burger Shack Joint - Quimpo Boulevard",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                }
+                            ],
+                            "web_items": [
+                                {
+                                    "name": "THE BEST 10 BURGERS",
+                                    "origin": "web",
+                                    "relevance_grade": 0,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true,
+                                    "source_url": "https://www.yelp.com/search?cflt=burgers&find_loc=Davao+City%2C+Davao+del+Sur"
+                                }
+                            ],
+                            "issues": []
+                        },
+                        "agentic_loop": {
+                            "enabled": true,
+                            "iterations": 1,
+                            "initial_compliance_rate": 1,
+                            "final_compliance_rate": 1,
+                            "violations_detected": [],
+                            "violations_repaired": 0,
+                            "re_retrieved": false
+                        },
+                        "scope_passed": true,
+                        "followup_passed": null,
+                        "top5_names": [
+                            "harleysburgersandshakescmrecto",
+                            "burgerkingjplaureldavao",
+                            "burgerkingbuhangindavao",
+                            "redcornerburgercafemabini",
+                            "scarlettesburgerstationmintal"
+                        ],
+                        "sample_answer": "Here are the Davao City burger joints from the local records. No dedicated sandwich joints were available in the supplied records.",
+                        "sample_top5_display": [
+                            "Harley's Burgers and Shakes - C.M Recto",
+                            "Burger King - J.P. Laurel Davao",
+                            "Burger King - Buhangin Davao",
+                            "Red Corner Burger Cafe - Mabini",
+                            "Scarlette's Burger Station - Mintal"
+                        ]
+                    }
+                ],
+                "Q009": [
+                    {
+                        "trial": 1,
+                        "failed": false,
+                        "false_out_of_scope": false,
+                        "latency": 11.041157960891724,
+                        "combined": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.06493506493506493,
+                            "recall_at_10": 0.07792207792207792,
+                            "ndcg_at_5": 0.7192801759488139,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 6,
+                            "returned_count": 8
+                        },
+                        "local": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.06493506493506493,
+                            "recall_at_10": 0.07792207792207792,
+                            "ndcg_at_5": 0.7192801759488139,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 6,
+                            "returned_count": 6
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "hits_at_5": 0,
+                            "hits_at_10": 0,
+                            "returned_count": 2
+                        },
+                        "constraint": {
+                            "davao_only_pass": true,
+                            "strict_pass": true,
+                            "item_pass_rate": 1,
+                            "numeric_price_compliant": null,
+                            "verified_price_hit_rate": null,
+                            "disambiguation_trap_free": true,
+                            "dimension_scores": {
+                                "city_davao": 1,
+                                "cuisine": 1
+                            },
+                            "failed_dimensions": []
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0.875,
+                            "evidence_support_rate": 0.875,
+                            "web_source_support_rate": 0.5,
+                            "source_fresh": true,
+                            "duplicate_count": 0,
+                            "wrong_location_count": 0,
+                            "missing_source_count": 1,
+                            "fabricated_detail_count": 0,
+                            "unsupported_claim_count": 1,
+                            "local_items": [
+                                {
+                                    "name": "ChicNok Lechon Manok And Liempo - Buhangin",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "ChicNok Lechon Manok And Liempo - Obrero",
+                                    "origin": "local",
+                                    "relevance_grade": 2,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Yongskie's Lechon Manok & Liempo House - Ecoland Subdivision",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Chickpoint Lechon Manok & Liempo House - Maa",
+                                    "origin": "local",
+                                    "relevance_grade": 2,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Chickpoint Lechon Manok & Liempo House - Sto Niño",
+                                    "origin": "local",
+                                    "relevance_grade": 2,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Chickpoint Lechon Manok & Liempo House - Kapundok",
+                                    "origin": "local",
+                                    "relevance_grade": 2,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                }
+                            ],
+                            "web_items": [
+                                {
+                                    "name": "Bam's Grilled Chicken and Liempo, Lechon Belly | Davao City",
+                                    "origin": "web",
+                                    "relevance_grade": 0,
+                                    "factually_correct": false,
+                                    "evidence_supported": false,
+                                    "davao_verified": true,
+                                    "source_url": ""
+                                },
+                                {
+                                    "name": "LiempoQ, Davao City - Restaurant menu, prices and reviews",
+                                    "origin": "web",
+                                    "relevance_grade": 0,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true,
+                                    "source_url": "https://restaurantguru.com/LiempoQ-Davao-City-2"
+                                }
+                            ],
+                            "issues": [
+                                {
+                                    "type": "missing_web_source",
+                                    "name": "Bam's Grilled Chicken and Liempo, Lechon Belly | Davao City"
+                                }
+                            ]
+                        },
+                        "agentic_loop": {
+                            "enabled": true,
+                            "iterations": 1,
+                            "initial_compliance_rate": 1,
+                            "final_compliance_rate": 1,
+                            "violations_detected": [],
+                            "violations_repaired": 0,
+                            "re_retrieved": false
+                        },
+                        "scope_passed": true,
+                        "followup_passed": null,
+                        "top5_names": [
+                            "chicnoklechonmanokandliempobuhangin",
+                            "chicnoklechonmanokandliempoobrero",
+                            "yongskieslechonmanokliempohouseecolandsubdivision",
+                            "chickpointlechonmanokliempohousemaa",
+                            "chickpointlechonmanokliempohousestoniño"
+                        ],
+                        "sample_answer": "Matching Davao City lechon/lechon manok/liempo spots are listed below. The local records verify lechon and liempo houses, but they do not explicitly verify dedicated barbecue-only venues.",
+                        "sample_top5_display": [
+                            "ChicNok Lechon Manok And Liempo - Buhangin",
+                            "ChicNok Lechon Manok And Liempo - Obrero",
+                            "Yongskie's Lechon Manok & Liempo House - Ecoland Subdivision",
+                            "Chickpoint Lechon Manok & Liempo House - Maa",
+                            "Chickpoint Lechon Manok & Liempo House - Sto Niño"
+                        ]
+                    }
+                ],
+                "Q010": [
+                    {
+                        "trial": 1,
+                        "failed": false,
+                        "false_out_of_scope": false,
+                        "latency": 27.071592092514038,
+                        "combined": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.19230769230769232,
+                            "recall_at_10": 0.2692307692307692,
+                            "ndcg_at_5": 0.6973515901634045,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 7,
+                            "returned_count": 9
+                        },
+                        "local": {
+                            "precision_at_5": 1,
+                            "recall_at_5": 0.19230769230769232,
+                            "recall_at_10": 0.23076923076923078,
+                            "ndcg_at_5": 0.6973515901634045,
+                            "mrr": 1,
+                            "hits_at_5": 5,
+                            "hits_at_10": 6,
+                            "returned_count": 6
+                        },
+                        "web": {
+                            "precision_at_5": 0.2,
+                            "recall_at_5": 0.038461538461538464,
+                            "recall_at_10": 0.038461538461538464,
+                            "ndcg_at_5": 0.0726771868443463,
+                            "mrr": 0.3333333333333333,
+                            "hits_at_5": 1,
+                            "hits_at_10": 1,
+                            "returned_count": 3
+                        },
+                        "constraint": {
+                            "davao_only_pass": true,
+                            "strict_pass": true,
+                            "item_pass_rate": 1,
+                            "numeric_price_compliant": null,
+                            "verified_price_hit_rate": null,
+                            "disambiguation_trap_free": true,
+                            "dimension_scores": {
+                                "city_davao": 1,
+                                "cuisine": 1
+                            },
+                            "failed_dimensions": []
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 1,
+                            "evidence_support_rate": 1,
+                            "web_source_support_rate": 1,
+                            "source_fresh": true,
+                            "duplicate_count": 0,
+                            "wrong_location_count": 0,
+                            "missing_source_count": 0,
+                            "fabricated_detail_count": 0,
+                            "unsupported_claim_count": 0,
+                            "local_items": [
+                                {
+                                    "name": "Deep Indian Restaurant - Matina",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Biryani Hut Davao - Poblacion",
+                                    "origin": "local",
+                                    "relevance_grade": 2,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Kuya Greg Indian Food - DMSF",
+                                    "origin": "local",
+                                    "relevance_grade": 2,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "The 5S Box Indian Restaurant - Gahol Avenue",
+                                    "origin": "local",
+                                    "relevance_grade": 2,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Davao Biryani - Toril",
+                                    "origin": "local",
+                                    "relevance_grade": 3,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                },
+                                {
+                                    "name": "Davao Biryani - Sasa",
+                                    "origin": "local",
+                                    "relevance_grade": 2,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true
+                                }
+                            ],
+                            "web_items": [
+                                {
+                                    "name": "Best Indian Restaurants in Davao | Authentic Curry, Biryani &amp; More",
+                                    "origin": "web",
+                                    "relevance_grade": 0,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true,
+                                    "source_url": "https://www.discoverdavao.ph/blog/best-indian-restaurants-in-davao-authentic-curry-biryani-more"
+                                },
+                                {
+                                    "name": "Biryani Restaurants",
+                                    "origin": "web",
+                                    "relevance_grade": 0,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true,
+                                    "source_url": "https://www.facebook.com/fb-answers/biryani-restaurants-in-davao-city/"
+                                },
+                                {
+                                    "name": "Indian Biryani Halal - DMSF Menu, Price | Food Delivery",
+                                    "origin": "web",
+                                    "relevance_grade": 2,
+                                    "factually_correct": true,
+                                    "evidence_supported": true,
+                                    "davao_verified": true,
+                                    "source_url": "https://www.foodpanda.ph/restaurant/jujt/indian-biryani-halal-dmsf"
+                                }
+                            ],
+                            "issues": []
+                        },
+                        "agentic_loop": {
+                            "enabled": true,
+                            "iterations": 1,
+                            "initial_compliance_rate": 1,
+                            "final_compliance_rate": 1,
+                            "violations_detected": [],
+                            "violations_repaired": 0,
+                            "re_retrieved": false
+                        },
+                        "scope_passed": true,
+                        "followup_passed": null,
+                        "top5_names": [
+                            "deepindianrestaurantmatina",
+                            "biryanihutdavaopoblacion",
+                            "kuyagregindianfooddmsf",
+                            "the5sboxindianrestaurantgaholavenue",
+                            "davaobiryanitoril"
+                        ],
+                        "sample_answer": "Davao City matches for Indian food and biryani: Deep Indian Restaurant - Matina (4.9), Biryani Hut Davao - Poblacion (4.9), Kuya Greg Indian Food - DMSF (4.6), The 5S Box Indian Restaurant - Gahol Avenue (3.6), plus biryani-focused Davao Biryani - Toril (5.0) and Davao Biryani - Sasa (5.0). No neighborhood, budget, dietary, or hours constraints were specified. No specific web place records were verified from the provided web evidence.",
+                        "sample_top5_display": [
+                            "Deep Indian Restaurant - Matina",
+                            "Biryani Hut Davao - Poblacion",
+                            "Kuya Greg Indian Food - DMSF",
+                            "The 5S Box Indian Restaurant - Gahol Avenue",
+                            "Davao Biryani - Toril"
+                        ]
+                    }
+                ],
+                "Q012": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.049694061279296875,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q016": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.07403302192687988,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q019": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.0570220947265625,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q020": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.046144962310791016,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q021": [
+                    {
+                        "trial": 1,
+                        "failed": true,
+                        "failure": "Provider failed: DeepSeek API key is not configured: set DEEPSEEK_API_KEY..",
+                        "error_reason": "http_error",
+                        "raw_message": "DeepSeek API key is not configured: set DEEPSEEK_API_KEY.",
+                        "latency": 0.0651249885559082,
+                        "combined": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "local": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0
+                        },
+                        "web": {
+                            "precision_at_5": 0,
+                            "recall_at_5": 0,
+                            "recall_at_10": 0,
+                            "ndcg_at_5": 0,
+                            "mrr": 0,
+                            "returned_count": 0
+                        },
+                        "constraint": {
+                            "davao_only_pass": false,
+                            "strict_pass": false,
+                            "item_pass_rate": 0
+                        },
+                        "validation": {
+                            "factual_correctness_rate": 0,
+                            "evidence_support_rate": 0,
+                            "web_source_support_rate": null,
+                            "source_fresh": false
+                        },
+                        "scope_passed": false,
+                        "followup_passed": false,
+                        "top5_names": []
+                    }
+                ],
+                "Q023": [],
+                "Q024": [],
+                "Q026": [],
+                "Q028": [],
+                "Q029": [],
+                "Q030": [],
+                "Q031": [],
+                "Q032": [],
+                "Q033": [],
+                "Q034": [],
+                "Q036": [],
+                "D001": [],
+                "D002": [],
+                "D003": [],
+                "D005": [],
+                "D006": [],
+                "D008": [],
+                "D009": [],
+                "D010": [],
+                "D012": [],
+                "D014": [],
+                "PC001": [],
+                "PC002": [],
+                "PC003": [],
+                "MT001": [],
+                "MT002": [],
+                "MT004": [],
+                "MT005": [],
+                "MT007": []
+            },
+            "scope_cases": {
+                "S005": [],
+                "S006": [],
+                "S007": [],
+                "S008": [],
+                "S009": [],
+                "S010": []
+            }
+        }
+    }
+}

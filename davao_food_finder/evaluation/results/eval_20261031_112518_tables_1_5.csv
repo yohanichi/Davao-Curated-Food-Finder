@@ -1,0 +1,19 @@
+"TABLE 1: RANKING & INTENT MATCHING METRICS (Combined Web+Local, n=38)"
+"Config ID","P@5 Mean","P@5 CI Lower","P@5 CI Upper","NDCG@5 Mean","NDCG@5 CI Lower","NDCG@5 CI Upper",MRR,"R@5 Mean","R@5 CI Lower","R@5 CI Upper","R@10 Mean","Local P@5","Web P@5","Web Active Queries"
+HYBRID-T0.2-STRICT,0.9368,0.8895,0.9789,0.8532,0.7975,0.9018,1,0.1125,0.0815,0.1542,0.1558,0.9316,0.1895,19
+
+"TABLE 2: CONSTRAINT ADHERENCE, SCOPE SAFETY, MULTI-TURN, FAITHFULNESS, RELIABILITY & COST"
+"Config ID","Constraint Item Pass Rate","Scope Rejection Accuracy","Follow-up Resolution Rate","Faithfulness Mean","Factual Correctness Mean","Repeat Consistency","Error Rate","Mean Cost USD"
+HYBRID-T0.2-STRICT,0.9579,1,1,0.9915,0.9915,N/A,0,0.00253535
+
+"TABLE 3: LATENCY DECOMPOSITION & CACHE BEHAVIOR"
+"Config ID","Mean Latency (s)","P50 Latency (s)","P95 Latency (s)","P99 Latency (s)","Cold P50 (s)","Warm P50 (s)","Dataset Mean (ms)","Playwright Mean (ms)","AI Mean (ms)","Playwright Cache Hits","Playwright Cache Misses"
+HYBRID-T0.2-STRICT,31.5295,30.7425,56.1678,61.0841,57.8762,31.2812,16.24,83.11,31390.67,37,1
+
+"TABLE 4: QUALITATIVE ERROR & GROUNDING AUDIT COUNTS"
+"Config ID",Duplicates,"Wrong Locations","Missing Sources","Fabricated Details","Unsupported Claims","Constraint Failures","Scope Violations"
+HYBRID-T0.2-STRICT,0,0,4,0,4,1,0
+
+"TABLE 5: STUDY OBJECTIVES BREAKDOWN — DISAMBIGUATION, NUMERIC PRICE CEILINGS & AUTONOMOUS ITERATIVE LOOP"
+"Config ID","Disambiguation Accuracy","Trap-Free Rate","Price Ceiling Accuracy","Price Ceiling NDCG@5","Loop Initial Compliance","Loop Final Compliance","Violations Repaired","Violations Detected","Re-Retrieval Rate"
+HYBRID-T0.2-STRICT,0.9231,1,1,0.6611,0.9531,1,8,8,0.1579

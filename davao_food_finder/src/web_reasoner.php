@@ -50,6 +50,101 @@ function recordAiCallTelemetry(string $stage, int $elapsedMs, string $providerTy
     $GLOBALS['aiTelemetry']['estimated_cost_usd'] += $cost;
 }
 
+/**
+ * Tolerant JSON extractor for LLM outputs:
+ * 1) Strips <think>...</think> reasoning blocks.
+ * 2) Strips markdown fences (```json ... ``` or ``` ... ```).
+ * 3) Greedily extracts outermost JSON object if raw decode fails.
+ * 4) Coerces string booleans (e.g. "true"/"false") to actual boolean types before schema validation.
+ */
+function extractAndDecodeJson(string $rawText): ?array {
+    $text = preg_replace('/<think>[\s\S]*?(?:<\/think>|$)/i', '', $rawText);
+    $text = trim((string)$text);
+    if ($text === '') return null;
+
+    $decoded = json_decode($text, true);
+    if (is_array($decoded)) {
+        return normalizeJsonPayloadSchema($decoded);
+    }
+
+    if (preg_match('/```(?:json)?\s*([\s\S]*?)\s*```/is', $text, $match)) {
+        $extracted = trim($match[1]);
+        $decoded = json_decode($extracted, true);
+        if (is_array($decoded)) {
+            return normalizeJsonPayloadSchema($decoded);
+        }
+    }
+
+    // Robust balanced-brace top-level JSON extractor
+    $start = strpos($text, '{');
+    if ($start !== false) {
+        $depth = 0;
+        $inString = false;
+        $escape = false;
+        $len = strlen($text);
+        for ($i = $start; $i < $len; $i++) {
+            $char = $text[$i];
+            if ($escape) {
+                $escape = false;
+                continue;
+            }
+            if ($char === '\\') {
+                $escape = true;
+                continue;
+            }
+            if ($char === '"') {
+                $inString = !$inString;
+                continue;
+            }
+            if (!$inString) {
+                if ($char === '{') {
+                    $depth++;
+                } elseif ($char === '}') {
+                    $depth--;
+                    if ($depth === 0) {
+                        $candidate = substr($text, $start, $i - $start + 1);
+                        $decoded = json_decode($candidate, true);
+                        if (is_array($decoded)) {
+                            return normalizeJsonPayloadSchema($decoded);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Recovery if assistant turn prefilled '{' and server returned content starting inside the object
+    if (!str_starts_with($text, '{') && str_contains($text, '"answer"')) {
+        $candidate = "{\n" . $text;
+        if (!str_ends_with(trim($candidate), '}')) {
+            $candidate .= "\n}";
+        }
+        $decoded = json_decode($candidate, true);
+        if (is_array($decoded)) {
+            return normalizeJsonPayloadSchema($decoded);
+        }
+    }
+
+    return null;
+}
+
+function normalizeJsonPayloadSchema(array $parsed): array {
+    if (isset($parsed['out_of_scope'])) {
+        if (is_string($parsed['out_of_scope'])) {
+            $v = strtolower(trim($parsed['out_of_scope']));
+            $parsed['out_of_scope'] = in_array($v, ['true', '1', 'yes'], true);
+        } elseif (is_numeric($parsed['out_of_scope'])) {
+            $parsed['out_of_scope'] = (bool)$parsed['out_of_scope'];
+        } elseif (is_array($parsed['out_of_scope'])) {
+            $scopeValues = array_values(array_filter($parsed['out_of_scope'], fn($x) => is_bool($x) || is_scalar($x)));
+            $v = strtolower(trim((string)($scopeValues[0] ?? 'false')));
+            $parsed['out_of_scope'] = in_array($v, ['true', '1', 'yes'], true);
+        }
+    }
+    return $parsed;
+}
+
 function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeconds = 43200, string $cachePolicy = 'default'): array {
     $startedAt = microtime(true);
     $elapsed = fn(): int => (int)round((microtime(true) - $startedAt) * 1000);
@@ -110,7 +205,8 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
     stream_set_blocking($pipes[2], false);
     $stdout = '';
     $stderr = '';
-    $deadline = microtime(true) + 25;
+    $pwProcTimeout = defined('TIMEOUT_PLAYWRIGHT_PROC') ? TIMEOUT_PLAYWRIGHT_PROC : 30;
+    $deadline = microtime(true) + $pwProcTimeout;
     do {
         $stdout .= stream_get_contents($pipes[1]);
         $stderr .= stream_get_contents($pipes[2]);
@@ -279,7 +375,11 @@ function sanitizeWebPlaces(array $rawPlaces, array $evidence): array {
         }
 
         $seenKeys[$dedupKey] = true;
-        $webPlaces[] = [
+        $hasUrl = ($sourceUrl !== '' && filter_var($sourceUrl, FILTER_VALIDATE_URL) && in_array(strtolower((string)parse_url($sourceUrl, PHP_URL_SCHEME)), ['http', 'https'], true));
+        $hasRecordId = !empty($place['dataset_id']) || !empty($place['record_id']) || !empty($place['id']);
+        $isSupported = $hasUrl || $hasRecordId;
+
+        $entry = [
             'name'=>mb_substr($name, 0, 160),
             'food_type'=>mb_substr(trim((string)($place['food_type'] ?? '')), 0, 120),
             'rating'=>mb_substr(trim((string)($place['rating'] ?? '')), 0, 20),
@@ -289,7 +389,13 @@ function sanitizeWebPlaces(array $rawPlaces, array $evidence): array {
             'city'=>'Davao City',
             'description'=>mb_substr(trim((string)($place['description'] ?? '')), 0, 360),
             'source_url'=>mb_substr($sourceUrl, 0, 500),
+            'unsupported'=>!$isSupported,
+            'source_status'=>$isSupported ? 'supported' : 'unsupported',
         ];
+        if ($hasRecordId) {
+            $entry['record_id'] = (string)($place['dataset_id'] ?? $place['record_id'] ?? $place['id']);
+        }
+        $webPlaces[] = $entry;
     }
     return $webPlaces;
 }
@@ -987,10 +1093,11 @@ function answerWithEvidenceFallback(string $query, array $candidates, array $evi
 function localOllamaAvailable(): bool {
     if (DEEPSEEK_API_KEY !== '') return true;
     $ch = curl_init(rtrim(DEEPSEEK_BASE_URL, '/') . '/api/tags');
+    $timeout = defined('TIMEOUT_OLLAMA_CONNECT') ? TIMEOUT_OLLAMA_CONNECT : 5;
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER=>true,
-        CURLOPT_CONNECTTIMEOUT=>2,
-        CURLOPT_TIMEOUT=>2,
+        CURLOPT_CONNECTTIMEOUT=>$timeout,
+        CURLOPT_TIMEOUT=>$timeout,
         CURLOPT_IPRESOLVE=>CURL_IPRESOLVE_V4
     ]);
     $raw = curl_exec($ch);
@@ -1022,19 +1129,37 @@ function answerWithDeepSeekPipelineFallback(string $query, array $history, array
         return [$answer, $fallbackIds, 'error', $evidence['sources'] ?? [], $webPlaces, false, DEEPSEEK_MODEL];
     };
     if (!localOllamaAvailable()) {
+        $GLOBALS['providerErrors']['deepseek'] = ['http'=>0, 'message'=>'Ollama is not reachable at ' . DEEPSEEK_BASE_URL];
         error_log('DeepSeek unavailable: Ollama is not reachable at ' . DEEPSEEK_BASE_URL);
         return $localAnswer();
     }
     $reqAreas = isset($options['intent']['areas']) && is_array($options['intent']['areas']) ? $options['intent']['areas'] : [];
     $compact = buildCompactCandidates($candidates, 6, false, $reqAreas);
-    $conversationalExtra = ($options['promptStyle'] ?? 'baseline') === 'strict_grounding'
-        ? ''
-        : ' Be warm and concise across all prior turns. Clarify honestly when the closest match is on an adjacent street.';
 
-    $onlineOnlyGuide = $isOnlineOnlyRequested
-        ? ' CRITICAL ONLINE-ONLY RULE: The user commanded "dont give me suggestions from the dataset, find it online". You MUST NOT mention or suggest any places from the local dataset. Answer ONLY using the Playwright web evidence. Leave ids empty (ids: []). If no online matches exist in the requested area, politely inform the user that no online listings were found for that dish in that specific area, and ask if they would like to widen the online search to other areas in Davao City. Never suggest places from distant districts (like Matina or Toril).'
-        : '';
-    $systemContent = 'You are DeepSeek-R1 in Davao Food Finder. Recommend matching places in Davao City. Output strict JSON with: answer, out_of_scope (boolean), ids (array of matching candidate place IDs), web_places (array). Think concisely (1-2 sentences total), then immediately output the strict JSON. Do not invent facts.' . $conversationalExtra . $onlineOnlyGuide . promptStyleInstruction($options);
+    // STATIC PREFIX-CACHED SYSTEM INSTRUCTIONS (identical across queries for maximum llama.cpp KV reuse)
+    $systemContent = <<<'SYS'
+You are the recommendation engine for Davao Food Finder in Davao City, Philippines.
+Output ONLY a strict, valid JSON object conforming to the schema.
+Never emit <think> tags, reasoning text, preambles, or markdown formatting outside the JSON object.
+
+Strict Grounding Rules:
+1. Ground recommendations ONLY in provided candidate IDs.
+2. Select only places whose food_type, description, or reviews satisfy ALL user constraints. Never select unrelated places.
+3. If the user asks for places outside Davao City (e.g. Tagum, Panabo, Digos, Samal, Cebu, Manila), set out_of_scope=true and ids=[].
+4. Do not invent places, ratings, or prices.
+
+Required JSON Structure:
+{"answer":"conversational answer","out_of_scope":false,"ids":["matching_id_1"],"web_places":[]}
+
+Few-Shot Examples:
+User: "tuna kinilaw in davao"
+Candidates: [{"id":"p101","name":"Marina Tuna","food_type":"Seafood"}]
+{"answer":"Top Davao City seafood recommendations: Marina Tuna.","out_of_scope":false,"ids":["p101"],"web_places":[]}
+
+User: "best lechon in cebu city"
+Candidates: []
+{"answer":"I can only suggest food places located in Davao City.","out_of_scope":true,"ids":[],"web_places":[]}
+SYS;
 
     $messages = [['role'=>'system','content'=>$systemContent]];
     foreach (array_slice($history, -4) as $turn) {
@@ -1065,70 +1190,164 @@ function answerWithDeepSeekPipelineFallback(string $query, array $history, array
     $localRecordsPrompt = $isOnlineOnlyRequested
         ? '[Excluded by user request - Online search only; do NOT suggest local dataset places]'
         : json_encode($compact, JSON_UNESCAPED_UNICODE);
-    $messages[] = ['role'=>'user','content'=>"Latest request: {$query}{$intentSummary}\n\n2025 local records:\n" . $localRecordsPrompt . $webEvidenceStr];
+    
+    // Dynamic user content is placed LAST so system prompt prefix is 100% cached
+    $messages[] = ['role'=>'user','content'=>"User request: {$query}{$intentSummary}\n\nCandidate records:\n" . $localRecordsPrompt . $webEvidenceStr];
+
+    $responseJsonSchema = [
+        'type' => 'object',
+        'properties' => [
+            'answer' => ['type' => 'string'],
+            'out_of_scope' => ['type' => 'boolean'],
+            'ids' => ['type' => 'array', 'items' => ['type' => 'string']],
+            'web_places' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['name' => ['type' => 'string']], 'required' => ['name']]]
+        ],
+        'required' => ['answer', 'out_of_scope', 'ids', 'web_places']
+    ];
 
     $temp = (float)($options['temperature'] ?? 0.2);
     $seed = isset($options['seed']) && is_numeric($options['seed']) ? (int)$options['seed'] : null;
+    $timeout = defined('TIMEOUT_LLM') ? TIMEOUT_LLM : 120;
+    $isLocalOllama = (DEEPSEEK_API_KEY === '');
+    $base = '';
+    $reqBody = [];
 
     $callStart = microtime(true);
     if (DEEPSEEK_API_KEY !== '') {
         $base = rtrim(DEEPSEEK_BASE_URL !== '' ? DEEPSEEK_BASE_URL : 'https://api.deepseek.com', '/');
-        $reqBody = ['model'=>DEEPSEEK_MODEL,'messages'=>$messages,'temperature'=>$temp,'response_format'=>['type'=>'json_object']];
-        if ($seed !== null) $reqBody['seed'] = $seed;
+        $isReasoner = stripos(DEEPSEEK_MODEL, 'reasoner') !== false;
+        $reqBody = ['model'=>DEEPSEEK_MODEL,'messages'=>$messages];
+        if (!$isReasoner) {
+            $reqBody['temperature'] = $temp;
+            $reqBody['response_format'] = ['type'=>'json_object'];
+        }
+        if ($seed !== null && !$isReasoner) $reqBody['seed'] = $seed;
         $payload = json_encode($reqBody, JSON_UNESCAPED_UNICODE);
-        [$raw,$status] = deepSeekHttpPost($base . '/chat/completions', ['Content-Type: application/json','Authorization: Bearer ' . DEEPSEEK_API_KEY], $payload, 120);
+        [$raw,$status] = deepSeekHttpPost($base . '/chat/completions', ['Content-Type: application/json','Authorization: Bearer ' . DEEPSEEK_API_KEY], $payload, $timeout);
         $providerType = 'deepseek_hosted';
     } else {
-        $ollamaOptions = ['temperature'=>$temp,'num_ctx'=>4096,'num_predict'=>2048];
+        // deepseek-r1 is a reasoning model: think:false + a JSON-schema grammar does not stop it from
+        // reasoning (the grammar allows an optional <think> block of unlimited length), so it spent the
+        // whole token cap thinking. Instead let it think with a real budget and parse the JSON that
+        // follows. Needs num_ctx >= prompt (~1500) + num_predict.
+        $ollamaOptions = [
+            'temperature' => $temp,
+            'num_ctx' => defined('DEEPSEEK_NUM_CTX') ? (int)DEEPSEEK_NUM_CTX : 8192,
+            'num_predict' => defined('DEEPSEEK_NUM_PREDICT') ? (int)DEEPSEEK_NUM_PREDICT : 4096,
+            'stop' => ["\n```", "<|im_end|>", "<|endoftext|>"]
+        ];
         if ($seed !== null) $ollamaOptions['seed'] = $seed;
-        $payload = json_encode(['model'=>DEEPSEEK_MODEL,'messages'=>$messages,'stream'=>false,'format'=>'json','options'=>$ollamaOptions], JSON_UNESCAPED_UNICODE);
-        [$raw,$status] = deepSeekHttpPost(DEEPSEEK_BASE_URL . '/api/chat', ['Content-Type: application/json'], $payload, 120);
+        $payload = json_encode([
+            'model' => DEEPSEEK_MODEL,
+            'messages' => $messages,
+            'stream' => false,
+            'options' => $ollamaOptions,
+            'think' => true,
+        ], JSON_UNESCAPED_UNICODE);
+        [$raw,$status] = deepSeekHttpPost(DEEPSEEK_BASE_URL . '/api/chat', ['Content-Type: application/json'], $payload, $timeout);
         $providerType = 'ollama';
+
+        // Guard: HTTP 400 caused by GBNF grammar sampler failure with schema
+        if ($status === 400 && (str_contains($raw, 'initialize samplers') || str_contains($raw, 'samplers'))) {
+            $GLOBALS['aiTelemetry']['deepseek_retries'] = ($GLOBALS['aiTelemetry']['deepseek_retries'] ?? 0) + 1;
+            error_log("DeepSeek Ollama HTTP 400 (sampler initialization failure); retrying with format='json' (relaxed JSON mode).");
+            $retrySamplerPayload = json_encode([
+                'model' => DEEPSEEK_MODEL,
+                'messages' => $messages,
+                'stream' => false,
+                'format' => 'json',
+                'options' => $ollamaOptions,
+                'think' => false,
+            ], JSON_UNESCAPED_UNICODE);
+            [$raw, $status] = deepSeekHttpPost(DEEPSEEK_BASE_URL . '/api/chat', ['Content-Type: application/json'], $retrySamplerPayload, $timeout);
+        }
     }
     $elapsedMs = (int)round((microtime(true) - $callStart) * 1000);
     $decoded = $raw !== '' ? json_decode($raw, true) : null;
     recordAiCallTelemetry('deepseek_single', $elapsedMs, $providerType, DEEPSEEK_MODEL, is_array($decoded) ? $decoded : null);
 
     if ($raw === '' || $status < 200 || $status >= 300) {
+        $dsErr = trim(mb_substr($raw, 0, 300));
+        $GLOBALS['providerErrors']['deepseek'] = ['http'=>$status, 'message'=>$dsErr ?: "HTTP {$status}"];
         $GLOBALS['last_deepseek_error'] = "HTTP {$status}: " . mb_substr($raw, 0, 200);
         error_log('DeepSeek fallback failed HTTP ' . $status . ': ' . mb_substr($raw, 0, 500));
         return $localAnswer();
     }
+    $finishReason = (string)($decoded['done_reason'] ?? ($decoded['choices'][0]['finish_reason'] ?? ''));
+    $GLOBALS['aiTelemetry']['deepseek_done_reason'] = $finishReason ?: 'stop';
+
     $text = $decoded['choices'][0]['message']['content'] ?? ($decoded['message']['content'] ?? null);
     if (!is_string($text) || trim($text) === '') {
-        $thinking = (string)($decoded['message']['thinking'] ?? '');
-        if ($thinking !== '') {
+        $thinking = (string)($decoded['message']['thinking'] ?? ($decoded['choices'][0]['message']['reasoning_content'] ?? ''));
+        // A truncated reasoning trace is not an answer; only salvage JSON from it if generation finished normally.
+        if ($thinking !== '' && $finishReason !== 'length') {
             $text = $thinking;
         }
     }
-    if (!is_string($text)) {
+    if ($isLocalOllama && is_string($text) && !str_starts_with(trim($text), '{') && str_contains($text, '"answer"')) {
+        $text = "{\n" . ltrim($text);
+    }
+    if (!is_string($text) || trim($text) === '') {
+        $GLOBALS['providerErrors']['deepseek'] = ['http'=>$status, 'message'=>'Empty text content from DeepSeek'];
         $GLOBALS['last_deepseek_error'] = "No text content found in decoded message";
         return $localAnswer();
     }
-    $text = preg_replace('/<think>.*?<\/think>/s', '', $text);
-    $text = trim((string)$text);
-    if (preg_match('/```(?:json)?\s*(.*?)\s*```/is', $text, $match)) {
-        $text = $match[1];
-    } elseif (preg_match('/\{.*\}/s', $text, $match)) {
-        $text = $match[0];
+    $parsed = extractAndDecodeJson($text);
+
+    // 1-Step Automatic Retry on parse failure or token length exhaustion
+    if (!is_array($parsed) || $finishReason === 'length') {
+        $GLOBALS['aiTelemetry']['deepseek_retries'] = ($GLOBALS['aiTelemetry']['deepseek_retries'] ?? 0) + 1;
+        error_log("DeepSeek initial response failed parsing; retrying once with zero-temperature JSON enforcement.");
+        $retryMessages = $messages;
+        $retryMessages[] = ['role'=>'user', 'content'=>'CRITICAL: The previous output failed or was truncated. Output ONLY valid JSON starting with { now. No thinking.'];
+        if ($isLocalOllama) {
+            $retryOpts = array_merge($ollamaOptions, ['temperature'=>0.0, 'num_predict'=>1024]);
+            $retryPayload = json_encode([
+                'model'=>DEEPSEEK_MODEL,
+                'messages'=>$retryMessages,
+                'stream'=>false,
+                'options'=>$retryOpts,
+                'think'=>false
+            ], JSON_UNESCAPED_UNICODE);
+            [$rawRetry, $retryStatus] = deepSeekHttpPost(DEEPSEEK_BASE_URL . '/api/chat', ['Content-Type: application/json'], $retryPayload, $timeout);
+        } else {
+            $reqBody['temperature'] = 0.0;
+            $reqBody['messages'] = $retryMessages;
+            $retryPayload = json_encode($reqBody, JSON_UNESCAPED_UNICODE);
+            [$rawRetry, $retryStatus] = deepSeekHttpPost($base . '/chat/completions', ['Content-Type: application/json','Authorization: Bearer ' . DEEPSEEK_API_KEY], $retryPayload, $timeout);
+        }
+        if ($retryStatus >= 200 && $retryStatus < 300 && $rawRetry !== '') {
+            $retryDecoded = json_decode($rawRetry, true);
+            $retryText = $retryDecoded['choices'][0]['message']['content'] ?? ($retryDecoded['message']['content'] ?? '');
+            if ($isLocalOllama && !str_starts_with(trim((string)$retryText), '{') && str_contains((string)$retryText, '"answer"')) {
+                $retryText = "{\n" . ltrim((string)$retryText);
+            }
+            if (is_string($retryText) && trim($retryText) !== '') {
+                $parsed = extractAndDecodeJson($retryText);
+            }
+            if (isset($retryDecoded['done_reason'])) {
+                $GLOBALS['aiTelemetry']['deepseek_done_reason'] = (string)$retryDecoded['done_reason'];
+            }
+        }
     }
-    $parsed = json_decode($text, true);
+
     if (!is_array($parsed)) {
+        $GLOBALS['providerErrors']['deepseek'] = ['http'=>$status, 'message'=>'Failed to parse JSON: ' . mb_substr($text, 0, 180)];
         $GLOBALS['last_deepseek_error'] = "Failed to parse JSON. Extracted text was: " . mb_substr($text, 0, 200);
         return $localAnswer();
     }
+    // Successfully decoded JSON - clear any previous error states from retries
+    unset($GLOBALS['providerErrors']['deepseek']);
+    $GLOBALS['last_deepseek_error'] = null;
+    $parsed = normalizeJsonPayloadSchema($parsed);
     $answer = is_string($parsed['answer'] ?? null) ? trim((string)$parsed['answer']) : '';
     $rawIds = is_array($parsed['ids'] ?? null) ? $parsed['ids'] : [];
     if ($answer === '' && empty($rawIds)) {
+        $GLOBALS['providerErrors']['deepseek'] = ['http'=>$status, 'message'=>'Both answer and ids were empty in parsed JSON'];
         $GLOBALS['last_deepseek_error'] = "Both answer and ids were empty in parsed JSON";
         return $localAnswer();
     }
-    $outOfScope = false;
-    if (isset($parsed['out_of_scope'])) {
-        $outOfScope = is_bool($parsed['out_of_scope'])
-            ? $parsed['out_of_scope']
-            : in_array(strtolower(trim((string)$parsed['out_of_scope'])), ['true', '1', 'yes'], true);
-    }
+    $outOfScope = !empty($parsed['out_of_scope']);
     if ($outOfScope) return [$answer ?: 'I can only suggest places in Davao City.', [], 'ready', [], [], true, DEEPSEEK_MODEL];
 
     $allowed = array_fill_keys($fallbackIds, true); $ids = [];
@@ -1441,7 +1660,35 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
         : '';
 
     // Stage 4: Feed GPT-structured Playwright data + local records + multi-turn history into DeepSeek-R1 for reasoning first.
-    if ((DEEPSEEK_API_KEY !== '' || DEEPSEEK_BASE_URL !== '') && localOllamaAvailable()) {
+    $deepSeekAvailable = (DEEPSEEK_API_KEY !== '' || DEEPSEEK_BASE_URL !== '') && localOllamaAvailable();
+    $curationTrigger = 'none';
+    $shouldCurate = false;
+    if ($deepSeekAvailable) {
+        $hasEvidencePlaces = !empty($cleaner['evidence_places']);
+        $hasLocalCandidates = !empty($candidates);
+        $hasDishIntent = !empty($options['intent']['specific_dishes']);
+        $hasAreaOrPrice = !empty($options['intent']['areas']) || !empty($options['intent']['max_price_php']);
+        $hasHistory = !empty($history) || !empty($options['intent']['exclude_names']);
+
+        if ($hasDishIntent) {
+            $curationTrigger = 'dish_verification';
+            $shouldCurate = true;
+        } elseif ($hasAreaOrPrice) {
+            $curationTrigger = 'area_or_price_constraints';
+            $shouldCurate = true;
+        } elseif ($hasHistory) {
+            $curationTrigger = 'multi_turn_history';
+            $shouldCurate = true;
+        } elseif ($hasEvidencePlaces && $hasLocalCandidates) {
+            $curationTrigger = 'evidence_local_reconciliation';
+            $shouldCurate = true;
+        } else {
+            $curationTrigger = 'hybrid_standard_curation';
+            $shouldCurate = true;
+        }
+    }
+
+    if ($shouldCurate) {
         $curatorMessages = [
             ['role'=>'system','content'=>'You are Stage 4 (DeepSeek-R1 Reasoner) of Davao Food Finder. Reason step-by-step over ALL prior conversation layers, the GPT-4o-mini-structured Playwright web evidence, and the 2025 local Davao City records before formulating recommendations. '
                 . 'Critical reasoning checks: '
@@ -1463,23 +1710,25 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
             'content'=>"Latest query: {$query}{$intentSummary}\nGPT-4o mini structured Playwright evidence: " . json_encode($cleaner, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n2025 local Davao City candidates: {$localJson}"
         ];
         $t2 = microtime(true);
+        $curatorTimeout = defined('TIMEOUT_LLM') ? TIMEOUT_LLM : 120;
         if (DEEPSEEK_API_KEY !== '') {
             $base = rtrim(DEEPSEEK_BASE_URL !== '' && DEEPSEEK_BASE_URL !== 'http://127.0.0.1:11434' ? DEEPSEEK_BASE_URL : 'https://api.deepseek.com', '/');
-            $isReasonerModel = stripos(DEEPSEEK_MODEL, 'reasoner') !== false;
-            $curReq = ['model'=>DEEPSEEK_MODEL,'messages'=>$curatorMessages];
+            $dsModel = (DEEPSEEK_MODEL !== '' && DEEPSEEK_MODEL !== 'deepseek-r1:8b') ? DEEPSEEK_MODEL : (defined('DEEPSEEK_API_MODEL') ? DEEPSEEK_API_MODEL : 'deepseek-reasoner');
+            $isReasonerModel = stripos($dsModel, 'reasoner') !== false;
+            $curReq = ['model'=>$dsModel,'messages'=>$curatorMessages];
             if (!$isReasonerModel) {
                 $curReq['temperature'] = $temp;
                 $curReq['response_format'] = ['type'=>'json_object'];
             }
             if ($seed !== null && !$isReasonerModel) $curReq['seed'] = $seed;
             $payload = json_encode($curReq, JSON_UNESCAPED_UNICODE);
-            [$curatorRaw,$curatorStatus] = deepSeekHttpPost($base . '/chat/completions', ['Content-Type: application/json','Authorization: Bearer ' . DEEPSEEK_API_KEY], $payload, 120);
+            [$curatorRaw,$curatorStatus] = deepSeekHttpPost($base . '/chat/completions', ['Content-Type: application/json','Authorization: Bearer ' . DEEPSEEK_API_KEY], $payload, $curatorTimeout);
             $curType = 'deepseek_hosted';
         } else {
             $ollamaOpts = ['temperature'=>$temp, 'num_ctx'=>4096, 'num_predict'=>2048];
             if ($seed !== null) $ollamaOpts['seed'] = $seed;
             $payload = json_encode(['model'=>DEEPSEEK_MODEL,'messages'=>$curatorMessages,'stream'=>false,'format'=>'json','options'=>$ollamaOpts], JSON_UNESCAPED_UNICODE);
-            [$curatorRaw,$curatorStatus] = deepSeekHttpPost(DEEPSEEK_BASE_URL . '/api/chat', ['Content-Type: application/json'], $payload, 120);
+            [$curatorRaw,$curatorStatus] = deepSeekHttpPost(DEEPSEEK_BASE_URL . '/api/chat', ['Content-Type: application/json'], $payload, $curatorTimeout);
             $curType = 'ollama';
         }
         $curatorDecoded = $curatorRaw !== '' ? json_decode($curatorRaw, true) : null;
@@ -1492,19 +1741,12 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
                 $curatorText = $apiReasoningContent;
             }
             $thinkTagContent = '';
-            if (is_string($curatorText)) {
-                if (preg_match_all('/<think>(.*?)<\/think>/s', $curatorText, $thinkMatches)) {
-                    $thinkTagContent = trim(implode("\n", $thinkMatches[1]));
-                }
-                $curatorText = preg_replace('/<think>.*?<\/think>/s', '', $curatorText);
-                if (preg_match('/```(?:json)?\s*(.*?)\s*```/is', (string)$curatorText, $m)) {
-                    $curatorText = $m[1];
-                } elseif (preg_match('/\{.*\}/s', (string)$curatorText, $match)) {
-                    $curatorText = $match[0];
-                }
+            if (is_string($curatorText) && preg_match_all('/<think>(.*?)<\/think>/s', $curatorText, $thinkMatches)) {
+                $thinkTagContent = trim(implode("\n", $thinkMatches[1]));
             }
-            $parsedCurator = json_decode((string)$curatorText, true);
+            $parsedCurator = is_string($curatorText) ? extractAndDecodeJson($curatorText) : null;
             if (is_array($parsedCurator)) {
+                $parsedCurator = normalizeJsonPayloadSchema($parsedCurator);
                 $curated = $parsedCurator;
                 $deepSeekUsed = true;
                 $jsonReasoning = is_string($parsedCurator['reasoning'] ?? null) ? trim($parsedCurator['reasoning']) : '';
@@ -1527,6 +1769,11 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
         $GLOBALS['providerErrors']['deepseek'] = ['http'=>0, 'message'=>'Ollama/DeepSeek-R1 not reachable at ' . DEEPSEEK_BASE_URL];
         $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'unavailable';
     }
+
+    $GLOBALS['aiTelemetry']['hybrid_curation'] = [
+        'invoked' => $deepSeekUsed,
+        'trigger' => $curationTrigger,
+    ];
 
     $structuredEvidence = $curated['evidence_places'] ?? ($curated['web_places'] ?? ($cleaner['evidence_places'] ?? []));
     $deepSeekHandoff = [
@@ -1586,7 +1833,7 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
     if (is_string($finalText) && preg_match('/\{.*\}/s', trim($finalText), $match)) {
         $finalText = $match[0];
     }
-    $parsed = json_decode((string)$finalText, true);
+    $parsed = extractAndDecodeJson((string)$finalText);
     if (is_array($parsed) && is_array($parsed['answer'] ?? null)) {
         $parsed['answer'] = implode("\n", array_filter(array_map(
             fn($v) => is_scalar($v) ? trim((string)$v) : '',
@@ -1689,21 +1936,15 @@ function answerWithGPT4oMini(string $query, array $history, array $candidates, a
         $GLOBALS['providerErrors']['gpt4o'] = ['http'=>$status, 'message'=>'OpenAI returned HTTP 200 but no message content'];
         return ['', $fallbackIds, 'error', $evidence['sources'] ?? [], [], false, OPENAI_MODEL];
     }
-    $text = trim($text);
-    if (preg_match('/\{.*\}/s', $text, $match)) $text = $match[0];
-    $parsed = json_decode($text, true);
+    $parsed = extractAndDecodeJson($text);
     if (is_array($parsed) && is_array($parsed['answer'] ?? null)) {
         $parsed['answer'] = implode("\n", array_filter(array_map(
             fn($value) => is_string($value) ? trim($value) : (is_scalar($value) ? trim((string)$value) : ''),
             $parsed['answer']
         ), fn($value) => $value !== ''));
     }
-    if (is_array($parsed) && is_array($parsed['out_of_scope'] ?? null)) {
-        $scopeValues = array_values(array_filter($parsed['out_of_scope'], fn($value) => is_bool($value) || is_string($value) || is_numeric($value)));
-        $scopeValue = $scopeValues[0] ?? false;
-        $parsed['out_of_scope'] = is_bool($scopeValue)
-            ? $scopeValue
-            : in_array(strtolower(trim((string)$scopeValue)), ['true', '1', 'yes'], true);
+    if (is_array($parsed)) {
+        $parsed = normalizeJsonPayloadSchema($parsed);
     }
     if (!is_array($parsed) || !is_string($parsed['answer'] ?? null) || !is_bool($parsed['out_of_scope'] ?? null) || !is_array($parsed['ids'] ?? null) || !is_array($parsed['web_places'] ?? null)) {
         $jsonError = json_last_error_msg();
@@ -1745,23 +1986,189 @@ function answerWithGPT4oMini(string $query, array $history, array $candidates, a
 
 function answerWithDeepSeek(string $query, array $history, array $candidates, array $evidence, array $options = []): array {
     $fallbackIds = array_map(fn($p) => $p['_id'], $candidates);
-    if (DEEPSEEK_API_KEY === '' && DEEPSEEK_BASE_URL === '') {
+    if (DEEPSEEK_API_KEY !== '') {
+        return answerWithDeepSeekApi($query, $history, $candidates, $evidence, $options);
+    }
+    if (DEEPSEEK_BASE_URL === '') {
         return ['', $fallbackIds, 'not_configured', $evidence['sources'] ?? [], [], false, DEEPSEEK_MODEL];
     }
     return answerWithDeepSeekPipelineFallback($query, $history, $candidates, $evidence, $options);
 }
 
+/**
+ * Stage 4/Standalone: Full-size DeepSeek-R1 reasoner via hosted API (https://api.deepseek.com)
+ * Uses OpenAI-compatible client, model deepseek-reasoner, key from env var DEEPSEEK_API_KEY.
+ * Note: deepseek-reasoner ignores/disallows temperature and response_format parameters.
+ */
+function answerWithDeepSeekApi(string $query, array $history, array $candidates, array $evidence, array $options = []): array {
+    $fallbackIds = array_map(fn($p) => $p['_id'], $candidates);
+    $isOnlineOnlyRequested = !empty($options['intent']['online_only']);
+    $apiKey = trim((string)getenv('DEEPSEEK_API_KEY'));
+    if ($apiKey === '' && defined('DEEPSEEK_API_KEY') && DEEPSEEK_API_KEY !== '') {
+        $apiKey = DEEPSEEK_API_KEY;
+    }
+    if ($apiKey === '' && !empty($_SERVER['HTTP_X_DEEPSEEK_API_KEY'])) {
+        $apiKey = trim((string)$_SERVER['HTTP_X_DEEPSEEK_API_KEY']);
+    }
+
+    $base = defined('DEEPSEEK_API_BASE_URL') ? DEEPSEEK_API_BASE_URL : 'https://api.deepseek.com';
+    $model = defined('DEEPSEEK_API_MODEL') ? DEEPSEEK_API_MODEL : 'deepseek-reasoner';
+
+    if ($apiKey === '') {
+        $GLOBALS['providerErrors']['deepseek-api'] = ['http'=>0, 'message'=>'DeepSeek API key is not configured: set DEEPSEEK_API_KEY.'];
+        $webPlaces = evidencePlacesFallback($evidence);
+        return ['', $fallbackIds, 'not_configured', $evidence['sources'] ?? [], $webPlaces, false, $model];
+    }
+
+    $reqAreas = isset($options['intent']['areas']) && is_array($options['intent']['areas']) ? $options['intent']['areas'] : [];
+    $compact = buildCompactCandidates($candidates, 6, false, $reqAreas);
+    $conversationalExtra = ($options['promptStyle'] ?? 'baseline') === 'strict_grounding'
+        ? ''
+        : ' Be warm and concise across all prior turns. Clarify honestly when the closest match is on an adjacent street.';
+
+    $onlineOnlyGuide = $isOnlineOnlyRequested
+        ? ' CRITICAL ONLINE-ONLY RULE: The user commanded "dont give me suggestions from the dataset, find it online". You MUST NOT mention or suggest any places from the local dataset. Answer ONLY using the Playwright web evidence. Leave ids empty (ids: []). If no online matches exist in the requested area, politely inform the user that no online listings were found for that dish in that specific area, and ask if they would like to widen the online search to other areas in Davao City. Never suggest places from distant districts (like Matina or Toril).'
+        : '';
+    $systemContent = 'You are DeepSeek-R1 (deepseek-reasoner) in Davao Food Finder. Recommend matching places in Davao City. Output strict JSON with: answer, out_of_scope (boolean), ids (array of matching candidate place IDs), web_places (array). Think concisely, then output the strict JSON. Do not invent facts.' . $conversationalExtra . $onlineOnlyGuide . promptStyleInstruction($options);
+
+    $messages = [['role'=>'system','content'=>$systemContent]];
+    foreach (array_slice($history, -4) as $turn) {
+        if (!is_array($turn)) continue;
+        $content = mb_substr(trim((string)($turn['content'] ?? '')), 0, 600);
+        if ($content !== '') $messages[] = ['role'=>($turn['role'] ?? '') === 'assistant' ? 'assistant' : 'user','content'=>$content];
+    }
+    $evidenceCompact = [];
+    foreach (array_slice($evidence['results'] ?? [], 0, 4) as $item) {
+        if (!is_array($item)) continue;
+        $evidenceCompact[] = [
+            'title'=>mb_substr((string)($item['title'] ?? ''), 0, 140),
+            'url'=>(string)($item['url'] ?? ''),
+            'snippet'=>mb_substr((string)($item['text'] ?? $item['snippet'] ?? ''), 0, 250),
+        ];
+    }
+    $constraintHints = [];
+    $int = $options['intent'] ?? [];
+    if (!empty($int['cuisines'])) $constraintHints[] = 'Target Cuisine: ' . implode(', ', (array)$int['cuisines']);
+    if (!empty($int['specific_dishes'])) $constraintHints[] = 'Target Dish: ' . implode(', ', (array)$int['specific_dishes']);
+    if (!empty($int['areas'])) $constraintHints[] = 'Target Area: ' . implode(', ', (array)$int['areas']);
+    if (!empty($int['max_price_php'])) $constraintHints[] = 'Max Budget: ₱' . (int)$int['max_price_php'];
+    if (!empty($int['dietary'])) $constraintHints[] = 'Dietary: ' . implode(', ', (array)$int['dietary']);
+    if (!empty($int['exclude_names'])) $constraintHints[] = 'Exclude: ' . implode(', ', array_slice((array)$int['exclude_names'], 0, 5));
+    $intentSummary = $constraintHints ? "\nActive Constraints: " . implode('; ', $constraintHints) : '';
+
+    $webEvidenceStr = $evidenceCompact ? ("\nCurrent Playwright evidence:\n" . json_encode($evidenceCompact, JSON_UNESCAPED_UNICODE)) : '';
+    $localRecordsPrompt = $isOnlineOnlyRequested
+        ? '[Excluded by user request - Online search only; do NOT suggest local dataset places]'
+        : json_encode($compact, JSON_UNESCAPED_UNICODE);
+    $messages[] = ['role'=>'user','content'=>"Latest request: {$query}{$intentSummary}\n\n2025 local records:\n" . $localRecordsPrompt . $webEvidenceStr];
+
+    $reqBody = [
+        'model' => $model,
+        'messages' => $messages,
+    ];
+    // Reasoner model ignores/disallows temperature and response_format
+    if (stripos($model, 'reasoner') === false) {
+        $reqBody['temperature'] = (float)($options['temperature'] ?? 0.2);
+        $reqBody['response_format'] = ['type' => 'json_object'];
+    }
+
+    $callStart = microtime(true);
+    $payload = json_encode($reqBody, JSON_UNESCAPED_UNICODE);
+    $timeout = defined('TIMEOUT_LLM') ? TIMEOUT_LLM : 120;
+    [$raw, $status] = deepSeekHttpPost($base . '/chat/completions', ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey], $payload, $timeout);
+    $elapsedMs = (int)round((microtime(true) - $callStart) * 1000);
+    $decoded = $raw !== '' ? json_decode($raw, true) : null;
+    $returnedModel = is_array($decoded) && !empty($decoded['model']) ? (string)$decoded['model'] : $model;
+
+    recordAiCallTelemetry('deepseek_api', $elapsedMs, 'deepseek_hosted', $returnedModel, is_array($decoded) ? $decoded : null);
+
+    if ($raw === '' || $status < 200 || $status >= 300) {
+        $errDetail = trim(mb_substr($raw, 0, 300));
+        if (is_array($decoded) && is_string($decoded['error']['message'] ?? null)) {
+            $errDetail = trim((string)$decoded['error']['message']);
+        }
+        $GLOBALS['providerErrors']['deepseek-api'] = ['http' => $status, 'message' => mb_substr($errDetail, 0, 300)];
+        $GLOBALS['last_deepseek_error'] = "HTTP {$status}: " . mb_substr($errDetail, 0, 200);
+        error_log('DeepSeek API failed HTTP ' . $status . ': ' . mb_substr($raw, 0, 500));
+        $webPlaces = evidencePlacesFallback($evidence);
+        return ['', $fallbackIds, 'error', $evidence['sources'] ?? [], $webPlaces, false, $returnedModel];
+    }
+
+    $text = $decoded['choices'][0]['message']['content'] ?? null;
+    $reasoning = $decoded['choices'][0]['message']['reasoning_content'] ?? null;
+    if (!is_string($text) || trim($text) === '') {
+        if (is_string($reasoning) && trim($reasoning) !== '') {
+            $text = $reasoning;
+        }
+    }
+    if (!is_string($text) || trim($text) === '') {
+        $GLOBALS['providerErrors']['deepseek-api'] = ['http' => $status, 'message' => 'Empty text content from DeepSeek API'];
+        $webPlaces = evidencePlacesFallback($evidence);
+        return ['', $fallbackIds, 'error', $evidence['sources'] ?? [], $webPlaces, false, $returnedModel];
+    }
+
+    $parsed = extractAndDecodeJson($text);
+    if (!is_array($parsed)) {
+        $GLOBALS['providerErrors']['deepseek-api'] = ['http' => $status, 'message' => 'Failed to parse JSON from DeepSeek output: ' . mb_substr($text, 0, 180)];
+        $webPlaces = evidencePlacesFallback($evidence);
+        return ['', $fallbackIds, 'error', $evidence['sources'] ?? [], $webPlaces, false, $returnedModel];
+    }
+
+    $parsed = normalizeJsonPayloadSchema($parsed);
+    $answer = is_string($parsed['answer'] ?? null) ? trim((string)$parsed['answer']) : '';
+    $rawIds = is_array($parsed['ids'] ?? null) ? $parsed['ids'] : [];
+    $outOfScope = !empty($parsed['out_of_scope']);
+
+    if ($outOfScope) {
+        return [$answer ?: 'I can only suggest places in Davao City.', [], 'ready', [], [], true, $returnedModel];
+    }
+
+    $allowed = array_fill_keys($fallbackIds, true);
+    $ids = [];
+    foreach ($rawIds as $id) {
+        if (is_string($id) && isset($allowed[$id]) && !in_array($id, $ids, true)) $ids[] = $id;
+    }
+
+    $rawWeb = is_array($parsed['web_places'] ?? null) ? $parsed['web_places'] : [];
+    $hasValidObject = false;
+    foreach ($rawWeb as $rw) {
+        if (is_array($rw) && !empty($rw['name'])) {
+            $hasValidObject = true;
+            break;
+        }
+    }
+    if (!$hasValidObject && !empty($evidence['results'])) {
+        $rawWeb = evidencePlacesFallback($evidence);
+    }
+    $webPlaces = sanitizeWebPlaces($rawWeb, $evidence);
+    if (empty($webPlaces) && !empty($evidence['results'])) {
+        $webPlaces = sanitizeWebPlaces(evidencePlacesFallback($evidence), $evidence);
+    }
+
+    $strictEmptyAllowed = ($options['promptStyle'] ?? 'baseline') === 'strict_grounding' || $isOnlineOnlyRequested;
+    $resolvedIds = $isOnlineOnlyRequested ? [] : ($ids ?: (($strictEmptyAllowed || !empty($webPlaces)) ? [] : array_slice($fallbackIds, 0, 5)));
+
+    return [$answer, $resolvedIds, 'ready', $evidence['sources'] ?? [], $webPlaces, false, $returnedModel];
+}
+
 function deepSeekHttpPost(string $url, array $headers, string $payload, int $timeout): array {
     $ch = curl_init($url);
+    $connectTimeout = defined('TIMEOUT_CURL_CONNECT') ? TIMEOUT_CURL_CONNECT : 10;
+    $effectiveTimeout = max(defined('TIMEOUT_LLM') ? TIMEOUT_LLM : 120, $timeout);
     curl_setopt_array($ch, [
         CURLOPT_POST=>true,
         CURLOPT_HTTPHEADER=>$headers,
         CURLOPT_POSTFIELDS=>$payload,
         CURLOPT_RETURNTRANSFER=>true,
-        CURLOPT_CONNECTTIMEOUT=>3,
-        CURLOPT_TIMEOUT=>$timeout,
+        CURLOPT_CONNECTTIMEOUT=>$connectTimeout,
+        CURLOPT_TIMEOUT=>$effectiveTimeout,
         CURLOPT_IPRESOLVE=>CURL_IPRESOLVE_V4
     ]);
-    $raw = curl_exec($ch); $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE); if ($raw === false) $raw = curl_error($ch); curl_close($ch);
-    return [(string)$raw,$status];
+    $raw = curl_exec($ch);
+    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($raw === false) {
+        $raw = curl_error($ch);
+    }
+    curl_close($ch);
+    return [(string)$raw, $status];
 }

@@ -162,6 +162,64 @@ function fetchBingHttp(searchQuery) {
   });
 }
 
+function fetchBraveHttp(searchQuery) {
+  return new Promise((resolve) => {
+    const url = 'https://search.brave.com/search?q=' + encodeURIComponent(searchQuery) + '&source=web';
+    const req = https.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      timeout: HTTP_TIMEOUT
+    }, res => {
+      if (res.statusCode < 200 || res.statusCode >= 300) return resolve([]);
+      let html = '';
+      res.on('data', chunk => {
+        html += chunk;
+        if (html.length > 900000) {
+          req.destroy();
+          resolve(parseBraveHtml(html));
+        }
+      });
+      res.on('end', () => resolve(parseBraveHtml(html)));
+    });
+    req.on('error', () => resolve([]));
+    req.on('timeout', () => { req.destroy(); resolve([]); });
+  });
+}
+
+function parseBraveHtml(html) {
+  const decodeHtml = value => String(value || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const items = [];
+  const blockRegex = /<div class="snippet svelte-[^"]*"[^>]*data-pos="(\d+)"[^>]*data-type="web"[\s\S]*?(?=<div class="snippet svelte-[^"]*"[^>]*(?:data-pos="\d+"[^>]*data-type="web"|id="))/gi;
+  let match;
+  while ((match = blockRegex.exec(html)) !== null && items.length < 10) {
+    const block = match[0];
+    const linkMatch = block.match(/<a\s[^>]*href="(https?:\/\/[^"]+)"/i);
+    const titleMatch = block.match(/class="title search-snippet-title[^"]*"[^>]*title="([^"]+)"/i);
+    const snippetMatch = block.match(/class="generic-snippet[^"]*"[\s\S]*?<div class="content[^>]*>([\s\S]*?)<\/div>/i);
+    if (!linkMatch) continue;
+    const url = decodeHtml(linkMatch[1]);
+    const title = decodeHtml(titleMatch ? titleMatch[1] : '');
+    const snippet = decodeHtml(snippetMatch ? snippetMatch[1] : '');
+    const blob = `${title} ${snippet} ${url}`;
+    if (title && url && !isLowValueNonFoodUrl(url, title) && /\bdavao\b/i.test(blob)) {
+      items.push({ title, url, snippet });
+    }
+  }
+  return items;
+}
+
 async function collectBingBrowser(context, searchQuery) {
   const page = await context.newPage();
   await page.setDefaultTimeout(PLAYWRIGHT_STEP_TIMEOUT);
@@ -211,8 +269,12 @@ async function run() {
     searchQuery += ' restaurants';
   }
 
-  // 1. Fast direct HTTPS queries: Try DuckDuckGo, then Bing
-  let candidates = await fetchDuckDuckGoHttp(searchQuery);
+  // 1. Fast direct HTTPS queries: Try Brave, then DuckDuckGo/Bing.
+  let candidates = await fetchBraveHttp(searchQuery);
+  if (candidates.length < 3) {
+    const ddgCandidates = await fetchDuckDuckGoHttp(searchQuery);
+    candidates = candidates.concat(ddgCandidates);
+  }
   if (candidates.length < 3) {
     const bingCandidates = await fetchBingHttp(searchQuery);
     candidates = candidates.concat(bingCandidates);

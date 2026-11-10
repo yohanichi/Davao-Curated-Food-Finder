@@ -128,6 +128,7 @@ if (!is_file($script)) {
         } else {
             echo "  [FAIL/WARN] Exit code: {$exitCode} ({$elapsed} ms)\n";
             if ($stderr !== '') echo "       Error: " . trim($stderr) . "\n";
+            if (trim($stdout) !== '') echo "       Output: " . substr(trim($stdout), 0, 500) . "\n";
             echo "\n";
         }
     }
@@ -243,4 +244,3 @@ if ($openAiOk && $playwrightOk && $deepSeekOk) {
     if (!$deepSeekOk) echo "    3. Keep Ollama running with `{$deepSeekModel}` pulled (`ollama pull {$deepSeekModel}`).\n";
 }
 echo "================================================================\n";
-

@@ -429,7 +429,7 @@ try {
     if ($requestedRestaurantCore !== null && !$outOfScope) {
         $allowedIds = [];
         foreach ($places as $place) {
-            if (nearbyPlaceCore((string)($place['name'] ?? '')) === $requestedRestaurantCore) {
+            if (restaurantNameMatchesCore((string)($place['name'] ?? ''), $requestedRestaurantCore)) {
                 $allowedIds[(string)($place['_id'] ?? '')] = true;
             }
         }
@@ -441,6 +441,9 @@ try {
         $nearbyRelevantCandidates = filterPlacesByRestaurantCore($nearbyRelevantCandidates, $requestedRestaurantCore);
         $webResults = filterPlacesByRestaurantCore($webResults, $requestedRestaurantCore);
         $sources = [];
+    }
+    if (!$outOfScope && empty($intent['online_only'])) {
+        $rankedIds = supplementRankedPlaceIds($rankedIds, $candidates, 8);
     }
 
     $byId = [];

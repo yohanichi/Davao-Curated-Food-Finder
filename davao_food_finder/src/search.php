@@ -1544,6 +1544,28 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
     return array_slice($rated ?: $places, 0, $limit);
 }
 
+function supplementRankedPlaceIds(array $rankedIds, array $candidates, int $minimumCount = 8): array {
+    $ids = [];
+    $seen = [];
+    foreach ($rankedIds as $id) {
+        if (!is_scalar($id)) continue;
+        $key = trim((string)$id);
+        if ($key === '' || isset($seen[$key])) continue;
+        $seen[$key] = true;
+        $ids[] = $key;
+    }
+
+    $targetCount = max(0, $minimumCount);
+    foreach ($candidates as $candidate) {
+        if (count($ids) >= $targetCount) break;
+        $id = is_array($candidate) ? trim((string)($candidate['_id'] ?? '')) : '';
+        if ($id === '' || isset($seen[$id])) continue;
+        $seen[$id] = true;
+        $ids[] = $id;
+    }
+    return $ids;
+}
+
 function answerWithOpenAILegacy(string $query, array $history, array $candidates, array $options = []): array {
     $fallbackIds = array_map(fn($p) => $p['_id'], $candidates);
     if (OPENAI_API_KEY === '') return ['', $fallbackIds, 'not_configured', [], [], false, ''];

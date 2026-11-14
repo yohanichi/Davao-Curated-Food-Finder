@@ -44,14 +44,22 @@ function detectExplicitRestaurantCoreQuery(array $places, string $query): ?strin
 
 function filterPlacesByRestaurantCore(array $places, string $core): array {
     return array_values(array_filter($places, fn($place) =>
-        is_array($place) && nearbyPlaceCore((string)($place['name'] ?? '')) === $core
+        is_array($place) && restaurantNameMatchesCore((string)($place['name'] ?? ''), $core)
     ));
+}
+
+function restaurantNameMatchesCore(string $name, string $core): bool {
+    if ($core === '') return false;
+    if (nearbyPlaceCore($name) === $core) return true;
+
+    $nameWords = mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', ' ', trim($name)) ?? '', 'UTF-8');
+    return preg_match('/^' . preg_quote($core, '/') . '\s+[\p{L}\p{N}]/u', $nameWords) === 1;
 }
 
 function restaurantCoreDisplayName(array $places, string $core): string {
     foreach ($places as $place) {
         $name = trim((string)($place['name'] ?? ''));
-        if ($name === '' || nearbyPlaceCore($name) !== $core) continue;
+        if ($name === '' || !restaurantNameMatchesCore($name, $core)) continue;
         if (extractBranchArea($name) !== '') {
             return trim(substr($name, 0, (int)strrpos($name, ' - ')));
         }

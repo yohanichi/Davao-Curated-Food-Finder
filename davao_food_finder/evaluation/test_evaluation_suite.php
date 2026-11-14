@@ -300,18 +300,25 @@ $requestedCore = detectExplicitRestaurantCoreQuery($popularChickenPlaces, 'Jolli
 $jollibeeOnlyPlaces = $requestedCore !== null
     ? filterPlacesByRestaurantCore($popularChickenPlaces, $requestedCore)
     : [];
+$jollibeeBranchVariants = filterPlacesByRestaurantCore([
+    ['name'=>'Jollibee - Davao Magsaysay'],
+    ['name'=>'Jollibee Magsaysay'],
+    ['name'=>'Jollibeefy Magsaysay'],
+], 'jollibee');
 $standaloneJollibeeIntent = parseQueryIntent('jollibee', [], []);
 assertCheck(
     $requestedCore === 'jollibee'
     && detectExplicitRestaurantCoreQuery($popularChickenPlaces, 'Show me Jollibee branches near me') === 'jollibee'
     && count($jollibeeOnlyPlaces) === 1
     && $jollibeeOnlyPlaces[0]['_id'] === 'chicken-jollibee'
+    && count($jollibeeBranchVariants) === 2
     && empty($standaloneJollibeeIntent['cuisines'])
     && empty($standaloneJollibeeIntent['specific_dishes']),
     'Explicit Jollibee search resets inherited chicken intent and excludes other chains'
 );
 $rankedChickenPlaces = shortlistPlaces($popularChickenPlaces, 'chicken', 10, $chickenIntent);
 $rankedChickenIds = array_column($rankedChickenPlaces, '_id');
+$expandedChickenIds = supplementRankedPlaceIds(['chicken-jollibee'], $rankedChickenPlaces, 4);
 $topChickenIds = array_slice($rankedChickenIds, 0, 3);
 $lowReviewChickenRank = array_search('chicken-low-review', $rankedChickenIds, true);
 assertCheck(
@@ -320,6 +327,12 @@ assertCheck(
     && $lowReviewChickenRank > 2
     && critiqueSinglePlace($popularChickenPlaces[0], $chickenIntent, [], false, true) === [],
     'Chicken results include well-reviewed fast-food chains and down-rank low-review venues'
+);
+assertCheck(
+    count($expandedChickenIds) === 4
+    && $expandedChickenIds[0] === 'chicken-jollibee'
+    && count(array_unique($expandedChickenIds)) === 4,
+    'Short recommendation lists are supplemented from relevance-ranked candidates without duplicates'
 );
 $chickenPlaces = [];
 for ($i = 1; $i <= 10; $i++) {

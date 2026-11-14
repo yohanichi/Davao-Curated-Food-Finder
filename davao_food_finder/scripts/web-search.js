@@ -390,7 +390,10 @@ async function run() {
   const nearbyPlacesPromise = includeNearby
     ? Promise.all([
       fetchPhotonPlaces(searchQuery, 50),
-      ...nearbyQueries.map(query => fetchPhotonPlaces(`${query} Davao City`, 50))
+      ...nearbyQueries.map(query => fetchPhotonPlaces(`${query} Davao City`, 50)),
+      ...['restaurants', 'cafes', 'fast food', 'food courts'].map(category =>
+        fetchPhotonPlaces(`${category} Davao City`, 50)
+      )
     ]).then(placeGroups => {
       const seenPlaces = new Set();
       return placeGroups.flat().filter(place => {
@@ -401,26 +404,35 @@ async function run() {
     })
     : null;
   const collectSearchResults = async query => {
-    let found = await fetchBraveHttp(query);
-    if (found.length < 3) {
-      found = found.concat(await fetchDuckDuckGoHttp(query));
-    }
-    if (found.length < 3) {
-      found = found.concat(await fetchBingHttp(query));
-    }
-    return found;
+    const [brave, duckDuckGo, bing] = await Promise.all([
+      fetchBraveHttp(query),
+      fetchDuckDuckGoHttp(query),
+      fetchBingHttp(query)
+    ]);
+    const seen = new Set();
+    return [...brave, ...duckDuckGo, ...bing].filter(item => {
+      const key = String(item.url || '').split('#')[0].replace(/\/+$/, '');
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 12);
   };
 
-  // Keep general discovery and food-specific review evidence from competing for one query's results.
-  const [generalCandidates, reviewCandidates] = await Promise.all([
-    collectSearchResults(searchQuery),
-    collectSearchResults(reviewSearchQuery)
-  ]);
+  const discoveryQueries = [
+    { query: searchQuery, reviewSearch: false },
+    { query: `${searchQuery} branches locations`, reviewSearch: false },
+    { query: reviewSearchQuery, reviewSearch: true }
+  ];
+  const searchGroups = await Promise.all(discoveryQueries.map(async group => ({
+    ...group,
+    results: await collectSearchResults(group.query)
+  })));
   let candidates = [];
-  const maxSearchResults = Math.max(generalCandidates.length, reviewCandidates.length);
+  const maxSearchResults = Math.max(...searchGroups.map(group => group.results.length));
   for (let i = 0; i < maxSearchResults; i++) {
-    if (generalCandidates[i]) candidates.push({ ...generalCandidates[i], reviewSearch: false });
-    if (reviewCandidates[i]) candidates.push({ ...reviewCandidates[i], reviewSearch: true });
+    for (const group of searchGroups) {
+      if (group.results[i]) candidates.push({ ...group.results[i], reviewSearch: group.reviewSearch });
+    }
   }
   if (candidates.length < 3) {
     const photonPlaces = nearbyPlacesPromise ? await nearbyPlacesPromise : await fetchPhotonPlaces(searchQuery);

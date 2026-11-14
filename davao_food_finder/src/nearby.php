@@ -135,6 +135,23 @@ function nearbyDistanceKm(float $latitude, float $longitude, float $placeLatitud
     return $earthRadiusKm * 2 * asin(min(1.0, sqrt($a)));
 }
 
+function nearbyFeatureDisplayName(array $feature, string $baseName = ''): string {
+    $name = trim($baseName) ?: trim((string)($feature['name'] ?? ''));
+    $district = trim((string)($feature['district'] ?? ''));
+    $locality = trim((string)($feature['locality'] ?? ''));
+    $street = trim((string)($feature['street'] ?? ''));
+    $branchArea = $district ?: $locality;
+    $nameHasArea = $branchArea !== '' && mb_stripos($name, $branchArea, 0, 'UTF-8') !== false;
+    $nameHasStreet = $street !== '' && mb_stripos($name, $street, 0, 'UTF-8') !== false;
+    $streetAddsDetail = $branchArea === '' || mb_strtolower($street, 'UTF-8') !== mb_strtolower($branchArea, 'UTF-8');
+    if ($street !== '' && $streetAddsDetail && !$nameHasStreet) {
+        $name .= $nameHasArea ? " ({$street})" : ' - ' . ($branchArea !== '' ? $branchArea . ' ' : '') . "({$street})";
+    } elseif ($branchArea !== '' && !$nameHasArea) {
+        $name .= ' - ' . $branchArea;
+    }
+    return $name;
+}
+
 function rankNearbyCandidates(
     array $candidates,
     array $allPlaces,
@@ -220,6 +237,7 @@ function rankNearbyWebPlaces(
         }
         if ($nearest === null) continue;
 
+        $webPlace['name'] = nearbyFeatureDisplayName($nearest['feature'], (string)($webPlace['name'] ?? ''));
         $webPlace['distance_km'] = round($nearest['distance'], 2);
         $webPlace['location_source_url'] = (string)$nearest['feature']['url'];
         if (trim((string)($webPlace['address'] ?? '')) === '' || mb_strtolower(trim((string)$webPlace['address']), 'UTF-8') === 'davao city') {
@@ -232,12 +250,51 @@ function rankNearbyWebPlaces(
     return $ranked;
 }
 
+function nearbyFeatureMatchesRequest(array $feature, string $query, array $intent): bool {
+    if (detectExplicitRestaurantCoreQuery([$feature], $query) !== null) {
+        return true;
+    }
+
+    $cuisineTerms = [
+        'coffee'=>['cafe','coffee','espresso','roastery'],
+        'japanese'=>['japanese','sushi','ramen','udon','tempura','sashimi'],
+        'korean'=>['korean','samgyup','samgyeopsal'],
+        'chinese'=>['chinese','dim sum'],
+        'filipino'=>['filipino'],
+        'pizza'=>['pizza','italian'],
+        'seafood'=>['seafood','fish','shrimp'],
+        'burgers'=>['burger'],
+        'milk tea'=>['milk tea','bubble tea','tea'],
+    ];
+    $requestedTerms = [];
+    foreach (($intent['cuisines'] ?? []) as $cuisine) {
+        $key = mb_strtolower(trim((string)$cuisine), 'UTF-8');
+        $requestedTerms = array_merge($requestedTerms, $cuisineTerms[$key] ?? [$key]);
+    }
+    foreach (($intent['specific_dishes'] ?? []) as $dish) {
+        $requestedTerms[] = trim((string)$dish);
+    }
+
+    $featureText = mb_strtolower(implode(' ', array_filter([
+        $feature['name'] ?? '',
+        $feature['food_type'] ?? '',
+    ])), 'UTF-8');
+    foreach (array_filter($requestedTerms) as $term) {
+        if (mb_stripos($featureText, mb_strtolower($term, 'UTF-8'), 0, 'UTF-8') !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function buildNearbyMapResults(
     array $relevantCandidates,
     array $mapPlaces,
     float $latitude,
     float $longitude,
-    float $radiusKm
+    float $radiusKm,
+    string $query = '',
+    array $intent = []
 ): array {
     $relevantCores = [];
     foreach ($relevantCandidates as $candidate) {
@@ -251,15 +308,24 @@ function buildNearbyMapResults(
     foreach ($mapPlaces as $feature) {
         if (!is_array($feature) || !isValidNearbyMapPlace($feature)) continue;
         $core = nearbyPlaceCore((string)$feature['name']);
-        if ($core === '' || !isset($relevantCores[$core])) continue;
+        if ($core === '' || (!isset($relevantCores[$core]) && !nearbyFeatureMatchesRequest($feature, $query, $intent))) continue;
         $distance = nearbyDistanceKm($latitude, $longitude, (float)$feature['latitude'], (float)$feature['longitude']);
         if ($distance > $radiusKm) continue;
 
-        $address = trim((string)($feature['address'] ?? '')) ?: 'Davao City';
+        $street = trim((string)($feature['street'] ?? ''));
+        $address = trim((string)($feature['address'] ?? ''));
+        if ($address === '') {
+            $address = implode(', ', array_filter([
+                $street,
+                trim((string)($feature['district'] ?? '')) ?: trim((string)($feature['locality'] ?? '')),
+                'Davao City',
+            ]));
+        }
+        $name = nearbyFeatureDisplayName($feature);
         $url = (string)$feature['url'];
         $foodType = trim((string)($feature['food_type'] ?? 'Restaurant')) ?: 'Restaurant';
         $results[] = [
-            'name'=>trim((string)$feature['name']),
+            'name'=>$name,
             'food_type'=>$foodType,
             'description'=>"OpenStreetMap lists this {$foodType} at {$address}. Current hours and business status are not verified.",
             'address'=>$address,
@@ -275,21 +341,21 @@ function buildNearbyMapResults(
             'location_source_url'=>$url,
             'distance_km'=>round($distance, 2),
             '_nearby_core_key'=>$core,
-            '_nearby_sort_score'=>$relevantCores[$core],
+            '_nearby_sort_score'=>$relevantCores[$core] ?? 0.0,
         ];
     }
 
     usort($results, fn($a, $b) => ($a['distance_km'] <=> $b['distance_km'])
         ?: ($b['_nearby_sort_score'] <=> $a['_nearby_sort_score']));
     $deduped = [];
-    $seenCores = [];
+    $seenLocations = [];
     foreach ($results as $result) {
-        $core = (string)$result['_nearby_core_key'];
-        if (isset($seenCores[$core])) continue;
-        $seenCores[$core] = true;
+        $locationKey = (string)$result['location_source_url'];
+        if ($locationKey === '' || isset($seenLocations[$locationKey])) continue;
+        $seenLocations[$locationKey] = true;
         unset($result['_nearby_core_key'], $result['_nearby_sort_score']);
         $deduped[] = $result;
-        if (count($deduped) >= 8) break;
+        if (count($deduped) >= 20) break;
     }
     return $deduped;
 }

@@ -219,7 +219,14 @@ try {
                 $mapSearchCandidates = filterPlacesByRestaurantCore($mapSearchCandidates, $requestedRestaurantCore);
             }
             $nearbyRelevantCandidates = $mapSearchCandidates;
-            $nearbyQueries = nearbyBrandQueryTerms($mapSearchCandidates, 3);
+            $nearbyQueries = nearbyBrandQueryTerms(
+                $mapSearchCandidates,
+                in_array('Coffee', $intent['cuisines'] ?? [], true) ? 2 : 3
+            );
+            if (in_array('Coffee', $intent['cuisines'] ?? [], true)) {
+                array_unshift($nearbyQueries, 'Starbucks');
+            }
+            $nearbyQueries = array_values(array_unique($nearbyQueries));
         }
         if ($useIterativeLoop
             && empty($intent['online_only'])
@@ -442,8 +449,42 @@ try {
         $webResults = filterPlacesByRestaurantCore($webResults, $requestedRestaurantCore);
         $sources = [];
     }
-    if (!$outOfScope && empty($intent['online_only'])) {
-        $rankedIds = supplementRankedPlaceIds($rankedIds, $candidates, 8);
+    if (!$outOfScope && !isset($body['evaluation']) && !empty($intent['strict_dishes'])) {
+        $strictDishes = $intent['strict_dishes'];
+        $strictDishIds = [];
+        foreach ($places as $place) {
+            $placeId = trim((string)($place['_id'] ?? ''));
+            if ($placeId !== '' && placeMatchesSpecificDishes($place, $strictDishes)) {
+                $strictDishIds[$placeId] = true;
+            }
+        }
+        $rankedIds = array_values(array_filter(
+            $rankedIds,
+            fn($id) => isset($strictDishIds[(string)$id])
+        ));
+        $candidates = array_values(array_filter(
+            $candidates,
+            fn($place) => is_array($place) && placeMatchesSpecificDishes($place, $strictDishes)
+        ));
+        $nearbyRelevantCandidates = array_values(array_filter(
+            $nearbyRelevantCandidates,
+            fn($place) => is_array($place) && placeMatchesSpecificDishes($place, $strictDishes)
+        ));
+        $webResults = array_values(array_filter(
+            $webResults,
+            fn($place) => is_array($place) && placeMatchesSpecificDishes($place, $strictDishes)
+        ));
+    }
+    if (!isset($body['evaluation'])) {
+        $retrievedIds = [];
+        foreach ($candidates as $candidate) {
+            $candidateId = trim((string)($candidate['_id'] ?? ''));
+            if ($candidateId !== '') $retrievedIds[$candidateId] = true;
+        }
+        $rankedIds = array_values(array_filter(
+            $rankedIds,
+            fn($id) => isset($retrievedIds[(string)$id])
+        ));
     }
 
     $byId = [];
@@ -662,7 +703,9 @@ try {
             $mapPlaces,
             $nearbyLocation['latitude'],
             $nearbyLocation['longitude'],
-            5.0
+            5.0,
+            (string)($intent['effective_query'] !== '' ? $intent['effective_query'] : $query),
+            $intent
         );
         $seenMapUrls = [];
         foreach (array_merge($results, $webResults) as $existingPlace) {

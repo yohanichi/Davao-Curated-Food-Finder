@@ -146,6 +146,8 @@ function specificDishPatterns(): array {
     return [
         'sisig'      => '/\b(sisig|sisigan)\b/iu',
         'bulalo'     => '/\b(bulalo|bulaloan|bulalohan|pochero)\b/iu',
+        'balbacua'   => '/\b(balbacua|balbakwa|balba\s+cua|balba\s+kwa|balbacwa|balbakua)\b/iu',
+        'bulcachong' => '/\b(bulca[\s-]?chong)\b/iu',
         'pares'      => '/\b(pares|paresan)\b/iu',
         'silog'      => '/\b(silog|silogan|tapsilog|tapsilogan|longsilog|tocilog|bangsilog|hotsilog)\b/iu',
         'satti'      => '/\b(satti)\b/iu',
@@ -187,7 +189,7 @@ function extractStrictDishes(string $rawText): array {
         return [];
     }
 
-    $strictEligible = ['sisig', 'bulalo', 'satti', 'takoyaki', 'lomi', 'batchoy', 'halo-halo', 'shawarma', 'biryani', 'lugaw', 'pares', 'silog', 'kinilaw'];
+    $strictEligible = ['sisig', 'bulalo', 'balbacua', 'bulcachong', 'satti', 'takoyaki', 'lomi', 'batchoy', 'halo-halo', 'shawarma', 'biryani', 'lugaw', 'pares', 'silog', 'kinilaw'];
     return array_values(array_intersect($dishes, $strictEligible));
 }
 
@@ -1210,17 +1212,6 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
         !empty($cuisines) || !empty($specificDishes) || !empty($dietary) || !empty($ambiance) || !empty($thematic) || !empty($hours)
     );
 
-    // Verify how many places in the Davao corpus actually serve the strict dish (so we never wipe out results if corpus count is 0)
-    $strictDishCorpusCount = 0;
-    if ($strictDishes) {
-        foreach ($places as $chkPlace) {
-            if (placeMatchesSpecificDishes($chkPlace, $strictDishes)) {
-                $strictDishCorpusCount++;
-                if ($strictDishCorpusCount >= 2) break;
-            }
-        }
-    }
-
     $cuisineFoodTypes = [
         'Japanese' => ['japanese', 'ramen', 'sushi'],
         'Coffee' => ['coffee'],
@@ -1297,7 +1288,7 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
         if ($specificDishes) {
             if (placeMatchesSpecificDishes($p, $specificDishes)) {
                 $foodScore += 18.0;
-            } elseif ($strictDishes && $strictDishCorpusCount >= 2) {
+            } elseif ($strictDishes) {
                 if ($applyHardCritiqueMasks) {
                     continue;
                 }
@@ -1316,7 +1307,7 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
                     ? 15.0
                     : (($typeLower === $allowedTypes[0]) ? 10.0 : 6.5);
                 // When user asked for a strict dish (e.g. sisig), don't let an unrelated BBQ/Filipino sub-type (like lechon manok) overpower real sisigans
-                if ($strictDishes && $strictDishCorpusCount >= 2 && !placeMatchesSpecificDishes($p, $strictDishes)) {
+                if ($strictDishes && !placeMatchesSpecificDishes($p, $strictDishes)) {
                     $cBoost *= 0.15;
                 }
                 $foodScore += $cBoost;
@@ -1531,6 +1522,11 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
             $ranked = enforceNumericPriceCeiling($ranked, $maxPricePhp, $minPricePhp, true);
         }
         return array_slice($ranked, 0, $limit);
+    }
+
+    // Unmatched dish and ambiguous queries must not fall through to unrelated popular places.
+    if ($strictDishes || !empty($intent['is_ambiguous'])) {
+        return [];
     }
 
     // Broad/ambiguous requests with no lexical/constraint matches: return well-rated diverse Davao City options.

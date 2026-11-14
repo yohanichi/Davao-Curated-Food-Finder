@@ -83,13 +83,52 @@ $nearbyKfcPlaces = [
     ['_id'=>'toril-burgers', 'name'=>'Backyard Burgers - Toril', 'address'=>'Davao City', 'city'=>'Davao City', 'rating'=>4.8, 'review_count'=>100],
 ];
 $nearbyMapPlaces = [
-    ['name'=>'KFC', 'city'=>'Davao City', 'district'=>'Lanang', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/101'],
+    ['name'=>'KFC', 'city'=>'Davao City', 'district'=>'Lanang', 'street'=>'Damosa Road', 'address'=>'Damosa Road, Lanang, Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/101'],
+    ['name'=>'KFC', 'city'=>'Davao City', 'district'=>'Bajada', 'street'=>'J.P. Laurel Avenue', 'latitude'=>7.107, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/103'],
     ['name'=>'Backyard Burgers', 'city'=>'Davao City', 'district'=>'Toril', 'latitude'=>7.006, 'longitude'=>125.501, 'url'=>'https://www.openstreetmap.org/node/102'],
 ];
 $rankedNearbyPlaces = rankNearbyCandidates($nearbyKfcPlaces, $nearbyKfcPlaces, $nearbyMapPlaces, 7.105, 125.635, 5.0);
 assertCheck(count($rankedNearbyPlaces) === 1 && $rankedNearbyPlaces[0]['_id'] === 'kfc-lanang', 'Near-me search matches the right chain branch and excludes distant map points');
 $nearbyMapResults = buildNearbyMapResults($nearbyKfcPlaces, $nearbyMapPlaces, 7.105, 125.635, 5.0);
-assertCheck(count($nearbyMapResults) === 1 && $nearbyMapResults[0]['name'] === 'KFC' && $nearbyMapResults[0]['rating'] === null, 'Near-me map-only chain results do not inherit an unverified branch rating');
+assertCheck(count($nearbyMapResults) === 2
+    && count(array_unique(array_column($nearbyMapResults, 'location_source_url'))) === 2
+    && $nearbyMapResults[0]['name'] === 'KFC - Lanang (Damosa Road)'
+    && $nearbyMapResults[1]['name'] === 'KFC - Bajada (J.P. Laurel Avenue)'
+    && str_contains($nearbyMapResults[0]['address'], 'Damosa Road')
+    && $nearbyMapResults[0]['rating'] === null,
+    'Near-me results identify distinct chain branches by their OSM street and district without borrowing ratings');
+$starbucksMapPlaces = [
+    ['name'=>'Starbucks', 'city'=>'Davao City', 'food_type'=>'cafe', 'district'=>'Poblacion', 'street'=>'J.P. Laurel Avenue', 'address'=>'J.P. Laurel Avenue, Poblacion, Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/201'],
+];
+$coffeeMapResults = buildNearbyMapResults(
+    [],
+    $starbucksMapPlaces,
+    7.105,
+    125.635,
+    5.0,
+    'coffee shops',
+    ['cuisines'=>['Coffee'], 'specific_dishes'=>[]]
+);
+assertCheck(
+    count($coffeeMapResults) === 1
+    && str_starts_with($coffeeMapResults[0]['name'], 'Starbucks')
+    && str_contains($coffeeMapResults[0]['name'], 'Poblacion')
+    && str_contains($coffeeMapResults[0]['address'], 'J.P. Laurel Avenue'),
+    'Coffee map results include online-only Starbucks locations with a branch label and mapped address'
+);
+$coffeeWebResults = rankNearbyWebPlaces(
+    [['name'=>'Starbucks', 'address'=>'Davao City']],
+    $starbucksMapPlaces,
+    [],
+    7.105,
+    125.635,
+    5.0
+);
+assertCheck(
+    count($coffeeWebResults) === 1
+    && str_contains($coffeeWebResults[0]['name'], 'Poblacion (J.P. Laurel Avenue)'),
+    'Web-found near-me branches also receive their mapped district and street in the display name'
+);
 assertApprox(nearbyDistanceKm(0.0, 0.0, 0.0, 1.0), 111.195, 0.01, 'Haversine distance uses kilometers');
 $brandQueries = nearbyBrandQueryTerms([
     ['name'=>"McDonald's - Davao Bajada"],
@@ -327,6 +366,76 @@ assertCheck(
     && $lowReviewChickenRank > 2
     && critiqueSinglePlace($popularChickenPlaces[0], $chickenIntent, [], false, true) === [],
     'Chicken results include well-reviewed fast-food chains and down-rank low-review venues'
+);
+$bulcachongIntent = parseQueryIntent('bulcachong');
+$unmatchedBulcachongPlaces = shortlistPlaces($popularChickenPlaces, 'bulcachong', 10, $bulcachongIntent);
+$verifiedBulcachong = array_merge($popularChickenPlaces, [[
+    '_id'=>'bulcachong-local',
+    'name'=>'Bulca Chong - Bankerohan',
+    'food_type'=>'Filipino & Fast Food',
+    'description'=>'',
+    'address'=>'Davao City',
+    'city'=>'Davao City',
+    'rating'=>4.1,
+    'review_count'=>383,
+    '_review_signals'=>[],
+    '_review_snippets'=>[],
+    '_branch_area'=>'',
+]]);
+$verifiedBulcachongPlaces = shortlistPlaces($verifiedBulcachong, 'bulcachong', 10, $bulcachongIntent);
+assertCheck(
+    $bulcachongIntent['specific_dishes'] === ['bulcachong']
+    && $bulcachongIntent['strict_dishes'] === ['bulcachong']
+    && $unmatchedBulcachongPlaces === []
+    && count($verifiedBulcachongPlaces) === 1
+    && $verifiedBulcachongPlaces[0]['_id'] === 'bulcachong-local',
+    'Bulcachong search excludes popular chains unless their records verify the requested dish'
+);
+$balbacuaIntent = parseQueryIntent('balbakwa');
+$unmatchedBalbacuaPlaces = shortlistPlaces($popularChickenPlaces, 'balbakwa', 10, $balbacuaIntent);
+$verifiedBalbacuaPlaces = shortlistPlaces(array_merge($popularChickenPlaces, [[
+    '_id'=>'balbacua-local',
+    'name'=>'Balbacua House - Bankerohan',
+    'food_type'=>'Filipino',
+    'description'=>'',
+    'address'=>'Davao City',
+    'city'=>'Davao City',
+    'rating'=>4.1,
+    'review_count'=>80,
+    '_review_signals'=>[],
+    '_review_snippets'=>[],
+    '_branch_area'=>'',
+]]), 'balbakwa', 10, $balbacuaIntent);
+assertCheck(
+    $balbacuaIntent['specific_dishes'] === ['balbacua']
+    && $balbacuaIntent['strict_dishes'] === ['balbacua']
+    && $unmatchedBalbacuaPlaces === []
+    && count($verifiedBalbacuaPlaces) === 1
+    && $verifiedBalbacuaPlaces[0]['_id'] === 'balbacua-local',
+    'Balbakwa is matched as Balbacua and excludes unrelated popular chains'
+);
+$unknownDishIntent = parseQueryIntent('xyzzy');
+assertCheck(
+    !empty($unknownDishIntent['is_ambiguous'])
+    && shortlistPlaces($popularChickenPlaces, 'xyzzy', 10, $unknownDishIntent) === [],
+    'Unresolved single-term searches do not fall back to unrelated popular local places'
+);
+$burgerKing = $popularChickenPlaces[0];
+$burgerKing['_id'] = 'burger-king';
+$burgerKing['name'] = 'Burger King - Davao';
+$burgerKing['food_type'] = 'Burgers';
+$burgerPlaces = shortlistPlaces(
+    array_merge($popularChickenPlaces, [$burgerKing]),
+    'burgers',
+    10,
+    parseQueryIntent('burgers')
+);
+$burgerPlaceIds = array_column($burgerPlaces, '_id');
+assertCheck(
+    in_array('burger-king', $burgerPlaceIds, true)
+    && in_array('chicken-jollibee', $burgerPlaceIds, true)
+    && !in_array('chicken-kfc', $burgerPlaceIds, true),
+    'Burger requests retain burger chains without broadly adding chicken chains'
 );
 assertCheck(
     count($expandedChickenIds) === 4

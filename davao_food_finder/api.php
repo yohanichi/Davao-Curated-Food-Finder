@@ -15,6 +15,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/src/config.php';
 require_once __DIR__ . '/src/search.php';
 require_once __DIR__ . '/src/web_reasoner.php';
+require_once __DIR__ . '/src/nearby.php';
 
 try {
     $requestStartedAt = microtime(true);
@@ -45,6 +46,25 @@ try {
     $history = is_array($body['history'] ?? null) ? array_slice($body['history'], -12) : [];
     $shownNames = is_array($body['shownNames'] ?? null) ? array_slice($body['shownNames'], 0, 50) : [];
     if ($query === '' || mb_strlen($query) > 300) { http_response_code(422); throw new RuntimeException('Enter a search query up to 300 characters.'); }
+    $nearbyLocation = null;
+    $nearbyRelevantCandidates = [];
+    if (array_key_exists('location', $body)) {
+        $location = $body['location'];
+        if (!is_array($location)
+            || !is_numeric($location['latitude'] ?? null)
+            || !is_numeric($location['longitude'] ?? null)) {
+            http_response_code(422);
+            throw new RuntimeException('A valid browser location is required for near-me searches.');
+        }
+        $latitude = (float)$location['latitude'];
+        $longitude = (float)$location['longitude'];
+        if (!is_finite($latitude) || !is_finite($longitude)
+            || $latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
+            http_response_code(422);
+            throw new RuntimeException('The browser location coordinates are outside valid ranges.');
+        }
+        $nearbyLocation = ['latitude'=>$latitude, 'longitude'=>$longitude];
+    }
 
     $openAIOptions = ['temperature'=>0.2, 'promptStyle'=>'baseline', 'agentic'=>true, 'iterativeLoop'=>true, 'seed'=>null];
     $reasoningProvider = 'hybrid';
@@ -129,11 +149,20 @@ try {
     $datasetLoadMs = (int)round((microtime(true) - $datasetLoadStart) * 1000);
     if (!$places) throw new RuntimeException('No Davao City records found. Confirm that your CSV files are in data/ and that their city field contains Davao City.');
 
+    $requestedRestaurantCore = detectExplicitRestaurantCoreQuery($places, $query);
+    if ($requestedRestaurantCore !== null) {
+        $history = [];
+        $shownNames = [];
+    }
+
     // Component Timing 2: Intent parsing + Stage 1 GPT-4o mini Query Planner (in hybrid mode)
     $retrievalStart = microtime(true);
     $isAgentic = ($openAIOptions['agentic'] ?? true) === true && !in_array($reasoningProvider, ['baseline', 'non-agentic'], true);
     $useIterativeLoop = ($openAIOptions['iterativeLoop'] ?? true) === true && $isAgentic && $reasoningProvider !== 'ablation-no-loop';
     $intent = parseQueryIntent($query, $history, $shownNames);
+    if ($requestedRestaurantCore !== null) {
+        $intent['requested_restaurant_core'] = $requestedRestaurantCore;
+    }
     $intentParseMs = (int)round((microtime(true) - $retrievalStart) * 1000);
 
     $hasFoodRequest = !empty($intent['cuisines'])
@@ -156,8 +185,11 @@ try {
         exit;
     }
 
-    if ($reasoningProvider === 'hybrid' && $isAgentic) {
+    if ($reasoningProvider === 'hybrid' && $isAgentic && $requestedRestaurantCore === null) {
         $intent = planSearchQueryWithGPT4oMini($query, $history, $shownNames, $intent, $openAIOptions);
+    }
+    if ($requestedRestaurantCore !== null) {
+        $intent['requested_restaurant_core'] = $requestedRestaurantCore;
     }
     $openAIOptions['intent'] = $intent;
 
@@ -172,13 +204,23 @@ try {
             'success'=>!empty($evidenceOverride['results']),
             'latency_ms'=>(int)($evidenceOverride['latency_ms'] ?? 0),
         ];
-    } elseif ($reasoningProvider === 'baseline' || $reasoningProvider === 'non-agentic' || !$isAgentic) {
+    } elseif (($reasoningProvider === 'baseline' || $reasoningProvider === 'non-agentic' || !$isAgentic) && $nearbyLocation === null) {
         $evidence = collectPlaywrightEvidence($query, __DIR__ . '/data/.web-cache', 43200, 'none');
     } elseif ($intent['out_of_scope']) {
         $evidence = ['results'=>[], 'sources'=>[], 'cache'=>'skipped_out_of_scope', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'latency_ms'=>0];
     } else {
         $plannedPwQuery = trim((string)($intent['playwright_query'] ?? ''));
         $priceLookupQueries = [];
+        $nearbyQueries = [];
+        if ($nearbyLocation !== null) {
+            $mapSearchQuery = $intent['effective_query'] !== '' ? $intent['effective_query'] : $query;
+            $mapSearchCandidates = shortlistPlaces($places, $mapSearchQuery, 100, $intent, false);
+            if ($requestedRestaurantCore !== null) {
+                $mapSearchCandidates = filterPlacesByRestaurantCore($mapSearchCandidates, $requestedRestaurantCore);
+            }
+            $nearbyRelevantCandidates = $mapSearchCandidates;
+            $nearbyQueries = nearbyBrandQueryTerms($mapSearchCandidates, 3);
+        }
         if ($useIterativeLoop
             && empty($intent['online_only'])
             && !isset($body['evaluation'])
@@ -195,11 +237,11 @@ try {
             }
         }
         if ($plannedPwQuery !== '') {
-            $evidence = collectPlaywrightEvidence($plannedPwQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries);
+            $evidence = collectPlaywrightEvidence($plannedPwQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries, $nearbyLocation !== null, $nearbyQueries);
         } else {
             $pwQuery = $intent['effective_query'] !== '' ? $intent['effective_query'] : $query;
             $evidenceQuery = preg_match('/\bdavao(\s+city)?\b/i', $pwQuery) ? $pwQuery : ('Davao City ' . $pwQuery);
-            $evidence = collectPlaywrightEvidence($evidenceQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries);
+            $evidence = collectPlaywrightEvidence($evidenceQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries, $nearbyLocation !== null, $nearbyQueries);
         }
     }
     if (isset($GLOBALS['aiTelemetry']['pipeline_trace'])) {
@@ -235,6 +277,46 @@ try {
                 return $pk === '' || !isset($seenNames[$pk]);
             }));
         }
+    }
+    if ($requestedRestaurantCore !== null) {
+        $candidates = filterPlacesByRestaurantCore($candidates, $requestedRestaurantCore);
+    }
+    $nearbySearch = ['enabled'=>false];
+    if ($nearbyLocation !== null) {
+        $mapPlaces = is_array($evidence['nearby_places'] ?? null) ? $evidence['nearby_places'] : [];
+        if (!$nearbyRelevantCandidates) $nearbyRelevantCandidates = $candidates;
+        if ($requestedRestaurantCore !== null) {
+            $nearbyRelevantCandidates = filterPlacesByRestaurantCore($nearbyRelevantCandidates, $requestedRestaurantCore);
+        }
+        $candidates = rankNearbyCandidates(
+            $candidates,
+            $places,
+            $mapPlaces,
+            $nearbyLocation['latitude'],
+            $nearbyLocation['longitude'],
+            5.0
+        );
+        $nearbyPlaceIds = [];
+        foreach ($candidates as $candidate) {
+            if (isset($candidate['_id'])) $nearbyPlaceIds[(string)$candidate['_id']] = $candidate;
+        }
+        foreach ($places as &$place) {
+            $placeId = (string)($place['_id'] ?? '');
+            if ($placeId !== '' && isset($nearbyPlaceIds[$placeId])) {
+                $place['_nearby_distance_km'] = $nearbyPlaceIds[$placeId]['_nearby_distance_km'];
+                $place['_nearby_source_url'] = $nearbyPlaceIds[$placeId]['_nearby_source_url'];
+                if (!empty($nearbyPlaceIds[$placeId]['address'])) {
+                    $place['address'] = $nearbyPlaceIds[$placeId]['address'];
+                }
+            }
+        }
+        unset($place);
+        $nearbySearch = [
+            'enabled'=>true,
+            'radius_km'=>5,
+            'status'=>!$mapPlaces ? 'no_map_data' : ($candidates ? 'ok' : 'no_matching_places_within_radius'),
+            'result_count'=>count($candidates),
+        ];
     }
     $retrievalRankingMs = $intentParseMs + (int)round((microtime(true) - $rankStart) * 1000);
 
@@ -279,6 +361,22 @@ try {
         }
     }
 
+    if (!$outOfScope && !empty($evidence['results'])) {
+        $directoryPlaces = sanitizeWebPlaces(extractYelpDirectoryVenues($evidence, $intent), $evidence);
+        $knownOnlineNames = [];
+        foreach ($webResults as $webPlace) {
+            $key = mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', (string)($webPlace['name'] ?? '')) ?? '', 'UTF-8');
+            if ($key !== '') $knownOnlineNames[$key] = true;
+        }
+        foreach ($directoryPlaces as $directoryPlace) {
+            $key = mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', (string)($directoryPlace['name'] ?? '')) ?? '', 'UTF-8');
+            if ($key !== '' && !isset($knownOnlineNames[$key])) {
+                $webResults[] = $directoryPlace;
+                $knownOnlineNames[$key] = true;
+            }
+        }
+    }
+
     // Autonomous Iterative Critique-and-Refinement Loop (Pass 2 Verification & Self-Correction)
     $loopTelemetry = [
         'enabled'=>$useIterativeLoop,
@@ -314,6 +412,36 @@ try {
         $webResults = [];
         $sources = [];
     }
+    if ($nearbyLocation !== null && !$outOfScope) {
+        $rankedIds = array_values(array_map(
+            fn($candidate) => (string)$candidate['_id'],
+            array_slice($candidates, 0, 20)
+        ));
+        $webResults = rankNearbyWebPlaces(
+            $webResults,
+            is_array($evidence['nearby_places'] ?? null) ? $evidence['nearby_places'] : [],
+            $places,
+            $nearbyLocation['latitude'],
+            $nearbyLocation['longitude'],
+            5.0
+        );
+    }
+    if ($requestedRestaurantCore !== null && !$outOfScope) {
+        $allowedIds = [];
+        foreach ($places as $place) {
+            if (nearbyPlaceCore((string)($place['name'] ?? '')) === $requestedRestaurantCore) {
+                $allowedIds[(string)($place['_id'] ?? '')] = true;
+            }
+        }
+        $rankedIds = array_values(array_filter(
+            $rankedIds,
+            fn($id) => isset($allowedIds[(string)$id])
+        ));
+        $candidates = filterPlacesByRestaurantCore($candidates, $requestedRestaurantCore);
+        $nearbyRelevantCandidates = filterPlacesByRestaurantCore($nearbyRelevantCandidates, $requestedRestaurantCore);
+        $webResults = filterPlacesByRestaurantCore($webResults, $requestedRestaurantCore);
+        $sources = [];
+    }
 
     $byId = [];
     foreach ($places as $p) $byId[$p['_id']] = $p;
@@ -338,6 +466,29 @@ try {
     }
     if (!empty($intent['online_only'])) {
         $results = [];
+    }
+
+    if ($nearbyLocation !== null) {
+        $nearbyItems = array_merge($results, $webResults);
+        $nearbySearch['result_count'] = count($nearbyItems);
+        if (!$nearbyItems && ($nearbySearch['status'] ?? '') === 'ok') {
+            $nearbySearch['status'] = 'no_matching_places_within_radius';
+        }
+        if (!$nearbyItems) {
+            $answer = ($nearbySearch['status'] ?? '') === 'no_map_data'
+                ? 'I could not retrieve verified OpenStreetMap restaurant locations for this search, so I cannot confirm places within 5 km. Please try again or choose a Davao City area instead.'
+                : 'I could not verify any restaurants matching your request within 5 km. I have not included distant or unverified places.';
+        } else {
+            $summaryItems = [];
+            foreach (array_slice($nearbyItems, 0, 6) as $nearbyItem) {
+                if (!isset($nearbyItem['distance_km']) || !is_numeric($nearbyItem['distance_km'])) continue;
+                $summaryItems[] = trim((string)($nearbyItem['name'] ?? 'Restaurant'))
+                    . ' (' . number_format((float)$nearbyItem['distance_km'], 1) . ' km)';
+            }
+            $answer = 'Matching restaurants within 5 km, ordered by approximate distance: '
+                . implode(', ', $summaryItems)
+                . '. Distances are straight-line estimates; OpenStreetMap coverage may be incomplete.';
+        }
     }
     $results = array_slice($results, 0, 20);
     foreach ($results as &$r) {
@@ -449,11 +600,13 @@ try {
 
             // Check if this web result repeats a local record in $results
             $matchedLocalIdx = null;
-            foreach ($results as $idx => $lr) {
-                $ck = $normCoreName((string)($lr['name'] ?? ''));
-                if ($venuesMatch($wp, $lr, $localCoreCounts[$ck] ?? 1)) {
-                    $matchedLocalIdx = $idx;
-                    break;
+            if (empty($intent['online_only'])) {
+                foreach ($results as $idx => $lr) {
+                    $ck = $normCoreName((string)($lr['name'] ?? ''));
+                    if ($venuesMatch($wp, $lr, $localCoreCounts[$ck] ?? 1)) {
+                        $matchedLocalIdx = $idx;
+                        break;
+                    }
                 }
             }
 
@@ -499,6 +652,66 @@ try {
         $results = [];
     }
 
+    if ($nearbyLocation !== null && !$outOfScope) {
+        $mapPlaces = is_array($evidence['nearby_places'] ?? null) ? $evidence['nearby_places'] : [];
+        $mapResults = buildNearbyMapResults(
+            $nearbyRelevantCandidates,
+            $mapPlaces,
+            $nearbyLocation['latitude'],
+            $nearbyLocation['longitude'],
+            5.0
+        );
+        $seenMapUrls = [];
+        foreach (array_merge($results, $webResults) as $existingPlace) {
+            $mapUrl = trim((string)($existingPlace['location_source_url'] ?? ''));
+            if ($mapUrl !== '') $seenMapUrls[$mapUrl] = true;
+        }
+        foreach ($mapResults as $mapResult) {
+            $mapUrl = (string)($mapResult['location_source_url'] ?? '');
+            if ($mapUrl !== '' && !isset($seenMapUrls[$mapUrl])) {
+                $webResults[] = $mapResult;
+                $seenMapUrls[$mapUrl] = true;
+            }
+        }
+        usort($webResults, fn($a, $b) => ((float)($a['distance_km'] ?? PHP_FLOAT_MAX)) <=> ((float)($b['distance_km'] ?? PHP_FLOAT_MAX)));
+        $webResults = array_slice($webResults, 0, 20);
+        $nearbyItems = array_merge($results, $webResults);
+        usort($nearbyItems, fn($a, $b) => ((float)($a['distance_km'] ?? PHP_FLOAT_MAX)) <=> ((float)($b['distance_km'] ?? PHP_FLOAT_MAX)));
+        $nearbySearch['status'] = !$mapPlaces ? 'no_map_data' : ($nearbyItems ? 'ok' : 'no_matching_places_within_radius');
+        $nearbySearch['result_count'] = count($nearbyItems);
+        if (!$nearbyItems) {
+            $answer = $nearbySearch['status'] === 'no_map_data'
+                ? 'I could not retrieve verified OpenStreetMap restaurant locations for this search, so I cannot confirm places within 5 km. Please try again or choose a Davao City area instead.'
+                : 'I could not verify any restaurants matching your request within 5 km. I have not included distant or unverified places.';
+        } else {
+            $summaryItems = [];
+            foreach (array_slice($nearbyItems, 0, 6) as $nearbyItem) {
+                if (!isset($nearbyItem['distance_km']) || !is_numeric($nearbyItem['distance_km'])) continue;
+                $summaryItems[] = trim((string)($nearbyItem['name'] ?? 'Restaurant'))
+                    . ' (' . number_format((float)$nearbyItem['distance_km'], 1) . ' km)';
+            }
+            $answer = 'Matching restaurants within 5 km, ordered by approximate distance: '
+                . implode(', ', $summaryItems)
+                . '. Distances are straight-line estimates; OpenStreetMap coverage may be incomplete.';
+        }
+    }
+    if ($requestedRestaurantCore !== null && !$outOfScope) {
+        $results = filterPlacesByRestaurantCore($results, $requestedRestaurantCore);
+        $webResults = filterPlacesByRestaurantCore($webResults, $requestedRestaurantCore);
+        $sources = [];
+        if ($nearbyLocation === null) {
+            $brandName = restaurantCoreDisplayName($places, $requestedRestaurantCore);
+            $matchingNames = [];
+            foreach (array_merge($results, $webResults) as $place) {
+                $name = trim((string)($place['name'] ?? ''));
+                if ($name !== '' && !in_array($name, $matchingNames, true)) $matchingNames[] = $name;
+            }
+            $answer = $matchingNames
+                ? 'Here are matching ' . $brandName . ' locations in Davao City: ' . implode(', ', array_slice($matchingNames, 0, 8)) . '.'
+                : 'I could not find a verified ' . $brandName . ' location in the Davao City dataset for this search.';
+        }
+    }
+
     ob_clean();
     $playwrightSuccess = ($evidence['success'] ?? false) === true;
     $totalLatencyMs = (int)round((microtime(true) - $requestStartedAt) * 1000);
@@ -542,6 +755,7 @@ try {
         ],
         'agentic_loop'=>$loopTelemetry,
         'volatility'=>$volatilityReport,
+        'nearby_search'=>$nearbySearch['enabled'] ?? false,
         'parsed_intent'=>[
             'disambiguation_type'=>$intent['disambiguation_type'] ?? 'none',
             'max_price_php'=>$intent['max_price_php'] ?? null,
@@ -601,6 +815,7 @@ try {
         'webResults'=>$webResults,
         'results'=>$results,
         'count'=>count($results),
+        'locationSearch'=>$nearbySearch,
         'metrics'=>$metrics,
     ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 } catch (Throwable $e) {

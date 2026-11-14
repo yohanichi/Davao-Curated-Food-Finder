@@ -5,6 +5,7 @@ $appRoot = dirname(__DIR__);
 require_once $appRoot . '/vendor/autoload.php';
 require_once $appRoot . '/src/search.php';
 require_once $appRoot . '/src/web_reasoner.php';
+require_once $appRoot . '/src/nearby.php';
 require_once __DIR__ . '/statistics.php';
 require_once __DIR__ . '/metrics.php';
 require_once __DIR__ . '/usability.php';
@@ -75,6 +76,31 @@ assertCheck($val['wrong_location_count'] >= 1, 'Detects wrong city locations');
 assertCheck($val['missing_source_count'] >= 1, 'Detects missing web sources');
 assertCheck($val['fabricated_detail_count'] >= 2, 'Detects altered local rating / fabricated price / unverified URL');
 assertCheck($val['unsupported_claim_count'] >= 2, 'Detects unsupported claims');
+
+$nearbyKfcPlaces = [
+    ['_id'=>'kfc-lanang', 'name'=>'KFC - Lanang', 'address'=>'Davao City', 'city'=>'Davao City', 'rating'=>4.4, 'review_count'=>500],
+    ['_id'=>'kfc-quirino', 'name'=>'KFC - Quirino Davao', 'address'=>'Davao City', 'city'=>'Davao City', 'rating'=>4.2, 'review_count'=>400],
+    ['_id'=>'toril-burgers', 'name'=>'Backyard Burgers - Toril', 'address'=>'Davao City', 'city'=>'Davao City', 'rating'=>4.8, 'review_count'=>100],
+];
+$nearbyMapPlaces = [
+    ['name'=>'KFC', 'city'=>'Davao City', 'district'=>'Lanang', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/101'],
+    ['name'=>'Backyard Burgers', 'city'=>'Davao City', 'district'=>'Toril', 'latitude'=>7.006, 'longitude'=>125.501, 'url'=>'https://www.openstreetmap.org/node/102'],
+];
+$rankedNearbyPlaces = rankNearbyCandidates($nearbyKfcPlaces, $nearbyKfcPlaces, $nearbyMapPlaces, 7.105, 125.635, 5.0);
+assertCheck(count($rankedNearbyPlaces) === 1 && $rankedNearbyPlaces[0]['_id'] === 'kfc-lanang', 'Near-me search matches the right chain branch and excludes distant map points');
+$nearbyMapResults = buildNearbyMapResults($nearbyKfcPlaces, $nearbyMapPlaces, 7.105, 125.635, 5.0);
+assertCheck(count($nearbyMapResults) === 1 && $nearbyMapResults[0]['name'] === 'KFC' && $nearbyMapResults[0]['rating'] === null, 'Near-me map-only chain results do not inherit an unverified branch rating');
+assertApprox(nearbyDistanceKm(0.0, 0.0, 0.0, 1.0), 111.195, 0.01, 'Haversine distance uses kilometers');
+$brandQueries = nearbyBrandQueryTerms([
+    ['name'=>"McDonald's - Davao Bajada"],
+    ['name'=>"McDonald's - SPMC"],
+    ['name'=>'KFC - Lanang Davao'],
+    ['name'=>'Jollibee - Phoenix Lanang'],
+]);
+assertCheck($brandQueries === ["McDonald's", 'KFC', 'Jollibee'], 'Near-me map lookup queries unique restaurant brands without branch ambiguity');
+$invalidNearbyFeature = $nearbyMapPlaces[0];
+$invalidNearbyFeature['city'] = 'Tagum City';
+assertCheck(!isValidNearbyMapPlace($invalidNearbyFeature), 'Near-me search rejects map features outside Davao City');
 
 // 3. Test Scope Detection & Multi-Turn Intent Resolution
 assertCheck(detectOutOfScopeLocation('Japanese restaurants in Tagum City')['out_of_scope'] === true, 'Tagum City rejected');
@@ -211,6 +237,122 @@ $loopIntent = parseQueryIntent('Japanese restaurants in Davao City under ₱200'
 assertCheck($repairedIds[0] === 'p3' && !in_array('p1', $repairedIds, true) && !in_array('p2', $repairedIds, true), 'Autonomous iterative loop prunes closed & price-violating venues');
 assertCheck($loopStats['final_compliance_rate'] > $loopStats['initial_compliance_rate'], 'Autonomous loop measurably improves compliance rate from Pass 1 to Pass 2');
 
+$chickenIntent = parseQueryIntent('chicken');
+$popularChickenPlaces = [
+    [
+        '_id'=>'chicken-kfc',
+        'name'=>'KFC - Quirino Davao',
+        'food_type'=>'Fast Food',
+        'description'=>'',
+        'address'=>'Davao City',
+        'city'=>'Davao City',
+        'price_range'=>'',
+        'rating'=>4.9,
+        'review_count'=>17913,
+        '_review_signals'=>[],
+        '_review_snippets'=>[],
+        '_branch_area'=>'',
+    ],
+    [
+        '_id'=>'chicken-mcdonalds',
+        'name'=>'McDonald\'s - Davao Bajada',
+        'food_type'=>'Fast Food',
+        'description'=>'',
+        'address'=>'Davao City',
+        'city'=>'Davao City',
+        'price_range'=>'',
+        'rating'=>5.0,
+        'review_count'=>21541,
+        '_review_signals'=>[],
+        '_review_snippets'=>[],
+        '_branch_area'=>'',
+    ],
+    [
+        '_id'=>'chicken-jollibee',
+        'name'=>'Jollibee - Davao Magsaysay',
+        'food_type'=>'Burgers',
+        'description'=>'',
+        'address'=>'Davao City',
+        'city'=>'Davao City',
+        'price_range'=>'',
+        'rating'=>5.0,
+        'review_count'=>1182,
+        '_review_signals'=>[],
+        '_review_snippets'=>[],
+        '_branch_area'=>'',
+    ],
+    [
+        '_id'=>'chicken-low-review',
+        'name'=>'Chicken Place With Few Reviews',
+        'food_type'=>'Chicken',
+        'description'=>'',
+        'address'=>'Davao City',
+        'city'=>'Davao City',
+        'price_range'=>'',
+        'rating'=>2.5,
+        'review_count'=>2,
+        '_review_signals'=>[],
+        '_review_snippets'=>[],
+        '_branch_area'=>'',
+    ],
+];
+$requestedCore = detectExplicitRestaurantCoreQuery($popularChickenPlaces, 'Jollibee');
+$jollibeeOnlyPlaces = $requestedCore !== null
+    ? filterPlacesByRestaurantCore($popularChickenPlaces, $requestedCore)
+    : [];
+$standaloneJollibeeIntent = parseQueryIntent('jollibee', [], []);
+assertCheck(
+    $requestedCore === 'jollibee'
+    && detectExplicitRestaurantCoreQuery($popularChickenPlaces, 'Show me Jollibee branches near me') === 'jollibee'
+    && count($jollibeeOnlyPlaces) === 1
+    && $jollibeeOnlyPlaces[0]['_id'] === 'chicken-jollibee'
+    && empty($standaloneJollibeeIntent['cuisines'])
+    && empty($standaloneJollibeeIntent['specific_dishes']),
+    'Explicit Jollibee search resets inherited chicken intent and excludes other chains'
+);
+$rankedChickenPlaces = shortlistPlaces($popularChickenPlaces, 'chicken', 10, $chickenIntent);
+$rankedChickenIds = array_column($rankedChickenPlaces, '_id');
+$topChickenIds = array_slice($rankedChickenIds, 0, 3);
+$lowReviewChickenRank = array_search('chicken-low-review', $rankedChickenIds, true);
+assertCheck(
+    count(array_intersect(['chicken-kfc', 'chicken-mcdonalds', 'chicken-jollibee'], $topChickenIds)) === 3
+    && $lowReviewChickenRank !== false
+    && $lowReviewChickenRank > 2
+    && critiqueSinglePlace($popularChickenPlaces[0], $chickenIntent, [], false, true) === [],
+    'Chicken results include well-reviewed fast-food chains and down-rank low-review venues'
+);
+$chickenPlaces = [];
+for ($i = 1; $i <= 10; $i++) {
+    $chickenPlaces[] = [
+        '_id'=>'chicken-' . $i,
+        'name'=>'Chicken Place ' . $i,
+        'food_type'=>'Chicken',
+        'description'=>'',
+        'address'=>'Davao City',
+        'city'=>'Davao City',
+        'price_range'=>'',
+        'rating'=>4.5,
+        'review_count'=>100,
+        '_review_signals'=>[],
+        '_review_snippets'=>[],
+        '_branch_area'=>'',
+    ];
+}
+[$expandedChickenAnswer, $expandedChickenIds] = runAutonomousRefinementLoop(
+    'chicken',
+    'Here are chicken places.',
+    array_column(array_slice($chickenPlaces, 0, 4), '_id'),
+    [],
+    $chickenPlaces,
+    $chickenIntent,
+    [],
+    true
+);
+assertCheck(
+    count($expandedChickenIds) === 8 && count(array_unique($expandedChickenIds)) === 8,
+    'Interactive food recommendations consistently fill up to eight grounded local matches'
+);
+
 // 9. Test Objective 4C — Standard 10-Item System Usability Scale (SUS) Formula
 $perfectSus = computeSusScore([1=>5, 2=>1, 3=>5, 4=>1, 5=>5, 6=>1, 7=>5, 8=>1, 9=>5, 10=>1]);
 $neutralSus = computeSusScore([1=>3, 2=>3, 3=>3, 4=>3, 5=>3, 6=>3, 7=>3, 8=>3, 9=>3, 10=>3]);
@@ -257,6 +399,140 @@ assertCheck(
     && in_array('sisig', $sisigTurn3['specific_dishes'], true)
     && (float)($sisigTurn3['max_price_php'] ?? 0) === 150.0,
     'Three-turn conversation retains street, dish, and budget ceiling simultaneously'
+);
+
+$unfilteredReviewFallback = evidencePlacesFallback(['results'=>[
+    [
+        'title'=>'KFC chicken reviews Davao City',
+        'url'=>'https://example.com/kfc-reviews',
+        'text'=>'Customers discuss chicken at this Davao City restaurant.',
+        'review_search'=>true,
+    ],
+]]);
+assertCheck(
+    $unfilteredReviewFallback === [],
+    'Raw review-focused results are not recommended when sentiment analysis is unavailable'
+);
+
+$articleEvidence = [
+    'results'=>[
+        ['title'=>'Order from the best Chicken restaurants', 'url'=>'https://example.com/order-chicken', 'text'=>'Davao City chicken delivery'],
+        ['title'=>'The 19 best spots for fried chicken', 'url'=>'https://example.com/best-fried-chicken', 'text'=>'Davao City fried chicken guide'],
+        ['title'=>'KFC - SM City Davao', 'url'=>'https://example.com/kfc', 'text'=>'Davao City chicken restaurant'],
+    ],
+];
+assertCheck(
+    isLikelyRestaurantArticleTitle('Order from the best Chicken restaurants')
+    && isLikelyRestaurantArticleTitle('The 19 best spots for fried chicken')
+    && isLikelyRestaurantArticleTitle('THE BEST 10 BURGERS')
+    && isLikelyRestaurantArticleTitle('Best Burgers in Davao City Diversion Rd')
+    && isLikelyRestaurantArticleTitle('10 Restaurants to Try in Davao City')
+    && isLikelyRestaurantArticleTitle('A Guide to the Best Burger Spots in Davao')
+    && !isLikelyRestaurantArticleTitle('KFC - SM City Davao'),
+    'Article title filter distinguishes listicle headlines from restaurant names'
+);
+assertCheck(
+    array_column(evidencePlacesFallback($articleEvidence), 'name') === ['KFC - SM City Davao'],
+    'Raw web fallback returns the restaurant, not article headlines'
+);
+assertCheck(
+    sanitizeWebPlaces([
+        ['name'=>'Order from the best Chicken restaurants', 'city'=>'Davao City', 'source_url'=>'https://example.com/order-chicken'],
+        ['name'=>'The 19 best spots for fried chicken', 'city'=>'Davao City', 'source_url'=>'https://example.com/best-fried-chicken'],
+        ['name'=>'KFC - SM City Davao', 'city'=>'Davao City', 'source_url'=>'https://example.com/kfc'],
+    ], $articleEvidence) === [
+        [
+            'name'=>'KFC - SM City Davao',
+            'food_type'=>'',
+            'rating'=>'',
+            'review_count'=>'',
+            'price_range'=>'',
+            'address'=>'',
+            'city'=>'Davao City',
+            'description'=>'',
+            'source_url'=>'https://example.com/kfc',
+            'unsupported'=>false,
+            'source_status'=>'supported',
+        ],
+    ],
+    'AI-structured web results reject listicle titles while retaining venue listings'
+);
+
+$burgerSearchEvidence = [
+    'results'=>[
+        [
+            'title'=>'THE BEST 10 BURGERS in DAVAO CITY - Yelp',
+            'url'=>'https://www.yelp.com/search?cflt=burgers&find_loc=Davao+City',
+            'text'=>'Search snippet: Best Burgers in Davao City - Backyard Burgers, Burger Chef',
+        ],
+    ],
+];
+$burgerSearchPlaces = sanitizeWebPlaces([
+    ['name'=>'THE BEST 10 BURGERS', 'food_type'=>'Coffee / Cafe', 'city'=>'Davao City', 'source_url'=>'https://www.yelp.com/search?cflt=burgers&find_loc=Davao+City'],
+    ['name'=>'Backyard Burgers', 'food_type'=>'Burgers', 'city'=>'Davao City', 'source_url'=>'https://www.yelp.com/search?cflt=burgers&find_loc=Davao+City'],
+    ['name'=>'Burger Chef', 'food_type'=>'Burgers', 'city'=>'Davao City', 'source_url'=>'https://www.yelp.com/search?cflt=burgers&find_loc=Davao+City'],
+], $burgerSearchEvidence);
+assertCheck(
+    array_column($burgerSearchPlaces, 'name') === ['Backyard Burgers', 'Burger Chef'],
+    'Yelp category headlines are rejected while named restaurant results are retained'
+);
+
+$reviewProfileEvidence = [
+    'results'=>[
+        [
+            'title'=>'CONCHING\'S NATIVE CHICKEN, Davao City - Restaurant Reviews - Tripadvisor',
+            'url'=>'https://www.tripadvisor.com/Restaurant_Review-g298459-d8465622-Reviews-Conching_s_Native_Chicken-Davao_City_Davao_del_Sur.html',
+            'text'=>'Search snippet: I really love the fact that we are eating not only chicken, but the best native chicken grilled in town.',
+            'review_search'=>true,
+            'review_query'=>'Davao City chicken restaurants customer reviews',
+        ],
+        [
+            'title'=>'Negative Chicken Restaurant, Davao City - Restaurant Reviews - Tripadvisor',
+            'url'=>'https://www.tripadvisor.com/Restaurant_Review-negative-chicken',
+            'text'=>'Search snippet: The chicken was dry and disappointing.',
+            'review_search'=>true,
+            'review_query'=>'Davao City chicken restaurants customer reviews',
+        ],
+        [
+            'title'=>'THE BEST 10 CHICKEN SHOPS in DAVAO CITY - Yelp',
+            'url'=>'https://www.yelp.com/search?cflt=chickenshop&find_loc=Davao+City',
+            'text'=>'Search snippet: The chicken was delicious.',
+            'review_search'=>true,
+            'review_query'=>'Davao City chicken restaurants customer reviews',
+        ],
+    ],
+];
+assertCheck(
+    array_column(evidencePlacesFallback($reviewProfileEvidence), 'name') === ['CONCHING\'S NATIVE CHICKEN'],
+    'Fallback includes positive food-specific venue reviews, excluding negative reviews and review listicles'
+);
+
+$yelpDirectoryEvidence = [
+    'results'=>[
+        [
+            'title'=>'THE BEST 10 CHICKEN SHOPS IN DAVAO CITY - Yelp',
+            'url'=>'https://www.yelp.com/search?cflt=chickenshop&find_loc=Davao+City',
+            'text'=>'Search snippet: Best Chicken Shop in Davao City, Philippines - Last Updated November 2026 - Rophe\'s Chicken, BonChon, Wings and Dips, Max\'s Restaurant, KFC, Jollibee',
+        ],
+        [
+            'title'=>'TOP 10 BEST Cafes in Davao City - Yelp',
+            'url'=>'https://www.yelp.com/search?find_desc=Cafes&find_loc=Davao+City',
+            'text'=>'Search snippet: Top 10 Best Cafes in Davao City, Philippines - Last Updated November 2026 - Yelp - Coffee Cat, Starbucks Coffee, Bo\'s Coffee',
+        ],
+    ],
+];
+$chickenDirectoryPlaces = extractYelpDirectoryVenues($yelpDirectoryEvidence, parseQueryIntent('chicken'));
+$coffeeDirectoryPlaces = extractYelpDirectoryVenues($yelpDirectoryEvidence, parseQueryIntent('coffee'));
+assertCheck(
+    array_column($chickenDirectoryPlaces, 'name') === ['Rophe\'s Chicken', 'BonChon', 'Wings and Dips', 'Max\'s Restaurant', 'KFC', 'Jollibee']
+    && array_column($coffeeDirectoryPlaces, 'name') === ['Coffee Cat', 'Starbucks Coffee', 'Bo\'s Coffee'],
+    'Category directory snippets produce individual restaurant matches for different food requests'
+);
+assertCheck(
+    count(sanitizeWebPlaces($chickenDirectoryPlaces, $yelpDirectoryEvidence)) === 6
+    && ($chickenDirectoryPlaces[4]['rating'] ?? null) === ''
+    && str_contains($chickenDirectoryPlaces[4]['description'], 'does not verify'),
+    'Directory matches remain source-linked without invented ratings or menu claims'
 );
 
 echo "Unit & Integration Suite: {$passed} passed, {$failed} failed.\n";

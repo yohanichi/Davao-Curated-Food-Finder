@@ -987,6 +987,31 @@ function shortlistPlacesBaseline(array $places, string $query, int $limit): arra
     return array_slice($rated ?: $places, 0, $limit);
 }
 
+function reviewBasedRankingScore(array $place): float {
+    $ratingValue = $place['_live_rating'] ?? $place['rating'] ?? null;
+    $rating = is_numeric($ratingValue) ? (float)$ratingValue : null;
+    if ($rating !== null && ($rating <= 0.0 || $rating > 5.0)) {
+        $rating = null;
+    }
+
+    $reviewCount = max(0, (int)($place['review_count'] ?? 0));
+    if ($rating === null && $reviewCount === 0) {
+        return 0.0;
+    }
+
+    $score = min(10.0, log10($reviewCount + 1) * 2.0);
+    if ($rating !== null) {
+        $priorReviewCount = 20;
+        $observedReviewCount = max(1, $reviewCount);
+        $adjustedRating = (
+            $rating * $observedReviewCount + 4.0 * $priorReviewCount
+        ) / ($observedReviewCount + $priorReviewCount);
+        $score += ($adjustedRating - 3.5) * 2.0;
+    }
+
+    return $score;
+}
+
 /**
  * Resolve lexical polysemy and category confusion traps in restaurant names vs. actual food categories.
  */
@@ -1199,8 +1224,8 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
     $cuisineFoodTypes = [
         'Japanese' => ['japanese', 'ramen', 'sushi'],
         'Coffee' => ['coffee'],
-        'Fried Chicken' => ['fried chicken', 'chicken wings', 'chicken'],
-        'Chicken' => ['chicken', 'fried chicken', 'chicken wings'],
+        'Fried Chicken' => ['fried chicken', 'chicken wings', 'chicken', 'fast food', 'burgers'],
+        'Chicken' => ['chicken', 'fried chicken', 'chicken wings', 'fast food', 'burgers'],
         'Korean' => ['korean'],
         'Pizza' => ['pizza', 'italian', 'pasta'],
         'Seafood' => ['seafood', 'fish'],
@@ -1255,13 +1280,14 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
 
         // 1. Lexical food/attribute term matching (excluding street/neighborhood names)
         foreach ($foodTerms as $term) {
+            $typeHasTerm = mb_strpos($typeLower, $term) !== false;
             if ($typeLower === $term) {
-                $foodScore += 6.0;
-            } elseif (mb_strpos($typeLower, $term) !== false) {
+                $foodScore += 5.0;
+            } elseif ($typeHasTerm) {
                 $foodScore += 4.5;
             }
             if (mb_strpos($nameLower, $term) !== false) {
-                $foodScore += 3.5;
+                $foodScore += $typeHasTerm ? 1.5 : 3.5;
             } elseif (mb_strpos($haystack, $term) !== false) {
                 $foodScore += 1.2;
             }
@@ -1284,7 +1310,11 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
             $allowedTypes = $cuisineFoodTypes[$cuisine] ?? [mb_strtolower($cuisine, 'UTF-8')];
             $matchedThisCuisine = false;
             if ($typeLower !== '' && in_array($typeLower, $allowedTypes, true)) {
-                $cBoost = ($typeLower === $allowedTypes[0]) ? 10.0 : 6.5;
+                $isChickenMenuCategory = in_array($cuisine, ['Chicken', 'Fried Chicken'], true)
+                    && in_array($typeLower, ['fast food', 'burgers'], true);
+                $cBoost = $isChickenMenuCategory
+                    ? 15.0
+                    : (($typeLower === $allowedTypes[0]) ? 10.0 : 6.5);
                 // When user asked for a strict dish (e.g. sisig), don't let an unrelated BBQ/Filipino sub-type (like lechon manok) overpower real sisigans
                 if ($strictDishes && $strictDishCorpusCount >= 2 && !placeMatchesSpecificDishes($p, $strictDishes)) {
                     $cBoost *= 0.15;
@@ -1465,8 +1495,8 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
             } else {
                 $score += 4.5 + min(3.0, log($revCount + 1, 10));
             }
-        } elseif ($score > 0 && $effectiveRating !== null) {
-            $score += ($effectiveRating / 5.0) * 1.2 + min(1.5, log($revCount + 1, 10) * 0.4);
+        } elseif ($score > 0 && ($effectiveRating !== null || $revCount > 0)) {
+            $score += reviewBasedRankingScore($p);
         }
 
         if ($score > 0.5) {
@@ -1505,7 +1535,9 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
 
     // Broad/ambiguous requests with no lexical/constraint matches: return well-rated diverse Davao City options.
     $rated = array_values(array_filter($places, fn($place) => (!$applyHardCritiqueMasks || ($place['_live_status'] ?? 'open') !== 'permanently_closed') && is_numeric($place['rating'] ?? null) && ($minRating === null || (float)$place['rating'] >= $minRating)));
-    usort($rated, fn($a, $b) => ($b['rating'] <=> $a['rating']) ?: (($b['review_count'] ?? 0) <=> ($a['review_count'] ?? 0)));
+    usort($rated, fn($a, $b) => (reviewBasedRankingScore($b) <=> reviewBasedRankingScore($a))
+        ?: (($b['rating'] ?? 0) <=> ($a['rating'] ?? 0))
+        ?: (($b['review_count'] ?? 0) <=> ($a['review_count'] ?? 0)));
     if ($applyHardCritiqueMasks && ($maxPricePhp !== null || $minPricePhp !== null)) {
         $rated = enforceNumericPriceCeiling($rated, $maxPricePhp, $minPricePhp, true);
     }
@@ -1676,6 +1708,14 @@ function publicPlace(array $p): array {
     if (isset($p['_live_volatility_note']) && is_string($p['_live_volatility_note']) && $p['_live_volatility_note'] !== '') {
         $p['volatility_note'] = $p['_live_volatility_note'];
     }
+    if (isset($p['_nearby_distance_km']) && is_numeric($p['_nearby_distance_km'])) {
+        $p['distance_km'] = round((float)$p['_nearby_distance_km'], 2);
+        $p['location_source'] = 'OpenStreetMap';
+        $p['location_source_url'] = (string)($p['_nearby_source_url'] ?? '');
+        if (empty($p['source_url'])) {
+            $p['source_url'] = $p['location_source_url'];
+        }
+    }
     unset(
         $p['_branch_area'],
         $p['_review_signals'],
@@ -1687,7 +1727,9 @@ function publicPlace(array $p): array {
         $p['_live_price_source_url'],
         $p['_live_hours_late'],
         $p['_live_rating'],
-        $p['_live_volatility_note']
+        $p['_live_volatility_note'],
+        $p['_nearby_distance_km'],
+        $p['_nearby_source_url']
     );
     return $p;
 }

@@ -162,15 +162,16 @@ function fetchBingHttp(searchQuery) {
   });
 }
 
-function fetchPhotonPlaces(searchQuery) {
+function fetchPhotonPlaces(searchQuery, resultLimit = 8) {
   const placeQuery = searchQuery
-    .replace(/\b(?:quiet|study|studying|work|working|best|good|nearby)\b/gi, '')
+    .replace(/\b(?:quiet|study|studying|work|working|best|good|nearby|near\s+me)\b/gi, '')
     .replace(/\bcafes\b/gi, 'cafe')
     .replace(/\s+/g, ' ')
     .trim();
   if (!placeQuery) return Promise.resolve([]);
 
-  const url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(placeQuery) + '&limit=10&lang=en';
+  const limit = Math.max(1, Math.min(50, Math.trunc(Number(resultLimit) || 8)));
+  const url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(placeQuery) + '&limit=' + limit + '&lang=en';
   return new Promise((resolve) => {
     const req = https.get(url, {
       headers: {
@@ -205,15 +206,30 @@ function fetchPhotonPlaces(searchQuery) {
           if (!/^davao city$/i.test(String(place.city || '')) || !/^philippines$/i.test(String(place.country || ''))) continue;
           if (!/^[NWR]$/i.test(String(place.osm_type || '')) || !/^\d+$/.test(String(place.osm_id || ''))) continue;
 
-          const osmType = String(place.osm_type).toLowerCase();
-          const address = [place.street, place.district, place.city, place.country].filter(Boolean).join(', ');
+          const osmType = ({ N: 'node', W: 'way', R: 'relation' })[String(place.osm_type).toUpperCase()];
+          if (!osmType) continue;
+          const address = [place.street, place.district, place.city].filter(Boolean).join(', ');
+          const coordinates = feature.geometry && Array.isArray(feature.geometry.coordinates)
+            ? feature.geometry.coordinates
+            : [];
+          const longitude = Number(coordinates[0]);
+          const latitude = Number(coordinates[1]);
+          if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90 || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) continue;
           items.push({
+            name: String(place.name).trim(),
             title: String(place.name).trim(),
             url: `https://www.openstreetmap.org/${osmType}/${place.osm_id}`,
             snippet: `OpenStreetMap lists this ${String(place.osm_value).replace(/_/g, ' ')} at ${address}. OpenStreetMap contributors (https://www.openstreetmap.org/copyright).`,
-            placeLookup: true
+            placeLookup: true,
+            latitude,
+            longitude,
+            city: String(place.city).trim(),
+            address,
+            district: String(place.district || '').trim(),
+            street: String(place.street || '').trim(),
+            food_type: String(place.cuisine || place.osm_value).replace(/_/g, ' ')
           });
-          if (items.length >= 8) break;
+          if (items.length >= limit) break;
         }
         resolve(items);
       });
@@ -281,6 +297,12 @@ function parseBraveHtml(html) {
   return items;
 }
 
+function buildReviewSearchQuery(searchQuery) {
+  return /\b(reviews?|ratings?)\b/i.test(searchQuery)
+    ? searchQuery
+    : `${searchQuery} customer reviews`;
+}
+
 async function collectBingBrowser(context, searchQuery) {
   const page = await context.newPage();
   await page.setDefaultTimeout(PLAYWRIGHT_STEP_TIMEOUT);
@@ -312,6 +334,20 @@ async function run() {
   const searchArgs = process.argv.slice(2);
   const finalQuery = String(searchArgs[0] || '').trim();
   if (!finalQuery) throw new Error('Search query is required');
+  const includeNearby = searchArgs[2] === '--nearby';
+  let nearbyQueries = [];
+  if (includeNearby && searchArgs[3]) {
+    let decodedNearbyQueries;
+    try {
+      decodedNearbyQueries = JSON.parse(Buffer.from(searchArgs[3], 'base64').toString('utf8'));
+    } catch (error) {
+      throw new Error(`Photon place lookup queries could not be decoded: ${error.message}`);
+    }
+    if (!Array.isArray(decodedNearbyQueries) || decodedNearbyQueries.some(query => typeof query !== 'string')) {
+      throw new Error('Photon place lookup queries must be a JSON array of strings');
+    }
+    nearbyQueries = decodedNearbyQueries.slice(0, 3).map(query => query.trim()).filter(Boolean);
+  }
   let priceQueries = [];
   if (searchArgs[1]) {
     let decodedPriceQueries;
@@ -350,19 +386,45 @@ async function run() {
     searchQuery += ' restaurants';
   }
 
-  // 1. Fast direct HTTPS queries: Try Brave, then DuckDuckGo/Bing.
-  let candidates = await fetchBraveHttp(searchQuery);
-  if (candidates.length < 3) {
-    const ddgCandidates = await fetchDuckDuckGoHttp(searchQuery);
-    candidates = candidates.concat(ddgCandidates);
+  const reviewSearchQuery = buildReviewSearchQuery(searchQuery);
+  const nearbyPlacesPromise = includeNearby
+    ? Promise.all([
+      fetchPhotonPlaces(searchQuery, 50),
+      ...nearbyQueries.map(query => fetchPhotonPlaces(`${query} Davao City`, 50))
+    ]).then(placeGroups => {
+      const seenPlaces = new Set();
+      return placeGroups.flat().filter(place => {
+        if (!place.url || seenPlaces.has(place.url)) return false;
+        seenPlaces.add(place.url);
+        return true;
+      });
+    })
+    : null;
+  const collectSearchResults = async query => {
+    let found = await fetchBraveHttp(query);
+    if (found.length < 3) {
+      found = found.concat(await fetchDuckDuckGoHttp(query));
+    }
+    if (found.length < 3) {
+      found = found.concat(await fetchBingHttp(query));
+    }
+    return found;
+  };
+
+  // Keep general discovery and food-specific review evidence from competing for one query's results.
+  const [generalCandidates, reviewCandidates] = await Promise.all([
+    collectSearchResults(searchQuery),
+    collectSearchResults(reviewSearchQuery)
+  ]);
+  let candidates = [];
+  const maxSearchResults = Math.max(generalCandidates.length, reviewCandidates.length);
+  for (let i = 0; i < maxSearchResults; i++) {
+    if (generalCandidates[i]) candidates.push({ ...generalCandidates[i], reviewSearch: false });
+    if (reviewCandidates[i]) candidates.push({ ...reviewCandidates[i], reviewSearch: true });
   }
   if (candidates.length < 3) {
-    const bingCandidates = await fetchBingHttp(searchQuery);
-    candidates = candidates.concat(bingCandidates);
-  }
-  if (candidates.length < 3) {
-    const placeCandidates = await fetchPhotonPlaces(searchQuery);
-    candidates = candidates.concat(placeCandidates);
+    const photonPlaces = nearbyPlacesPromise ? await nearbyPlacesPromise : await fetchPhotonPlaces(searchQuery);
+    candidates.push(...photonPlaces.slice(0, 8).map(item => ({ ...item, reviewSearch: false })));
   }
 
   const priceCandidates = [];
@@ -408,10 +470,10 @@ async function run() {
     try {
       const ctx = await getContext();
       const bingBrowser = await collectBingBrowser(ctx, searchQuery);
-      candidates = candidates.concat(bingBrowser);
+      candidates.push(...bingBrowser.map(item => ({ ...item, reviewSearch: false })));
       if (candidates.length < 3) {
         const ddgBrowser = await collectDuckDuckGoBrowser(ctx, searchQuery);
-        candidates = candidates.concat(ddgBrowser);
+        candidates.push(...ddgBrowser.map(item => ({ ...item, reviewSearch: false })));
       }
     } catch {}
   }
@@ -430,14 +492,14 @@ async function run() {
     if (!normUrl || seenUrls.has(normUrl)) continue;
     seenUrls.add(normUrl);
     deduped.push(item);
-    if (deduped.length >= 8) break;
+    if (deduped.length >= 16) break;
   }
 
   // 3. For candidates that are social media (Facebook/TikTok/Instagram) or already have rich snippets,
   // the snippet is already fresh and grounded. For regular web domains, do a quick parallel fetch if browser is active.
   let fetchedPricePages = 0;
   for (const link of deduped) {
-    if (results.length >= 6) break;
+    if (results.length >= 12) break;
     const isSocialOrReview = /facebook\.com|tiktok\.com|instagram\.com|foodpanda\.ph|grab\.com/i.test(link.url);
     let pageTitle = link.title;
     let bodyText = '';
@@ -475,6 +537,9 @@ async function run() {
         title: pageTitle || link.title,
         url: link.url,
         text: combinedText,
+        review_search: Boolean(link.reviewSearch),
+        review_query: link.reviewSearch ? reviewSearchQuery : '',
+        food_query: searchQuery,
         price_lookup: Boolean(link.priceLookup)
       });
     }
@@ -484,10 +549,15 @@ async function run() {
     await browser.close().catch(() => {});
   }
 
-  process.stdout.write(JSON.stringify({ query: finalTerm, results }));
+  const nearbyPlaces = nearbyPlacesPromise ? await nearbyPlacesPromise : [];
+  process.stdout.write(JSON.stringify({ query: finalTerm, results, nearby_places: nearbyPlaces }));
 }
 
-run().catch(error => {
-  process.stderr.write(String(error && error.message ? error.message : error));
-  process.exit(1);
-});
+if (require.main === module) {
+  run().catch(error => {
+    process.stderr.write(String(error && error.message ? error.message : error));
+    process.exit(1);
+  });
+}
+
+module.exports = { buildReviewSearchQuery, fetchPhotonPlaces };

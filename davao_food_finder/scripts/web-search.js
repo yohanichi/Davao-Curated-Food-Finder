@@ -162,6 +162,67 @@ function fetchBingHttp(searchQuery) {
   });
 }
 
+function fetchPhotonPlaces(searchQuery) {
+  const placeQuery = searchQuery
+    .replace(/\b(?:quiet|study|studying|work|working|best|good|nearby)\b/gi, '')
+    .replace(/\bcafes\b/gi, 'cafe')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!placeQuery) return Promise.resolve([]);
+
+  const url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(placeQuery) + '&limit=10&lang=en';
+  return new Promise((resolve) => {
+    const req = https.get(url, {
+      headers: {
+        'User-Agent': 'DavaoFoodFinder/1.0',
+        'Accept': 'application/json'
+      },
+      timeout: HTTP_TIMEOUT
+    }, res => {
+      if (res.statusCode < 200 || res.statusCode >= 300) return resolve([]);
+      let body = '';
+      res.on('data', chunk => {
+        body += chunk;
+        if (body.length > 500000) {
+          req.destroy();
+          resolve([]);
+        }
+      });
+      res.on('end', () => {
+        let payload;
+        try {
+          payload = JSON.parse(body);
+        } catch {
+          return resolve([]);
+        }
+
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return resolve([]);
+        const features = Array.isArray(payload.features) ? payload.features : [];
+        const items = [];
+        for (const feature of features) {
+          const place = feature && feature.properties;
+          if (!place || !place.name || !/^(?:cafe|restaurant|fast_food|food_court|bar|pub)$/i.test(String(place.osm_value || ''))) continue;
+          if (!/^davao city$/i.test(String(place.city || '')) || !/^philippines$/i.test(String(place.country || ''))) continue;
+          if (!/^[NWR]$/i.test(String(place.osm_type || '')) || !/^\d+$/.test(String(place.osm_id || ''))) continue;
+
+          const osmType = String(place.osm_type).toLowerCase();
+          const address = [place.street, place.district, place.city, place.country].filter(Boolean).join(', ');
+          items.push({
+            title: String(place.name).trim(),
+            url: `https://www.openstreetmap.org/${osmType}/${place.osm_id}`,
+            snippet: `OpenStreetMap lists this ${String(place.osm_value).replace(/_/g, ' ')} at ${address}. OpenStreetMap contributors (https://www.openstreetmap.org/copyright).`,
+            placeLookup: true
+          });
+          if (items.length >= 8) break;
+        }
+        resolve(items);
+      });
+    });
+    req.on('error', () => resolve([]));
+    req.on('timeout', () => { req.destroy(); resolve([]); });
+  });
+}
+
 function fetchBraveHttp(searchQuery) {
   return new Promise((resolve) => {
     const url = 'https://search.brave.com/search?q=' + encodeURIComponent(searchQuery) + '&source=web';
@@ -248,11 +309,31 @@ async function collectBingBrowser(context, searchQuery) {
 }
 
 async function run() {
-  const rawQuery = process.argv.slice(2).join(' ').trim();
-  if (!rawQuery) throw new Error('Search query is required');
+  const searchArgs = process.argv.slice(2);
+  const finalQuery = String(searchArgs[0] || '').trim();
+  if (!finalQuery) throw new Error('Search query is required');
+  let priceQueries = [];
+  if (searchArgs[1]) {
+    let decodedPriceQueries;
+    try {
+      decodedPriceQueries = Buffer.from(searchArgs[1], 'base64').toString('utf8');
+    } catch (error) {
+      throw new Error(`Price lookup queries could not be decoded: ${error.message}`);
+    }
+    let parsedPriceQueries;
+    try {
+      parsedPriceQueries = JSON.parse(decodedPriceQueries);
+    } catch (error) {
+      throw new Error(`Price lookup queries must be valid JSON: ${error.message}`);
+    }
+    if (!Array.isArray(parsedPriceQueries) || parsedPriceQueries.some(query => typeof query !== 'string')) {
+      throw new Error('Price lookup queries must be a JSON array of strings');
+    }
+    priceQueries = parsedPriceQueries.slice(0, 3).map(query => query.trim()).filter(Boolean);
+  }
 
   // Strip conversational / meta directives from the raw command
-  const cleanQuery = rawQuery
+  const cleanQuery = finalQuery
     .replace(/\b(?:dont|do\s+not)\s+give\s+me\s+suggestions?\s+(?:from\s+the\s+dataset|from\s+dataset)\b/gi, '')
     .replace(/\b(?:from\s+the\s+dataset|from\s+dataset|local\s+dataset|not\s+from\s+the\s+dataset|no\s+dataset)\b/gi, '')
     .replace(/\b(?:find\s+it\s+online|search\s+it\s+online|find\s+online|search\s+online|online\s+only|only\s+online|from\s+the\s+web)\b/gi, '')
@@ -279,6 +360,29 @@ async function run() {
     const bingCandidates = await fetchBingHttp(searchQuery);
     candidates = candidates.concat(bingCandidates);
   }
+  if (candidates.length < 3) {
+    const placeCandidates = await fetchPhotonPlaces(searchQuery);
+    candidates = candidates.concat(placeCandidates);
+  }
+
+  const priceCandidates = [];
+  const priceSearchResults = await Promise.all(priceQueries.map(async priceQuery => {
+    const targetedQuery = /\bdavao\b/i.test(priceQuery) ? priceQuery : `${priceQuery} Davao City`;
+    const [brave, duckDuckGo, bing] = await Promise.all([
+      fetchBraveHttp(targetedQuery),
+      fetchDuckDuckGoHttp(targetedQuery),
+      fetchBingHttp(targetedQuery)
+    ]);
+    const seen = new Set();
+    return [...brave, ...duckDuckGo, ...bing].filter(item => {
+      const key = String(item.url || '').split('#')[0].replace(/\/+$/, '');
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 2).map(item => ({ ...item, priceLookup: true }));
+  }));
+  priceCandidates.push(...priceSearchResults.flat());
+  candidates = priceCandidates.concat(candidates);
 
   // 2. Browser fallback if direct HTTPS returned fewer than 3 results
   let browser = null;
@@ -312,6 +416,12 @@ async function run() {
     } catch {}
   }
 
+  if (priceCandidates.length > 0) {
+    try {
+      await getContext();
+    } catch {}
+  }
+
   const results = [];
   const seenUrls = new Set();
   const deduped = [];
@@ -325,18 +435,22 @@ async function run() {
 
   // 3. For candidates that are social media (Facebook/TikTok/Instagram) or already have rich snippets,
   // the snippet is already fresh and grounded. For regular web domains, do a quick parallel fetch if browser is active.
+  let fetchedPricePages = 0;
   for (const link of deduped) {
     if (results.length >= 6) break;
     const isSocialOrReview = /facebook\.com|tiktok\.com|instagram\.com|foodpanda\.ph|grab\.com/i.test(link.url);
     let pageTitle = link.title;
     let bodyText = '';
 
-    if (!isSocialOrReview && browser) {
+    const shouldFetchPricePage = link.priceLookup && fetchedPricePages < 3;
+    const shouldFetchPage = !link.placeLookup && (priceCandidates.length > 0 ? shouldFetchPricePage : Boolean(browser));
+    if (!isSocialOrReview && shouldFetchPage) {
       try {
         const ctx = await getContext();
+        if (shouldFetchPricePage) fetchedPricePages++;
         const newPage = await ctx.newPage();
-        await newPage.setDefaultTimeout(Math.min(PLAYWRIGHT_STEP_TIMEOUT, 5000));
-        await newPage.goto(link.url, { waitUntil: 'domcontentloaded', timeout: Math.min(PLAYWRIGHT_STEP_TIMEOUT, 6000) });
+        await newPage.setDefaultTimeout(Math.min(PLAYWRIGHT_STEP_TIMEOUT, shouldFetchPricePage ? 3000 : 5000));
+        await newPage.goto(link.url, { waitUntil: 'domcontentloaded', timeout: Math.min(PLAYWRIGHT_STEP_TIMEOUT, shouldFetchPricePage ? 3500 : 6000) });
         const fetchedTitle = await newPage.title().catch(() => '');
         if (fetchedTitle && !/^(loading|just a moment|attention required|access denied|suspicious activity|security check|cloudflare|robot|verify)/i.test(fetchedTitle.trim())) {
           pageTitle = fetchedTitle.trim();
@@ -360,7 +474,8 @@ async function run() {
       results.push({
         title: pageTitle || link.title,
         url: link.url,
-        text: combinedText
+        text: combinedText,
+        price_lookup: Boolean(link.priceLookup)
       });
     }
   }

@@ -1,0 +1,27 @@
+rule_type,rule_id,keyword_regex,replacement,test_case_keyword_overlap,test_case_ids
+synonym,bisaya_kan_anan,"/\b(kan[- ]?anan|karinderya|carenderia|turo[- ]?turo)\b/iu","carinderia filipino affordable",yes,D008
+synonym,tagalog_kape,"/\b(kapehan|kape)\b/iu","coffee cafe",no,
+synonym,bisaya_sinugba,"/\b(sinugba|sugba|inihaw|inasalan|ihawan|ihaw[- ]?ihaw)\b/iu","bbq grilled liempo",yes,D009
+synonym,bisaya_sutukil,"/\b(sutukil|kinilaw)\b/iu","seafood filipino",yes,D009
+synonym,local_manokan,"/\b(manokan|litson\s+manok|lechon\s+manok)\b/iu","chicken roasted chicken",no,
+synonym,bisaya_painitan,"/\b(painitan|pamahaw)\b/iu","breakfast porridge lugaw coffee early morning",no,
+synonym,tagalog_panghimagas,"/\b(panghimagas|matamis)\b/iu","desserts cakes sweet",no,
+synonym,filipino_sisigan,"/\b(sisigan)\b/iu","sisig filipino",no,
+synonym,filipino_silogan,"/\b(silogan|tapsilogan)\b/iu","silog tapsilog filipino",no,
+synonym,filipino_paresan,"/\b(paresan|mamihan)\b/iu","pares mami noodles filipino",no,
+synonym,filipino_lugawan,"/\b(lugawan|gotohan)\b/iu","lugaw goto porridge",no,
+synonym,filipino_bulaloan,"/\b(bulaloan|bulalohan)\b/iu","bulalo soup filipino",no,
+synonym,filipino_lomihan,"/\b(lomihan|batchoyan)\b/iu","lomi batchoy noodles",no,
+synonym,filipino_lechonan,"/\b(lechonan)\b/iu","lechon pork filipino",no,
+synonym,filipino_kambingan,"/\b(kambingan)\b/iu","kambing goat filipino",no,
+synonym,typo_samgyup,"/\b(sangyup|samgyeopsal|samgyup\s*sal|samgy)\b/iu","samgyupsal korean",yes,D010
+synonym,typo_shawarma,"/\b(shwarma|shawerma|syawarma)\b/iu","shawarma middle eastern",no,
+synonym,typo_biryani,"/\b(briyani|biriyani|beryani)\b/iu","biryani indian",no,
+synonym,synonym_ramyun,"/\b(ramyun|ramyeon)\b/iu","ramen noodles",yes,D010
+synonym,typo_coffee,"/\b(kapeng\s+barako|espreso|capuccino|cappucino)\b/iu","coffee espresso cafe",no,
+synonym,spelling_seafood,"/\b(sea\s+food)\b/iu",seafood,no,
+anti_polysemy_brand_trap,polysemy_green_brand_not_salad,"/\b(greenwich|green\s+coffee|green\s+bread)\b/iu",,no,
+anti_polysemy_brand_trap,polysemy_24_brand_not_24h,"/\b24\s+chicken\b/iu",,no,
+anti_polysemy_brand_trap,polysemy_tokyo_waffle_not_japanese,"/\btokyo\s+waffle\b/iu",,no,
+anti_polysemy_brand_trap,polysemy_durian_burger_not_pasalubong,"/\bdurian\s+dub\b/iu",,no,
+anti_polysemy_brand_trap,category_confusion_milktea_not_coffee,"/\b(coffee|cafe|café|espresso)\b/iu",,yes,Q032|D005|D012|PC003|MT002|S010

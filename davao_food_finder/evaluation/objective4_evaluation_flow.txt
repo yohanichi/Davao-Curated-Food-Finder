@@ -1,0 +1,315 @@
+DAVAO FOOD FINDER
+OBJECTIVE 4: PRICE, THEMATIC INTENT, ITERATIVE REFINEMENT, AND USABILITY
+
+Purpose
+-------
+This note explains how the project represents user-defined price and thematic
+criteria, how the autonomous loop can repair a draft shortlist, how the
+benchmark scores those behaviors, and what human usability evidence is
+currently available.
+
+IMPORTANT: WHAT THE CURRENT RESULTS CAN SUPPORT
+-----------------------------------------------
+The selected development configuration in dev_grid.json is
+DEEPSEEK-T0.1-BASE. The saved report records:
+
+  - Explicit price-ceiling compliance: 1.0 (100%)
+  - Price-ceiling NDCG@5: about 0.925
+  - Autonomous-loop initial compliance: 0.959
+  - Autonomous-loop final compliance: 1.000
+  - Violations detected/repaired: 2 / 2
+  - Requests with the loop enabled: 13
+  - Human usability participants: 0
+
+Important denominators and qualifications:
+  - The dev split contains only one explicit numeric price-ceiling case,
+    PC004. Thus 100% is one passing benchmark case, not broad evidence across
+    all possible price queries.
+  - In PC004, the final top five have verified_price_hit_rate = 0.8. The
+    evaluator's numeric_price_compliant flag is true, but not all five prices
+    are backed by verified price evidence.
+  - The current metrics.php implements numeric_price_compliant as a price
+    dimension score of at least 0.8 plus at least one verified price hit.
+    This is not the same as proving every top-five venue has a verified price
+    below the ceiling.
+  - The human usability record has n = 0. There is no empirical SUS,
+    participant-rated relevance, task completion, or trust score yet.
+
+SOURCE-PROVENANCE CAVEAT
+-----------------------
+dev_grid.json records SHA-256 hashes for the code used at run time. At the
+time this note was prepared:
+
+  - src/search.php, evaluation/metrics.php, and evaluation/usability.php
+    matched the report's recorded hashes.
+  - src/web_reasoner.php, evaluation/run_evaluation.php, and
+    evaluation/statistics.php did not match the report's recorded hashes.
+
+The saved report is real output, but the current loop/evaluator source files
+cannot be claimed as the exact versions that produced it. The excerpts below
+explain the current code path and the stored report structure. For strict
+reproducibility, recover the matching source snapshot or rerun the benchmark
+with a documented code version and save a new manifest.
+
+1. FILES AND THEIR ROLES
+------------------------
+
+evaluation/ground_truth.json
+  Contains test queries, split assignments, benchmark constraints such as
+  max_price_php, keywords_any and ambiance, and the expected relevant venue
+  names/grades. It defines what each benchmark case asks the system to do.
+
+src/search.php
+  Parses a user's query into structured intent, including numeric price
+  ceilings, cuisine/dishes, ambiance, thematic tags, and conversational
+  context. It extracts explicit peso amounts from evidence, uses review
+  signals, ranks candidates, and applies numeric price filtering.
+
+src/web_reasoner.php
+  Contains critiqueSinglePlace() and runAutonomousRefinementLoop(). The
+  critic examines draft venues for conditions such as verified price
+  violations, wrong location, category/dish mismatch, closures, hours,
+  dietary restrictions, and previously excluded venues. If repair is needed,
+  the loop can re-retrieve candidates and score the revised list.
+
+evaluation/metrics.php
+  Computes benchmark constraint outcomes. It checks city, cuisine/keywords,
+  area, numeric price, budget tier, dietary restrictions, ambiance, and other
+  fields when those constraints are present in a case.
+
+evaluation/run_evaluation.php
+  Runs cases/configurations, records the response and loop telemetry, then
+  aggregates numeric price compliance and loop statistics. The file hash
+  differs from the version recorded by dev_grid.json.
+
+evaluation/usability.php
+  Defines six participant tasks, computes the standard 10-item SUS score,
+  stores real participant submissions, and aggregates task completion,
+  time, perceived relevance, and price/source trust. It does not fabricate
+  participant data.
+
+evaluation/results/dev_grid.json
+  Stores the development run's manifest, per-configuration summary,
+  participant-study status, and detailed results by case/trial. Look in
+  summary for aggregate metrics and detailed_runs for case-level telemetry.
+
+evaluation/RESEARCH_PROTOCOL.md
+  Defines the planned objective-to-metric mapping and the intended human
+  study. Compare its formal metric definition with the implementation before
+  making a strict compliance claim.
+
+2. FLOW FROM USER REQUEST TO REPORTED RESULT
+--------------------------------------------
+
+Step A - Represent the criteria.
+  The ground-truth case records what the query means: for example, a numeric
+  maximum price, food category, location, thematic preference, and relevance
+  labels.
+
+Step B - Parse the natural-language query.
+  search.php extracts a numeric ceiling such as "under PHP 180" into
+  max_price_php = 180. It also maps thematic phrases such as "quiet study"
+  or "Wi-Fi and sockets" into structured intent tags.
+
+Step C - Retrieve and rank candidates.
+  Candidate scores use cuisine/category matching, review evidence, price
+  evidence, ambiance signals, and thematic signals. Some preferences are
+  ranking boosts rather than absolute exclusion rules.
+
+Step D - Critique the first shortlist.
+  web_reasoner.php audits top candidates. When it detects a rule violation
+  or insufficient compliant candidates, it can perform Pass 2 retrieval and
+  build a repaired shortlist.
+
+Step E - Independently score the result.
+  metrics.php compares the final recommendations with benchmark constraints.
+  run_evaluation.php records price compliance, loop telemetry, ranking
+  quality, and latency in the per-case result.
+
+Step F - Measure human experience separately.
+  usability.php collects task completion, time-on-task, perceived relevance,
+  price/source trust, and SUS responses from real participants. These scores
+  do not come from the automated benchmark.
+
+3. FIVE SHORT EXAMPLES
+----------------------
+
+EXAMPLE 1 - A benchmark price case
+Excerpt-style view of PC004 in ground_truth.json:
+
+  {
+    "id": "PC004",
+    "split": "dev",
+    "query": "Quick solo Filipino or rice bowl lunch under PHP 180 in Davao City",
+    "constraints": {
+      "city": "Davao City",
+      "max_price_php": 180,
+      "food_types": [
+        "Filipino", "Rice Bowl", "Rice Dishes",
+        "Silog", "Ulam", "Fast Food"
+      ],
+      "keywords_any": ["filipino", "rice", "silog", "ulam", "kusina", "pares"]
+    }
+  }
+
+This is the input specification. The evaluator also has relevance labels for
+which venues should count as relevant matches.
+
+EXAMPLE 2 - Parse and apply a numeric ceiling
+Parser excerpt from src/search.php:
+
+  } elseif (preg_match('/\b(?:under|below|max(?:imum)?(?:\s+of)?|up\s+to|within|less\s+than|at\s+most|not\s+more\s+than|ceiling(?:\s+of)?|budget(?:\s+of)?)\s*(?:₱|php\s*|p\s*)?(\d{2,4})\s*(?:pesos|php)?\b/iu', $rawLower, $pm)) {
+      $val = (float)$pm[1];
+      if ($val >= 35 && $val <= 5000) {
+          $maxPricePhp = $val;
+      }
+  }
+
+Price-filter excerpt from src/search.php:
+
+  $vp = getVerifiedPlacePricePhp($item);
+  if ($vp !== null) {
+      if ($maxPricePhp !== null && $vp['median'] > $maxPricePhp) {
+          continue;
+      }
+  }
+
+For prices that cannot be verified, the current filter can use review signals
+to reject a venue marked repeatedly expensive under a tight ceiling. It does
+not automatically prove an unknown price is within budget. The UI can label
+price evidence as review-reported or live web evidence; that provenance is
+different from a guaranteed menu price.
+
+EXAMPLE 3 - Thematic intent affects ranking
+Excerpt from src/search.php:
+
+  if (in_array('quiet_study', $ambiance, true)) {
+      if ($quietCount > 0) {
+          $foodScore += ($isCafe ? 8.0 : 3.0) + min(4.0, $quietCount * 2.0);
+      }
+      if ($wifiCount > 0) {
+          $foodScore += 4.5 + min(3.0, $wifiCount * 1.5);
+      }
+  }
+
+Meaning:
+  - The system parses thematic phrases and can boost candidates supported by
+    review signals.
+  - In the inspected code, thematic evidence is generally used to rank
+    candidates. The autonomous critic does not impose a universal hard
+    pass/fail rule for every ambiance/thematic tag.
+  - metrics.php can evaluate an explicit benchmark ambiance constraint when
+    that constraint is present. The dev_grid development cases do not provide
+    a standalone thematic-usability result.
+
+EXAMPLE 4 - Critique, re-retrieval, and the PC004 result
+Flow sketch from src/web_reasoner.php (the early-return condition is shown
+schematically; unrelated return fields are omitted):
+
+  $vList = critiqueSinglePlace($byId[$id], $intent, ...);
+  if (!$violationsDetected && enoughDraftCandidates) {
+      return $draft;
+  }
+
+  $searchQuery = ($intent['effective_query'] ?? '') !== ''
+      ? $intent['effective_query']
+      : $query;
+  $strictPool = shortlistPlaces($allPlaces, $searchQuery, 120, $intent, true);
+  // Filter/retrieve compliant candidates, then re-score the final top five.
+  $finalCompliance = count($finalTop) > 0
+      ? round($finalCompliantCount / count($finalTop), 4)
+      : 1.0;
+
+PC004 as recorded in dev_grid.json:
+
+  {
+    "max_price_php": 180,
+    "initial_compliance_rate": 0.8,
+    "violation": "price_ceiling_exceeded:Eat! Chiro - Tavera",
+    "re_retrieved": true,
+    "final_compliance_rate": 1.0,
+    "violations_repaired": 1,
+    "numeric_price_compliant": true,
+    "verified_price_hit_rate": 0.8,
+    "precision_at_5": 1.0,
+    "ndcg_at_5": 0.925
+  }
+
+Interpretation:
+  The recorded loop found an over-ceiling candidate, re-retrieved, and its
+  final shortlist passed the loop's checks. However, only four of five final
+  candidates had verified price hits. The final_compliance_rate and
+  verified_price_hit_rate describe different checks and must not be presented
+  as interchangeable.
+
+EXAMPLE 5 - Automated price score versus human usability score
+Excerpt from evaluation/metrics.php:
+
+  'numeric_price_compliant' =>
+      $hasPriceCeiling
+      ? (($dimScores['max_price_php'] ?? 0.0) >= 0.8
+          && $verifiedPriceHits >= 1)
+      : null,
+
+This is the implementation's explicit price-compliance rule. In the
+development split, the selected configuration passed its single numeric
+price-ceiling case, so the saved rate is 1/1 = 100%. This does not mean all
+five venues had verified prices.
+
+The human instrument in evaluation/usability.php uses the standard SUS
+scoring transformation:
+
+  odd SUS items:  response - 1
+  even SUS items: 5 - response
+  final SUS:      sum of contributions * 2.5
+
+It also asks participants to perform UT2 (numeric price ceiling) and UT3
+(thematic keywords/ambiance), then records task completion, time, relevance,
+and trust ratings. The report currently says:
+
+  "source": "awaiting_human_participants",
+  "participant_count": 0,
+  "sus_ci95": null,
+  "mean_perceived_relevance_1_5": null,
+  "mean_price_source_trust_1_5": null
+
+Therefore, no empirical SUS, human relevance, or participant trust result is
+available yet.
+
+4. HOW TO STATE THE FINDINGS RESPONSIBLY
+----------------------------------------
+
+What the current dev report supports:
+  - PC004 is a concrete example where the loop detected an over-ceiling
+    candidate, re-retrieved, and recorded a passing final price check.
+  - The selected configuration's stored numeric price-compliance rate is
+    100% for the one explicit price-ceiling case in this dev split.
+  - The report records 2 detected and 2 repaired violations across 13
+    loop-enabled requests; average initial compliance is 95.9% and final
+    compliance is 100%.
+
+What it does not yet support:
+  - A general claim that all price recommendations are verified below budget.
+  - A broad estimate of price-ceiling success from one development case.
+  - A human usability, perceived relevance, or trust conclusion (n = 0).
+  - A dedicated development-split result for thematic preferences such as
+    quiet study, Wi-Fi, or romantic ambiance.
+
+Additional audit caution:
+  In this report, the aggregate loop telemetry records 2 violations detected
+  and 2 repaired, while the nested cause_rates reports zero violation_repair
+  requests. These fields do not reconcile from the saved summary alone. Avoid
+  using the cause_rates breakdown until it is reconciled against the exact
+  source version and per-case detailed_runs.
+
+5. PRESENTATION SUMMARY
+-----------------------
+Objective 4 is partly supported by automated evidence: the selected
+development configuration passed one explicit numeric price-ceiling case,
+and PC004 shows a concrete critique-and-retrieval repair. The implementation
+also parses and ranks thematic signals, but the development report does not
+provide a separate human-tested thematic relevance score. The usability
+instrument is ready to collect such evidence, but no participants have
+submitted responses. The stored development result should therefore be
+reported as preliminary algorithmic evidence, not as proof of overall
+usability or universal strict adherence.

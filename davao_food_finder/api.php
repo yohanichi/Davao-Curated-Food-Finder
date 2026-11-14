@@ -136,6 +136,26 @@ try {
     $intent = parseQueryIntent($query, $history, $shownNames);
     $intentParseMs = (int)round((microtime(true) - $retrievalStart) * 1000);
 
+    $hasFoodRequest = !empty($intent['cuisines'])
+        || !empty($intent['specific_dishes'])
+        || preg_match('/\b(food|restaurants?|caf[eé]s?|dining|eat|meals?|places?|spots?)\b/iu', $query) === 1;
+    if (!isset($body['evaluation']) && !$intent['out_of_scope'] && $hasFoodRequest && shouldAskPriceClarification($query, $intent)) {
+        if (ob_get_level() > 0) ob_clean();
+        echo json_encode([
+            'answer'=>'Before I find places, what price range works for you? Choose budget-friendly, mid-range, or upscale—or share your budget per person (for example, ₱500).',
+            'assistantStatus'=>'clarification',
+            'priceClarification'=>true,
+            'modelUsed'=>null,
+            'outOfScope'=>false,
+            'sources'=>[],
+            'webResults'=>[],
+            'results'=>[],
+            'count'=>0,
+            'metrics'=>['pipeline'=>['stages'=>[]]],
+        ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        exit;
+    }
+
     if ($reasoningProvider === 'hybrid' && $isAgentic) {
         $intent = planSearchQueryWithGPT4oMini($query, $history, $shownNames, $intent, $openAIOptions);
     }
@@ -158,12 +178,28 @@ try {
         $evidence = ['results'=>[], 'sources'=>[], 'cache'=>'skipped_out_of_scope', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'latency_ms'=>0];
     } else {
         $plannedPwQuery = trim((string)($intent['playwright_query'] ?? ''));
+        $priceLookupQueries = [];
+        if ($useIterativeLoop
+            && empty($intent['online_only'])
+            && !isset($body['evaluation'])
+            && isset($intent['max_price_php'])
+            && is_numeric($intent['max_price_php'])) {
+            $priceSearchQuery = $intent['effective_query'] !== '' ? $intent['effective_query'] : $query;
+            $priceCandidates = shortlistPlaces($places, $priceSearchQuery, 12, $intent, false);
+            foreach ($priceCandidates as $priceCandidate) {
+                if (getVerifiedPlacePricePhp($priceCandidate) !== null) continue;
+                $placeName = trim((string)($priceCandidate['name'] ?? ''));
+                if ($placeName === '') continue;
+                $priceLookupQueries[] = '"' . $placeName . '" menu prices PHP Davao City';
+                if (count($priceLookupQueries) >= 3) break;
+            }
+        }
         if ($plannedPwQuery !== '') {
-            $evidence = collectPlaywrightEvidence($plannedPwQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy);
+            $evidence = collectPlaywrightEvidence($plannedPwQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries);
         } else {
             $pwQuery = $intent['effective_query'] !== '' ? $intent['effective_query'] : $query;
             $evidenceQuery = preg_match('/\bdavao(\s+city)?\b/i', $pwQuery) ? $pwQuery : ('Davao City ' . $pwQuery);
-            $evidence = collectPlaywrightEvidence($evidenceQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy);
+            $evidence = collectPlaywrightEvidence($evidenceQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries);
         }
     }
     if (isset($GLOBALS['aiTelemetry']['pipeline_trace'])) {
@@ -510,6 +546,7 @@ try {
             'disambiguation_type'=>$intent['disambiguation_type'] ?? 'none',
             'max_price_php'=>$intent['max_price_php'] ?? null,
             'min_price_php'=>$intent['min_price_php'] ?? null,
+            'price_preference'=>$intent['price_preference'] ?? null,
             'specific_dishes'=>$intent['specific_dishes'] ?? [],
             'cuisines'=>$intent['cuisines'] ?? [],
             'areas'=>$intent['areas'] ?? [],

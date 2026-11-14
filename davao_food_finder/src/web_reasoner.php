@@ -145,7 +145,7 @@ function normalizeJsonPayloadSchema(array $parsed): array {
     return $parsed;
 }
 
-function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeconds = 43200, string $cachePolicy = 'default'): array {
+function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeconds = 43200, string $cachePolicy = 'default', array $priceQueries = []): array {
     $startedAt = microtime(true);
     $elapsed = fn(): int => (int)round((microtime(true) - $startedAt) * 1000);
 
@@ -161,14 +161,18 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
     $searchQuery = trim(preg_replace('/\s+/u', ' ', $searchQuery));
     if (!preg_match('/\bdavao(\s+city)?\b/i', $searchQuery)) $searchQuery = 'Davao City ' . $searchQuery;
     if (!preg_match('/\b(restaurant|restaurants|cafe|coffee|food|eatery|foodhouse|sisig|sisigan|silog|pares|ramen|pizza|chicken|bbq|grill)\b/i', $searchQuery)) $searchQuery .= ' restaurants food';
-    $key = hash('sha256', 'v3:' . mb_strtolower(preg_replace('/\s+/u', ' ', $searchQuery)));
+    $priceQueries = array_values(array_filter(array_map(
+        fn($priceQuery) => trim(preg_replace('/\s+/u', ' ', (string)$priceQuery) ?? ''),
+        array_slice($priceQueries, 0, 3)
+    ), fn($priceQuery) => $priceQuery !== ''));
+    $key = hash('sha256', 'v4:' . mb_strtolower(preg_replace('/\s+/u', ' ', $searchQuery) . '|' . implode('|', $priceQueries)));
     $cacheFile = rtrim($cacheDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $key . '.json';
 
     $bypassCacheRead = in_array($cachePolicy, ['cold', 'bypass'], true);
     if (!$bypassCacheRead && is_file($cacheFile)) {
         $mtime = (int)filemtime($cacheFile);
-        $age = max(0, time() - $mtime);
-        if ($age < $ttlSeconds || $cachePolicy === 'warm') {
+        $ge = max(0, time() - $mtime);
+        if ($ge < $ttlSeconds || $cachePolicy === 'warm') {
             $cached = json_decode((string)file_get_contents($cacheFile), true);
             if (is_array($cached) && is_array($cached['results'] ?? null) && count($cached['results']) > 0) {
                 $cachedAt = isset($cached['cached_at']) && is_numeric($cached['cached_at']) ? (int)$cached['cached_at'] : $mtime;
@@ -196,6 +200,14 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
     $script = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . 'web-search.js';
     $node = trim((string)getenv('PLAYWRIGHT_NODE')) !== '' ? trim((string)getenv('PLAYWRIGHT_NODE')) : 'node';
     $command = escapeshellarg($node) . ' ' . escapeshellarg($script) . ' ' . escapeshellarg($searchQuery);
+    if ($priceQueries) {
+        $priceQueriesJson = json_encode($priceQueries, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($priceQueriesJson === false) {
+            error_log('Playwright price lookup queries could not be encoded as JSON.');
+            return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'latency_ms'=>$elapsed()];
+        }
+        $command .= ' ' . escapeshellarg(base64_encode($priceQueriesJson));
+    }
     $pipes = [];
     $process = proc_open($command, [1=>['pipe','w'], 2=>['pipe','w']], $pipes);
     if (!is_resource($process)) {
@@ -228,7 +240,7 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
         return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'latency_ms'=>$elapsed()];
     }
     $payload = json_decode(trim($stdout), true);
-    $results = is_array($payload['results'] ?? null) ? array_slice($payload['results'], 0, 5) : [];
+    $results = is_array($payload['results'] ?? null) ? array_slice($payload['results'], 0, 8) : [];
     $now = time();
     if (count($results) > 0) {
         @file_put_contents($cacheFile, json_encode(['query'=>$query,'results'=>$results,'cached_at'=>$now], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), LOCK_EX);
@@ -459,6 +471,10 @@ function reconcileVolatilityWithEvidence(array $places, array $evidence): array 
 
         $isClosed = preg_match('/\b(permanently\s+closed|closed\s+permanently|temporarily\s+closed|closed\s+for\s+renovation|closed\s+for\s+relocation|closed\s+down|shut\s+down|ceased\s+operations|no\s+longer\s+operating|has\s+closed\s+its\s+doors)\b/iu', $blobLower) === 1;
         $prices = extractPesoAmountsFromText($blob);
+        $hasPriceContext = preg_match('/\b(menu|price|prices|cost|per\s+(?:person|head|serving)|php|pesos?)\b|₱/iu', $blob) === 1;
+        if (!$hasPriceContext) {
+            $prices = [];
+        }
         $hoursLate = null;
         if (preg_match('/\b(no\s+longer\s+24\/7|no\s+longer\s+24\s*hours?|now\s+closes?\s+at\s+(?:[6789]|10)(?::\d{2})?\s*pm|closes?\s+(?:early\s+)?at\s+(?:[6789]|10)(?::\d{2})?\s*pm|early\s+closing\s+at|closed\s+late[- ]?night|8:00\s*pm\s+only)\b/iu', $blobLower)) {
             $hoursLate = false;
@@ -475,6 +491,7 @@ function reconcileVolatilityWithEvidence(array $places, array $evidence): array 
                 'blob_lower'=>$blobLower,
                 'is_closed'=>$isClosed,
                 'prices'=>$prices,
+                'source_url'=>filter_var($item['url'] ?? '', FILTER_VALIDATE_URL) ? (string)$item['url'] : '',
                 'hours_late'=>$hoursLate,
                 'live_rating'=>$liveRating,
             ];
@@ -513,7 +530,8 @@ function reconcileVolatilityWithEvidence(array $places, array $evidence): array 
                 $maxP = $sortedP[count($sortedP) - 1];
                 $place['_live_price_php'] = $medP;
                 $place['_live_price_max_php'] = $maxP;
-                $report['price_updates'][] = ['name'=>$place['name'], 'median_php'=>$medP, 'max_php'=>$maxP];
+                $place['_live_price_source_url'] = $notice['source_url'];
+                $report['price_updates'][] = ['name'=>$place['name'], 'median_php'=>$medP, 'max_php'=>$maxP, 'source_url'=>$notice['source_url']];
                 $notes[] = "updated web menu price ~₱{$medP}";
             }
             if ($notice['hours_late'] !== null) {

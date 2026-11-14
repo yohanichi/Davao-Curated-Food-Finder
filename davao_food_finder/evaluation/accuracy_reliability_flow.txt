@@ -1,0 +1,285 @@
+DAVAO FOOD FINDER
+ACCURACY AND RELIABILITY EVALUATION FLOW
+
+Purpose
+-------
+This note explains how the project evaluates recommendation accuracy,
+constraint adherence, reliability, and response efficiency. It uses short
+examples rather than reproducing the full dev_grid.json report.
+
+IMPORTANT PROVENANCE NOTE
+------------------------
+The dev_grid.json report was generated on 2026-11-13 using the dev split and
+seed 42. Its reproducibility manifest records the SHA-256 hash of
+evaluation/run_evaluation.php as:
+  a2985e3655ad027c57859b6030bf64416c536e2659163066138f317bfa08066e
+
+The current evaluation/run_evaluation.php has a different hash:
+  7f30c009844274f968a6419a2ce1f293890c76be47891d021d5fc2c523c1dd9e
+
+The report's src/web_reasoner.php and evaluation/statistics.php hashes also
+differ from the current files. The evaluation/metrics.php and
+evaluation/ground_truth.json hashes do match.
+Therefore, the code excerpts below explain the current evaluator's flow and
+are consistent with the report's metric/data structure, but the current
+run_evaluation.php, web_reasoner.php, and statistics.php cannot be claimed as
+the exact source versions that produced this dev_grid.json. For strict
+reproducibility, recover the source snapshot matching the report hashes or
+regenerate the evaluation with a documented, matching source version.
+
+1. FILES IN THE EVALUATION FLOW
+-------------------------------
+
+evaluation/ground_truth.json
+  The benchmark: query text, split, expected relevant venue names and
+  relevance grades, plus constraints such as city, food type, keywords,
+  forbidden names, or a numeric price ceiling. It supplies the reference
+  against which the system's returned list is scored.
+
+evaluation/run_evaluation.php
+  The runner: loads the benchmark, chooses cases/configurations/trials,
+  submits each query to the system, records latency and failures, evaluates
+  the returned recommendations, aggregates scores, and saves detailed and
+  summary output.
+
+evaluation/metrics.php
+  The scoring rules: compares ranked recommendations with ground-truth
+  relevance grades to compute Precision@5, Recall@5/10, NDCG@5, and MRR. It
+  also evaluates user constraints and recommendation quality.
+
+evaluation/statistics.php
+  Statistical utilities: computes summary statistics and seeded bootstrap
+  confidence intervals; it also contains comparison tests used when multiple
+  configurations are evaluated. The current file's hash differs from the one
+  recorded in dev_grid.json.
+
+evaluation/results/dev_grid.json
+  The saved experiment output: reproducibility manifest, per-configuration
+  summary scores, selected configuration, and detailed results by
+  configuration, benchmark case, and trial. It is an output artifact, not the
+  source of the scoring rules.
+
+evaluation/RESEARCH_PROTOCOL.md
+  The study protocol: defines the benchmark design, metrics, comparisons,
+  splits, and limitations for reporting results.
+
+2. THE FLOW, STEP BY STEP
+-------------------------
+
+Step A - Define a test query and expected answer.
+  ground_truth.json records the query, expected relevant venues and their
+  grades, plus any required constraints.
+
+Step B - Run the system for each selected case and configuration.
+  run_evaluation.php calls executeCaseEvaluation(), which sends a single-turn
+  query or replays a multi-turn dialogue. It records the returned data,
+  latency, and request failures.
+
+Step C - Compare returned venues to the reference labels.
+  metrics.php normalizes venue names, looks up each venue's relevance grade,
+  and computes ranking metrics. The runner separately checks constraints and
+  recommendation quality.
+
+Step D - Aggregate case-level scores.
+  The runner averages trial results for each case, then summarizes across the
+  scored cases for each configuration. It also aggregates constraint,
+  disambiguation, price-ceiling, factuality, loop, latency, and error data.
+
+Step E - Save and inspect results.
+  dev_grid.json preserves both aggregate summaries and detailed case records.
+  A detailed record lets a reviewer trace a result from query to returned
+  venues, score, constraint checks, latency, and any detected errors.
+
+3. FIVE SHORT EXAMPLES
+----------------------
+
+EXAMPLE 1 - A benchmark case in ground_truth.json
+The evaluator does not judge a recommendation by keyword overlap alone. It
+compares output venues against labeled names and grades.
+
+  {
+    "id": "Q004",
+    "split": "dev",
+    "query": "Korean restaurants and samgyupsal in Davao City",
+    "constraints": {
+      "city": "Davao City",
+      "food_types": ["Korean"],
+      "keywords_any": ["korean", "samgyupsal", "samgyup", "jjajang"]
+    },
+    "relevance_grades": {
+      "Island Samgyupsal - BELEN ROAD": 3,
+      "Samgyupsal & Chicken Korean Restaurant - Aurora": 2
+    }
+  }
+
+The real case contains additional relevant names. Grade 3 indicates a stronger
+match than grade 2. A venue not in the reference labels receives no relevance
+credit unless the evaluator's documented matching rules identify it.
+
+EXAMPLE 2 - The runner calls the system and evaluates its response
+Excerpt from evaluation/run_evaluation.php:
+
+  $response = executeCaseEvaluation(
+      $options['api_url'],
+      $case,
+      $config,
+      $options['cache_policy'],
+      $trialSeed,
+      $options['live_turns']
+  );
+  $data = $response['data'];
+  $latency = (float)$response['latency'];
+  $allLatencies[] = $latency;
+
+  $combinedResults = mergeRecommendations($localResults, $webResults, true);
+  $combinedRank = computeRankingMetrics(
+      $combinedResults,
+      $case['relevance_grades'],
+      $case['base_relevance_grades'],
+      $case['constraints'],
+      true
+  );
+  $constraintEval = evaluateConstraintSatisfaction(
+      $combinedResults,
+      $case['constraints'],
+      $datasetIndex
+  );
+  $validation = validateRecommendationQuality($data, $case, $datasetIndex);
+
+Meaning:
+  - executeCaseEvaluation obtains the system response for this case.
+  - Local and web recommendations are combined for the primary ranking score.
+  - Ranking relevance, user-constraint adherence, and factual/evidence issues
+    are evaluated separately.
+  - Latency is recorded for the efficiency analysis.
+
+EXAMPLE 3 - How Precision@5 and NDCG@5 are calculated
+Excerpt from evaluation/metrics.php:
+
+  'precision_at_5' => $hits5 / 5.0,
+  'ndcg_at_5' => $idcg5 > 0.0
+      ? min(1.0, $dcg5 / $idcg5)
+      : 0.0,
+
+Meaning:
+  - Precision@5 = number of relevant unique venues in the first five / 5.
+    A score of 1.0 means all five positions received relevance credit.
+  - NDCG@5 compares the graded relevance and order of the returned top five
+    with an ideal ordering. It can be less than 1.0 even when P@5 is 1.0,
+    because not all five results may have the highest relevance grade or may
+    not be ordered ideally.
+  - MRR records how high the first relevant result appears.
+
+EXAMPLE 4 - How case scores become a configuration summary
+Excerpt from evaluation/run_evaluation.php:
+
+  $ciP5 = confidenceInterval95($caseP5, $ciSeed);
+  $ciNdcg5 = confidenceInterval95($caseNdcg5, $ciSeed + 3);
+
+  $rowSummary = $config + [
+      'p5' => $ciP5,
+      'ndcg5' => $ciNdcg5,
+      'constraint_strict_pass_rate' => meanVal($caseStrictPass),
+      'error_rate' => $errorRate,
+      'repeat_consistency' => $repeatConsistency,
+      'latency' => [
+          'mean_s' => meanVal($allLatencies),
+          'median_p50_s' => percentileVal($allLatencies, 50.0),
+          'p95_s' => percentileVal($allLatencies, 95.0)
+      ]
+  ];
+
+Meaning:
+  - Trial results are first combined per case; case scores are then summarized
+    for each configuration.
+  - Confidence intervals describe uncertainty across the scored cases under
+    the configured bootstrap procedure. They are not a substitute for
+    repeating the system run.
+  - Error rate and repeat consistency provide different reliability signals.
+  - Mean, median, and tail latency help describe response efficiency.
+
+EXAMPLE 5 - Reading the selected configuration in dev_grid.json
+The report records DEEPSEEK-T0.1-BASE as its selected development
+configuration. The following is a condensed view of the report's actual
+top-level structure and summary-field names:
+
+  {
+    "reproducibility_manifest": {
+      "split": "dev",
+      "seed": 42
+    },
+    "best_config_selection": {
+      "selection_metric": "ndcg5",
+      "selected_config": {
+        "id": "DEEPSEEK-T0.1-BASE"
+      }
+    },
+    "summary": [{
+      "id": "DEEPSEEK-T0.1-BASE",
+      "trials": 1,
+      "total_requests": 15,
+      "failures": 0,
+      "p5": {
+        "mean": 0.9385,
+        "n": 13,
+        "ci_lower": 0.8154,
+        "ci_upper": 1.0000
+      },
+      "ndcg5": {
+        "mean": 0.8994,
+        "n": 13,
+        "ci_lower": 0.8040,
+        "ci_upper": 0.9758
+      },
+      "constraint_strict_pass_rate": 0.9231,
+      "price_ceiling_compliance_rate": 1.0,
+      "mean_latency": 13.3553,
+      "median_latency": 6.8363
+    }]
+  }
+
+The detailed_runs section contains per-case records behind these aggregates:
+the case ID, trial, top-five returned names, ranking metrics, constraints,
+validation issues, loop telemetry, and latency. For example, a record may show
+that a price violation was detected, re-retrieval occurred, and the final
+shortlist passed the price check.
+
+4. WHAT THESE NUMBERS DO AND DO NOT ESTABLISH
+--------------------------------------------
+
+Accuracy:
+  On this development run, the selected configuration's P@5 mean was 93.8%
+  and NDCG@5 mean was 89.9% over 13 scored ranking cases. The report also
+  records 92.3% strict constraint pass rate and 100% price-ceiling compliance
+  among evaluated price-ceiling cases.
+
+Request reliability:
+  The summary records 0 failures in 15 requests for this configuration. This
+  describes the recorded run; it does not prove that future requests will
+  always succeed.
+
+Repeatability:
+  The configuration used one trial. The report's repeat_consistency is
+  unavailable for this configuration, so repeated-run stability has not been
+  demonstrated by this dev-grid result.
+
+Efficiency:
+  The recorded mean latency was about 13.36 seconds and median latency about
+  6.84 seconds. To claim that one system is more efficient, compare it with
+  baselines under the same cases, cache policy, and hardware/provider setup;
+  report latency percentiles and cost as well as mean latency.
+
+Generalization:
+  These are development-split results. Use the held-out test split for final
+  performance claims. Do not use the development scores as if they were
+  independent final-test results.
+
+5. PRESENTATION SUMMARY
+-----------------------
+The evaluator uses labeled benchmark queries to request recommendations,
+compares the returned ranked venues with ground-truth relevance grades,
+checks user constraints and factual/evidence issues, records latency and
+request failures, then aggregates scores per configuration. The dev_grid.json
+file preserves both the summary and case-level evidence. The available
+development result is promising, but one trial and a development-only split
+are not enough to establish repeat-run reliability or final generalization.

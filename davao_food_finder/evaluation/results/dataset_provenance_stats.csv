@@ -1,0 +1,16 @@
+metric,value
+source_info,"{""dataset_name"":""Philippine Cities Food Panda Resto Reviews"",""author"":""BwandoWando (Kaggle username: bwandowando)"",""url"":""https://www.kaggle.com/datasets/bwandowando/food-panda-restaurant-reviews"",""license"":""CC BY-NC-SA 4.0"",""download_date"":""not stated on the public Kaggle page and not independently recorded in this repository. Do not treat the content update date as the download date.""}"
+input_file,ph_restos_2025.csv
+input_sha256,bdd741dc8d83d3ba119e7a99ea6a69c2228aa0d458389a09543576a0cef8caaa
+columns,"[""StoreId"",""CompleteStoreName"",""FoodType"",""AverageRating"",""Reviewers"",""City""]"
+davao_filter_rule,"isDavaoCity(): find the City/municipality/locality field; include only when preg_match('/\bdavao\s+city\b/i', value) matches."
+excluded_by_filter,"Rows whose city value does not contain the contiguous words “Davao City” (for example, Tagum City, Panabo City, Davao del Sur without “Davao City”, and other Davao Region localities)."
+rows_before_filtering,12409
+rows_after_filtering,1172
+rating_zero_count,253
+rating_zero_share,0.21587030716724
+reviewers_zero_count,253
+reviewers_zero_share,0.21587030716724
+rating_statistics_including_zero,"{""count"":1172,""mean"":3.8160409556314114,""median"":4.9,""sd_sample"":2.0297906043611205,""min"":0,""q1"":4.4,""q3"":5,""max"":5}"
+rating_statistics_excluding_zero,"{""count"":919,""mean"":4.866594124047894,""median"":5,""sd_sample"":0.37060340541456044,""min"":1.4,""q1"":4.9,""q3"":5,""max"":5}"
+raw_rating_zero_system_treatment,"AverageRating=0 is treated as missing by loadDavaoPlaces (only values greater than 0 are accepted); review aggregates may supply a fallback rating. This descriptive report includes raw zeroes in the “including zero” series."

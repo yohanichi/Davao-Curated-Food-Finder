@@ -641,12 +641,24 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         } elseif (preg_match('/(?:₱|php\s*)(\d{2,4})\s*(?:and\s+below|or\s+less|or\s+under|max|limit|budget|ceiling|lang|only)\b/iu', $rawLower, $pm)) {
             $val = (float)$pm[1];
             if ($val >= 35 && $val <= 5000) $maxPricePhp = $val;
+        } elseif (preg_match('/\b(?:my\s+)?budget\s+(?:is|of|around|about|up\s+to)?\s*(?:₱|php\s*|p\s*)?(\d{2,4})\b|\b(?:around|about)\s*(?:₱|php\s*|p\s*)?(\d{2,4})\s*(?:pesos|php|per\s+person)\b|(?:₱|php\s*)(\d{2,4})(?:\s*(?:per\s+person|\/\s*person|each))?\b/iu', $rawLower, $pm)) {
+            $amount = (float)(($pm[1] ?? '') !== '' ? $pm[1] : (($pm[2] ?? '') !== '' ? $pm[2] : ($pm[3] ?? 0)));
+            if ($amount >= 35 && $amount <= 5000) $maxPricePhp = $amount;
         }
 
-        $budget = (preg_match('/\b(affordable|cheap|cheaper|budget|budget[- ]friendly|sulit|mura|inexpensive|low[- ]cost|student[- ]friendly|tipid)\b/iu', $t) === 1
+        $budget = (preg_match('/\b(affordable|cheap|cheaper|budget|budget[- ]friendly|sulit|mura|inexpensive|low[- ]cost|student[- ]friendly|tipid|not\s+(?:too\s+)?expensive|not\s+pricey)\b/iu', $t) === 1
             || ($maxPricePhp !== null && $maxPricePhp <= 280))
             ? 'affordable'
             : null;
+        $pricePreference = null;
+        if (preg_match('/\b(upscale|up[- ]market|high[- ]end|luxury|splurge|expensive|pricey|fine[- ]dining)\b/iu', $t) === 1
+            && preg_match('/\b(not|less|rather\s+not)\s+(?:too\s+)?(?:expensive|pricey)\b/iu', $t) !== 1) {
+            $pricePreference = 'upscale';
+        } elseif (preg_match('/\b(mid[- ]range|moderate(?:ly\s+priced)?|average[- ]priced)\b/iu', $t) === 1) {
+            $pricePreference = 'mid_range';
+        } elseif ($budget !== null) {
+            $pricePreference = 'budget';
+        }
 
         $dietary = [];
         if (preg_match('/\b(halal|muslim[- ]friendly|no\s+pork|pork[- ]free)\b/iu', $t)) $dietary[] = 'halal';
@@ -674,6 +686,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'min_price_php'=>$minPricePhp,
             'max_price_php'=>$maxPricePhp,
             'budget'=>$budget,
+            'price_preference'=>$pricePreference,
             'dietary'=>$dietary,
             'ambiance'=>$ambiance,
             'thematic'=>$thematic,
@@ -717,6 +730,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'min_price_php'=>null,
             'max_price_php'=>null,
             'budget'=>null,
+            'price_preference'=>null,
             'dietary'=>[],
             'ambiance'=>[],
             'thematic'=>[],
@@ -746,6 +760,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
                 $state['min_price_php'] = null;
                 $state['max_price_php'] = null;
                 $state['budget'] = null;
+                $state['price_preference'] = null;
                 $state['dietary'] = [];
                 $state['ambiance'] = [];
                 $state['thematic'] = [];
@@ -763,6 +778,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
                     $state['max_price_php'] = null;
                     $state['min_price_php'] = null;
                     $state['budget'] = null;
+                    $state['price_preference'] = null;
                     $state['ambiance'] = [];
                     $state['thematic'] = [];
                     $state['hours'] = [];
@@ -792,6 +808,9 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             }
             if ($extracted['budget'] !== null) {
                 $state['budget'] = $extracted['budget'];
+            }
+            if ($extracted['price_preference'] !== null) {
+                $state['price_preference'] = $extracted['price_preference'];
             }
             if (!empty($extracted['dietary'])) {
                 $state['dietary'] = array_values(array_unique(array_merge($state['dietary'], $extracted['dietary'])));
@@ -841,6 +860,8 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
     }
     if (!empty($current['areas'])) $effectiveParts[] = implode(' ', $current['areas']);
     if ($current['budget'] === 'affordable') $effectiveParts[] = 'affordable budget';
+    if ($current['price_preference'] === 'upscale') $effectiveParts[] = 'upscale';
+    if ($current['price_preference'] === 'mid_range') $effectiveParts[] = 'mid-range';
     if ($current['max_price_php'] !== null) $effectiveParts[] = 'under ' . (int)$current['max_price_php'] . ' pesos';
     if (!empty($current['dietary'])) $effectiveParts[] = implode(' ', $current['dietary']);
     if (!empty($current['ambiance'])) $effectiveParts[] = implode(' ', $current['ambiance']);
@@ -864,6 +885,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         && !$current['specific_dishes']
         && !$current['areas']
         && $current['budget'] === null
+        && $current['price_preference'] === null
         && $current['max_price_php'] === null
         && !$current['dietary']
         && !$current['ambiance']
@@ -901,6 +923,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         'min_price_php'=>$current['min_price_php'],
         'max_price_php'=>$current['max_price_php'],
         'budget'=>$current['budget'],
+        'price_preference'=>$current['price_preference'],
         'dietary'=>$current['dietary'],
         'ambiance'=>$current['ambiance'],
         'thematic'=>$current['thematic'],
@@ -917,6 +940,16 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
 function isContinuationQuery(string $query): bool {
     return preg_match('/^(show me\s+)?(some\s+)?(more|other|another|similar|cheaper|affordable|those|ones|alternatives?)(\s+(ones|options|places|choices|restaurants))?[.!?]*$/i', trim($query)) === 1
         || preg_match('/^(what about|how about)\s+(them|those|the others|similar ones|cheaper ones)[.!?]*$/i', trim($query)) === 1;
+}
+
+function shouldAskPriceClarification(string $query, array $intent): bool {
+    $mentionsPrice = preg_match('/\b(price|prices|pricing|cost|costs|budget|ceiling|range|spend|per\s+person|pesos?)\b|[₱$]/iu', $query) === 1;
+    $hasPricePreference = !empty($intent['budget'])
+        || !empty($intent['price_preference'])
+        || ($intent['min_price_php'] ?? null) !== null
+        || ($intent['max_price_php'] ?? null) !== null;
+
+    return $mentionsPrice && !$hasPricePreference;
 }
 
 /**
@@ -1013,7 +1046,13 @@ function matchesAntiPolysemyGuard(array $place, array $intent): array {
 function getVerifiedPlacePricePhp(array $place): ?array {
     if (isset($place['_live_price_php']) && is_numeric($place['_live_price_php'])) {
         $v = (float)$place['_live_price_php'];
-        return ['min'=>$v, 'median'=>$v, 'max'=>(float)($place['_live_price_max_php'] ?? $v), 'source'=>'live_web_evidence'];
+        return [
+            'min'=>$v,
+            'median'=>$v,
+            'max'=>(float)($place['_live_price_max_php'] ?? $v),
+            'source'=>'live_web_evidence',
+            'source_url'=>(string)($place['_live_price_source_url'] ?? ''),
+        ];
     }
     if (isset($place['_observed_prices_php']) && is_array($place['_observed_prices_php']) && isset($place['_observed_prices_php']['median'])) {
         return [
@@ -1135,6 +1174,7 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
     $maxPricePhp = isset($intent['max_price_php']) && is_numeric($intent['max_price_php']) ? (float)$intent['max_price_php'] : null;
     $minPricePhp = isset($intent['min_price_php']) && is_numeric($intent['min_price_php']) ? (float)$intent['min_price_php'] : null;
     $budget = $intent['budget'] ?? null;
+    $pricePreference = $intent['price_preference'] ?? null;
     $dietary = $intent['dietary'] ?? [];
     $ambiance = $intent['ambiance'] ?? [];
     $thematic = $intent['thematic'] ?? [];
@@ -1391,6 +1431,30 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
                 $score *= 0.55;
             }
         }
+        if ($pricePreference === 'upscale' && ($score > 0.0 || !$hasExplicitFoodOrAttrConstraint)) {
+            $expCount = (int)($signals['expensive'] ?? 0);
+            $affCount = (int)($signals['affordable'] ?? 0);
+            $priceRangeText = mb_strtolower((string)($p['price_range'] ?? ''), 'UTF-8');
+            if ($verifiedPrice !== null) {
+                if ($verifiedPrice['median'] >= 700) {
+                    $score += 9.0;
+                } elseif ($verifiedPrice['median'] >= 450) {
+                    $score += 6.0;
+                } elseif ($verifiedPrice['median'] >= 300) {
+                    $score += 3.0;
+                }
+            }
+            if ($expCount > $affCount) {
+                $score += min(6.0, $expCount * 2.0);
+            }
+            if (preg_match('/(?:₱{3,}|\${3,}|premium|upscale|fine[- ]?dining)/iu', $priceRangeText) === 1) {
+                $score += 5.0;
+            }
+        } elseif ($pricePreference === 'mid_range' && ($score > 0.0 || !$hasExplicitFoodOrAttrConstraint)) {
+            if ($verifiedPrice !== null && $verifiedPrice['median'] >= 250 && $verifiedPrice['median'] <= 800) {
+                $score += 6.0;
+            }
+        }
 
         // 9. Rating constraint filter/boost (respecting live volatility rating override)
         $effectiveRating = isset($p['_live_rating']) && is_numeric($p['_live_rating']) ? (float)$p['_live_rating'] : (is_numeric($p['rating'] ?? null) ? (float)$p['rating'] : null);
@@ -1605,6 +1669,9 @@ function publicPlace(array $p): array {
             'observed_max_php'=>$vp['max'],
             'source'=>$vp['source'],
         ];
+        if (!empty($vp['source_url'])) {
+            $p['price_evidence']['source_url'] = $vp['source_url'];
+        }
     }
     if (isset($p['_live_volatility_note']) && is_string($p['_live_volatility_note']) && $p['_live_volatility_note'] !== '') {
         $p['volatility_note'] = $p['_live_volatility_note'];
@@ -1617,6 +1684,7 @@ function publicPlace(array $p): array {
         $p['_live_status'],
         $p['_live_price_php'],
         $p['_live_price_max_php'],
+        $p['_live_price_source_url'],
         $p['_live_hours_late'],
         $p['_live_rating'],
         $p['_live_volatility_note']

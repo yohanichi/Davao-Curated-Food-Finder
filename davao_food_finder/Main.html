@@ -23,6 +23,9 @@ h1{font-size:clamp(36px,6vw,62px);letter-spacing:-.055em;line-height:1.03;margin
 .search button:hover,.details:hover,.map-link:hover{background:var(--green-dark);transform:translateY(-1px)}
 .search button:disabled{opacity:.6;cursor:wait;transform:none}
 .status{text-align:center;color:var(--muted);font-size:13px;min-height:20px;margin:11px 0}
+.clarification-options{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.clarification-choice{border:1px solid #d5e4d7;border-radius:999px;background:#f2f7f1;color:#24563a;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer}
+.clarification-choice:hover{background:#e5f0e5}
 .turn-results{width:100%;align-self:stretch;margin:12px 0 8px}
 .results-heading{display:flex;align-items:center;gap:10px;margin:0 0 16px;font-size:20px;letter-spacing:-.025em;color:#26382d}
 .results-heading:before{content:"";width:4px;height:20px;border-radius:4px;background:#4d9368}
@@ -60,6 +63,7 @@ h1{font-size:clamp(36px,6vw,62px);letter-spacing:-.055em;line-height:1.03;margin
 .map-link:hover{background:#dfece0;color:#17452d;transform:translateY(-1px)}
 .source-link{background:#e3f3f0;color:#145b50}
 .source-link:hover{background:#d2eae6;color:#0e453c;transform:translateY(-1px)}
+.source-unavailable{align-self:center;color:#818880;font-size:11px}
 .empty{background:white;border:1px dashed #c9d2c8;padding:28px;border-radius:16px;text-align:center;color:#68736a;line-height:1.6}
 .modal-backdrop{position:fixed;inset:0;background:#101b13a8;display:none;align-items:center;justify-content:center;padding:18px;z-index:10;backdrop-filter:blur(3px)}
 .modal-backdrop.open{display:flex}
@@ -70,40 +74,92 @@ h1{font-size:clamp(36px,6vw,62px);letter-spacing:-.055em;line-height:1.03;margin
 .stars{color:#e3a326;font-size:18px}
 .small{font-size:12px;color:#818880}
 .footer{margin:27px 0 0;text-align:center;color:#858d84;font-size:11px}
+.finder{max-width:820px;margin:28px auto 26px;padding:22px;background:#fff;border:1px solid #e4e9e1;border-radius:20px;box-shadow:0 12px 32px #263d280b}
+.finder-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:18px}
+.finder-heading h2{margin:0;color:#26382d;font-size:20px;letter-spacing:-.03em}
+.finder-heading p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:15px}
+.filter-field{display:flex;flex-direction:column;gap:6px;color:#4f5c51;font-size:12px;font-weight:700}
+.filter-field select{width:100%;padding:11px 12px;border:1px solid #dfe5dc;border-radius:10px;background:#fbfcfa;color:#28352b;font:inherit;font-weight:550}
+.quick-prompts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.quick-prompt{border:1px solid #d9e5d8;border-radius:999px;background:#f4f8f2;color:#315b3e;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.quick-prompt:hover,.quick-prompt[aria-pressed=true]{background:#e2efe2;border-color:#94b59a;color:#184d32}
+.search-hint{margin:9px 3px 0;color:#818880;font-size:11px}
+.result-context{margin:0 0 13px;padding:12px 14px;background:#f8faf6;border:1px solid #e9eee7;border-radius:12px;color:#526052;font-size:12px;line-height:1.55}
+.result-context strong{color:#314333}
+.result-context p{margin:2px 0}
+.place-reason{margin:0 0 12px;padding:9px 10px;border-left:3px solid #84ad8c;border-radius:0 8px 8px 0;background:#f5f8f3;color:#4f6252;font-size:11px;line-height:1.5}
+.tag.evidence{background:#eaf2e8;color:#405f42}
+.tag.unverified{background:#fff3dc;color:#775b20}
+.clarification-prompt{max-width:88%}
+.clarification-choice:focus-visible,.quick-prompt:focus-visible,.filter-field select:focus-visible{outline:3px solid #76a884;outline-offset:2px}
 @media(max-width:620px){.wrap{padding:36px 16px 28px}.hero{margin-bottom:22px}.hero p{font-size:14px}.search{bottom:7px}.search button{padding:12px 15px}.bubble{max-width:95%}.place-photo{height:168px}}
+@media(max-width:620px){.finder{padding:17px;margin:22px auto}.finder-heading{display:block}.finder-heading p{margin-top:5px}.filter-grid{grid-template-columns:1fr 1fr;gap:9px}.quick-prompt{padding:8px 10px}.result-context{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
-</style></head><body><main class="wrap"><header class="hero"><div class="eyebrow">Davao City · Food guide</div><h1>What's on your mind?</h1><p>Find a new favorite in Davao City. Tell us what you’re craving and explore local spots, ratings, and directions.</p></header>
-<div class="chat"><div id="thread" class="thread" aria-live="polite"><div class="bubble assistant">Hi! What are you craving? Try “fried chicken”, “quiet cafes to study”, or “more affordable Japanese food”. I’ll search for current information and share the places with you.</div></div>
-<form id="searchForm" class="search"><input id="query" name="query" placeholder="Ask for food or follow-up options…" autocomplete="off" required maxlength="300"><button id="sendButton" type="submit">Send</button></form><p id="status" class="status" role="status"></p></div>
+</style></head><body><main class="wrap"><header class="hero"><div class="eyebrow">Davao City · Food guide</div><h1>Your next Davao meal, thoughtfully found.</h1><p>Get a shortlist shaped around your craving, area, and budget—with reasons, source links, and a clear note when details could not be verified.</p></header>
+<div class="chat"><div id="thread" class="thread" aria-live="polite"><div class="bubble assistant">Welcome! Start with a quick filter, or describe what you’re craving. We’ll show a short list with the reasons, sources, and details we could verify.</div></div><p id="status" class="status" role="status"></p></div>
+<section class="finder" aria-labelledby="finderTitle"><div class="finder-heading"><div><div class="eyebrow">A better shortlist, faster</div><h2 id="finderTitle">What matters for this meal?</h2></div><p>Choose a few filters or just describe what you want.</p></div><div class="filter-grid"><label class="filter-field" for="areaFilter">Area<select id="areaFilter"><option value="">Anywhere in Davao City</option><option>Matina</option><option>Lanang</option><option>Downtown / Poblacion</option><option>Buhangin</option><option>Bajada</option><option>Ecoland</option><option>Toril</option></select></label><label class="filter-field" for="budgetFilter">Budget per person<select id="budgetFilter"><option value="">Any budget</option><option value="300">Up to ₱300</option><option value="500">Up to ₱500</option><option value="1000">Up to ₱1,000</option></select></label></div><div class="quick-prompts" role="group" aria-label="Popular dining needs"><button class="quick-prompt" type="button" data-prompt="family-friendly restaurants" aria-pressed="false">Family meal</button><button class="quick-prompt" type="button" data-prompt="date night restaurants" aria-pressed="false">Date night</button><button class="quick-prompt" type="button" data-prompt="quiet cafes to study" aria-pressed="false">Cafe to work</button><button class="quick-prompt" type="button" data-prompt="local Filipino food favorites" aria-pressed="false">Local favorites</button></div><form id="searchForm" class="search"><input id="query" name="query" placeholder="Add a dish, cuisine, or other preference (optional)" aria-label="Describe a dish, cuisine, or other food preference" autocomplete="off" maxlength="300"><button id="sendButton" type="submit">Find places</button></form><p class="search-hint">Examples: “sisig”, “Japanese food”, “quiet place to study”. Search without typing by selecting filters above.</p></section>
 <div class="footer"><p id="modelIndicator">AI pipeline configured: GPT-4o mini (Query) → Playwright → GPT-4o mini (Structurer) → DeepSeek R1 (Reasoner) → GPT-4o mini (Reply).</p>Live evidence is gathered by Playwright · Ratings and place details come from your 2025 dataset or verified web sources · Photos are illustrative, not verified restaurant photos. <a href="evaluation/dashboard.php" target="_blank" rel="noopener noreferrer">Live Metrics Dashboard ↗</a> · <a href="evaluation/annotate.php" target="_blank" rel="noopener noreferrer">Blind Annotation ↗</a> · <a href="evaluation/usability.php" target="_blank" rel="noopener noreferrer">Usability Study (SUS) ↗</a></div></main>
 <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><section class="modal"><button id="closeModal" class="close" aria-label="Close details">&times;</button><div id="modalContent"></div></section></div>
 <script>
-const form=document.getElementById('searchForm'),input=document.getElementById('query'),button=document.getElementById('sendButton'),statusEl=document.getElementById('status'),thread=document.getElementById('thread'),backdrop=document.getElementById('modalBackdrop'),modelIndicator=document.getElementById('modelIndicator');
-const history=[],shownNamesSet=new Set();let lastResults=[];const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const form=document.getElementById('searchForm'),input=document.getElementById('query'),button=document.getElementById('sendButton'),statusEl=document.getElementById('status'),thread=document.getElementById('thread'),backdrop=document.getElementById('modalBackdrop'),modelIndicator=document.getElementById('modelIndicator'),areaFilter=document.getElementById('areaFilter'),budgetFilter=document.getElementById('budgetFilter'),promptButtons=Array.from(document.querySelectorAll('.quick-prompt'));
+const history=[],shownNamesSet=new Set();let lastResults=[],selectedPrompt='';const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function addBubble(role,text){const el=document.createElement('div');el.className='bubble '+role;el.textContent=text;thread.appendChild(el);el.scrollIntoView({behavior:'smooth',block:'nearest'});return el}
+function buildSearchQuery(raw){const parts=[String(raw||'').trim(),selectedPrompt];if(areaFilter.value)parts.push(`near ${areaFilter.value.replace(' / ',' ')}`);if(budgetFilter.value)parts.push(`under ₱${budgetFilter.value} per person`);if(!parts.some(Boolean))return'';if(!String(raw||'').trim()&&!selectedPrompt)parts.unshift('restaurants');return parts.filter(Boolean).join(' ')}
+function clarificationFor(query){const q=String(query||'');if(/\bgreen\b/i.test(q)&&!/\b(greenwich|green\s+coffee|green\s+salad|healthy|vegan|vegetarian|leafy)\b/i.test(q))return{term:'green',choices:[['Green salads / healthy food','healthy green salads and vegetarian food'],['Green Coffee cafes','Green Coffee cafes'],['Greenwich pizza','Greenwich pizza']]};if(/\b24\b/i.test(q)&&!/\b(24\s*chicken|24\s*\/\s*7|24\s+hours?|open\s+24)\b/i.test(q))return{term:'24',choices:[['24-hour places','restaurants open 24 hours'],['24 Chicken','24 Chicken restaurants']]};if(/\btokyo\b/i.test(q)&&!/\b(waffle|ramen|sushi|japanese|tempura|udon)\b/i.test(q))return{term:'Tokyo',choices:[['Tokyo Waffle desserts','Tokyo Waffle desserts'],['Japanese food','Japanese restaurants']]};if(/\bmatcha\b/i.test(q)&&!/\b(latte|drink|tea|cake|dessert|pastry|ice\s+cream)\b/i.test(q))return{term:'matcha',choices:[['Matcha drinks','matcha drinks and cafes'],['Matcha desserts','matcha cakes and desserts']]};return null}
+function addClarification(query,typedQuery,clarification){const bubble=addBubble('assistant',`Quick clarification: “${clarification.term}” can refer to different food categories. Which did you mean?`);bubble.classList.add('clarification-prompt');const options=document.createElement('div');options.className='clarification-options';clarification.choices.forEach(([label,choice])=>{const option=document.createElement('button');option.type='button';option.className='clarification-choice';option.textContent=label;option.addEventListener('click',()=>{const residual=typedQuery.replace(new RegExp(`\\b${clarification.term}\\b`,'i'),' ').replace(/\s+/g,' ').trim();input.value=[choice,residual].filter(Boolean).join(' ');form.requestSubmit()});options.appendChild(option)});bubble.appendChild(options);statusEl.textContent=`Choose an interpretation, or add more detail to “${query}” before searching.`}
 function imageFor(p){const type=String(p.food_type||p.name||'').toLowerCase();const photos=[[/cafe|coffee|tea|bakery|dessert|pastr|halo/i,'photo-1501339847302-ac426a4a7cbb'],[/japan|sushi|ramen|sashimi|korean|asian|noodle|pancit|lomi|batchoy/i,'photo-1579871494447-9811cf80d66c'],[/pizza|italian|pasta/i,'photo-1579751626657-72bc17010498'],[/burger|american|sandwich|chicken|grill|barbecue|bbq|sisig|liempo|lechon|ihaw/i,'photo-1555939594-58d7cb561ad1'],[/seafood|fish|shrimp|tuna|kinilaw/i,'photo-1519708227418-c8fd9a32b7a2'],[/filipino|filipin|local|rice|silog|pares|bulalo|lugaw|satti|ulam|carinderia/i,'photo-1512621776951-a57141f2eefd']];const match=photos.find(([pattern])=>pattern.test(type));return{url:`https://images.unsplash.com/${match?match[1]:'photo-1517248135467-4c7edcad34c4'}?auto=format&fit=crop&w=900&q=80`,label:match?String(p.food_type||'Local cuisine'):'Dining atmosphere'}}
 function mapUrlFor(p){const candidate=String(p.maps_url||'');try{const url=new URL(candidate);if(['https:','http:'].includes(url.protocol))return url.href}catch{}return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent([p.name,p.address,p.city||'Davao City'].filter(Boolean).join(' '))}
-function sourceUrlFor(p){const candidate=String(p.source_url||'').trim();if(!candidate)return null;try{const url=new URL(candidate);if(['https:','http:'].includes(url.protocol))return{href:url.href,host:url.hostname.replace(/^www\./i,'')}}catch{}return null}
+function sourceUrlFor(p){const candidate=String(p.price_evidence?.source_url||p.source_url||'').trim();if(!candidate)return null;try{const url=new URL(candidate);if(['https:','http:'].includes(url.protocol))return{href:url.href,host:url.hostname.replace(/^www\./i,'')}}catch{}return null}
 function parseRatingNum(v){if(typeof v==='number')return(Number.isFinite(v)&&v>0&&v<=5)?v:NaN;const m=String(v??'').match(/([1-5](?:\.\d+)?)/);const n=m?parseFloat(m[1]):NaN;return(Number.isFinite(n)&&n>0&&n<=5)?n:NaN}
 function parseCountNum(v){if(typeof v==='number')return(Number.isFinite(v)&&v>0)?Math.round(v):NaN;const m=String(v??'').replace(/,/g,'').match(/(\d+)/);const n=m?parseInt(m[1],10):NaN;return(Number.isFinite(n)&&n>0)?n:NaN}
 function ratingMarkup(p){const rating=parseRatingNum(p.rating);if(!Number.isFinite(rating))return`<span class="rating-missing">${p.online?'Live web find':'No rating yet'}</span>`;const count=parseCountNum(p.review_count);return`<span class="rating"><span class="rating-star" aria-hidden="true">★</span>${esc(rating.toFixed(1))}${Number.isFinite(count)?` <span class="review-count">(${esc(count)} reviews)</span>`:''}</span>`}
-function priceBadgeText(p){if(p.price_range)return String(p.price_range);if(p.price_evidence&&Number.isFinite(Number(p.price_evidence.observed_median_php)))return`~₱${Math.round(Number(p.price_evidence.observed_median_php))} (${p.price_evidence.source==='live_web_evidence'?'live web':'review-reported'})`;return''}
+function priceBadgeText(p){const raw=p.price_evidence?.observed_median_php;if(raw!==null&&raw!==undefined&&raw!==''&&Number.isFinite(Number(raw)))return`~₱${Math.round(Number(raw))} (${p.price_evidence.source==='live_web_evidence'?'live web':'review-reported'})`;if(p.price_range)return String(p.price_range);return''}
+function getPriceEvidence(p){const raw=p.price_evidence?.observed_median_php;if(raw===null||raw===undefined||raw==='')return null;const value=Number(raw);return Number.isFinite(value)&&value>=0?value:null}
+function relativeAge(seconds){const age=Math.max(0,Number(seconds));if(!Number.isFinite(age))return'';if(age<60)return'less than a minute';if(age<3600)return`${Math.floor(age/60)} min`;if(age<86400)return`${Math.floor(age/3600)} hr`;return`${Math.floor(age/86400)} day`}
+function evidenceNote(metrics,isOnline){if(!isOnline)return'Local record from the 2025 dataset; this is not a real-time check of current hours or business status.';const cache=metrics?.cache||{},age=cache.playwright_age_seconds,cachedAt=cache.playwright_cached_at,date=cachedAt?new Date(cachedAt):null;if(date&&Number.isFinite(date.getTime()))return`Web evidence last captured ${date.toLocaleString()}${age!==null&&age!==undefined&&Number.isFinite(Number(age))?` · cache ${relativeAge(age)} old`:''}${cache.playwright==='hit'?' · reused':''}; details can change.`;if(age!==null&&age!==undefined&&Number.isFinite(Number(age)))return`Web evidence cache is ${relativeAge(age)} old${cache.playwright==='hit'?' (reused)':''}; details can change.`;return metrics?.playwright?.success?'Web evidence gathered for this search; details can change.':'Live web verification was unavailable; confirm details directly.'}
+function refinementNote(metrics){const loop=metrics?.agentic_loop;if(!loop||loop.enabled!==true)return'Automatic criteria review was not run for this search.';const iterations=Math.max(1,Number(loop.iterations)||1),repaired=Math.max(0,Number(loop.violations_repaired)||0);return`Automatic criteria review ran in ${iterations} pass${iterations===1?'':'es'}${repaired?` · ${repaired} issue${repaired===1?'':'s'} corrected`:''}.`}
+function fitReasons(p,intent){const haystack=String([p.name,p.food_type,p.description,p.address].filter(Boolean).join(' ')).toLowerCase(),reasons=[];[...(intent?.specific_dishes||[]),...(intent?.cuisines||[]),...(intent?.thematic||[])].forEach(item=>{const key=String(item||'').toLowerCase().trim();if(key&&haystack.includes(key)&&!reasons.includes(key))reasons.push(key)});(intent?.areas||[]).forEach(item=>{const key=String(item||'').toLowerCase().trim();if(key&&haystack.includes(key)&&!reasons.some(reason=>reason.toLowerCase()===`area: ${key}`))reasons.push(`area: ${key}`)});const max=intent?.max_price_php,min=intent?.min_price_php,hasMax=max!==null&&max!==undefined&&max!==''&&Number.isFinite(Number(max)),hasMin=min!==null&&min!==undefined&&min!==''&&Number.isFinite(Number(min)),price=getPriceEvidence(p);if(price!==null&&(hasMax||hasMin)&&(!hasMax||price<=Number(max))&&(!hasMin||price>=Number(min)))reasons.push(`reported price ~₱${Math.round(price)} fits your requested range`);return reasons}
 function normAlnum(s){return String(s??'').toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/gi,'')}
 function normCore(name){const raw=String(name??'').trim();const stripped=raw.replace(/\s*(?:[-–|]\s*[^-–|]+|\([^)]*\))\s*$/,'').trim();return normAlnum(stripped||raw)}
 function extractBranch(name){const m=String(name??'').match(/\s+[-–]\s+([^-–]{2,80})$/);return m?normAlnum(m[1]):''}
 function isSameVenue(webP,localP){const wf=normAlnum(webP?.name),lf=normAlnum(localP?.name);if(!wf||!lf)return false;if(wf===lf)return true;const wc=normCore(webP?.name),lc=normCore(localP?.name);if(!wc||wc.length<4||wc!==lc)return false;const wb=extractBranch(webP?.name),lb=extractBranch(localP?.name);if(wb&&lb)return wb===lb||wb.includes(lb)||lb.includes(wb);if(!lb)return true;const ctx=normAlnum(`${webP?.address||''} ${webP?.description||''}`);return Boolean(ctx&&ctx.includes(lb))}
-function openDetails(p){const rating=parseRatingNum(p.rating);const count=parseCountNum(p.review_count);const stars=Number.isFinite(rating)?`<div class="stars">★ ${esc(rating.toFixed(1))}/5 <span class="small">${Number.isFinite(count)?` · ${esc(count)} reviews`:''}</span></div>`:`<p class="meta">No verified rating ${p.online?'found online':'in the dataset'}</p>`;const mapUrl=mapUrlFor(p);const src=sourceUrlFor(p);const photo=imageFor(p);const pText=priceBadgeText(p)||'Not verified';document.getElementById('modalContent').innerHTML=`<div class="place-photo"><img src="${esc(photo.url)}" alt="Representative ${esc(photo.label)} photo" loading="lazy"></div><h2 id="modalTitle">${esc(p.name||'Unnamed place')}</h2>${stars}<p>${esc(p.description||p.food_type||'No description available.')}</p><p><strong>Restaurant type:</strong> ${esc(p.food_type||'Not verified')}</p><p><strong>Price info:</strong> ${esc(pText)}</p><p><strong>Location:</strong> ${esc(p.address||p.city||'Address not verified')}</p>${p.volatility_note?`<p class="small"><strong>Live status note:</strong> ${esc(p.volatility_note)}</p>`:''}${src?`<p><a href="${esc(src.href)}" target="_blank" rel="noopener noreferrer">View web source (${esc(src.host)}) ↗</a></p>`:''}<p><a href="${esc(mapUrl)}" target="_blank" rel="noopener noreferrer">Open location in Google Maps ↗</a></p><p class="small">Image is representative, not a verified photo of this restaurant. ${p.online?'Online details can change; check linked search sources.':'Ratings and details are based on supplied data.'}</p>`;backdrop.classList.add('open');document.getElementById('closeModal').focus()}
+function openDetails(p){const rating=parseRatingNum(p.rating);const count=parseCountNum(p.review_count);const stars=Number.isFinite(rating)?`<div class="stars">★ ${esc(rating.toFixed(1))}/5 <span class="small">${Number.isFinite(count)?` · ${esc(count)} reviews`:''}</span></div>`:`<p class="meta">No verified rating ${p.online?'found online':'in the dataset'}</p>`;const mapUrl=mapUrlFor(p);const src=sourceUrlFor(p);const photo=imageFor(p);const pText=priceBadgeText(p)||'Not verified';const freshness=p.online?'Online details may be cached and can change. Check the linked source or contact the restaurant.':'2025 local dataset record; current hours and business status are not verified.';document.getElementById('modalContent').innerHTML=`<div class="place-photo"><img src="${esc(photo.url)}" alt="Representative ${esc(photo.label)} photo" loading="lazy"></div><h2 id="modalTitle">${esc(p.name||'Unnamed place')}</h2>${stars}<p>${esc(p.description||p.food_type||'No description available.')}</p><p><strong>Restaurant type:</strong> ${esc(p.food_type||'Not verified')}</p><p><strong>Price info:</strong> ${esc(pText)}</p><p><strong>Location:</strong> ${esc(p.address||p.city||'Address not verified')}</p>${p.volatility_note?`<p class="small"><strong>Live status note:</strong> ${esc(p.volatility_note)}</p>`:''}${src?`<p><a href="${esc(src.href)}" target="_blank" rel="noopener noreferrer">View web source (${esc(src.host)}) ↗</a></p>`:''}<p><a href="${esc(mapUrl)}" target="_blank" rel="noopener noreferrer">Open location in Google Maps ↗</a></p><p class="small">${esc(freshness)} Image is representative, not a verified photo of this restaurant. ${p.online?'':'Ratings and details are based on supplied data.'}</p>`;backdrop.classList.add('open');document.getElementById('closeModal').focus()}
 function addSources(sources,bubble){if(!Array.isArray(sources)||!sources.length||!bubble)return;const section=document.createElement('div');section.className='small';section.style.marginTop='8px';const label=document.createElement('strong');label.textContent='Sources:';section.appendChild(label);sources.forEach(source=>{try{const url=new URL(source.url);if(!['http:','https:'].includes(url.protocol))return;const link=document.createElement('a');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent=source.title||url.hostname;link.style.marginLeft='8px';section.appendChild(link)}catch{}});if(section.querySelector('a'))bubble.appendChild(section)}
-function renderPlaces(places,title,isOnline=false){if(!Array.isArray(places)||!places.length)return;const group=document.createElement('section');group.className='turn-results';const heading=document.createElement('h2');heading.className='results-heading'+(isOnline?' online':'');heading.innerHTML=`<span>${esc(title)}</span><span class="results-count">${places.length}</span>`;group.appendChild(heading);const grid=document.createElement('div');grid.className='results';group.appendChild(grid);places.forEach(p=>{const photo=imageFor(p);const address=p.address||p.city||'Location not verified';const pBadge=priceBadgeText(p);const src=sourceUrlFor(p);const card=document.createElement('article');card.className='place'+(isOnline?' online-card':'');card.innerHTML=`<div class="place-photo"><img src="${esc(photo.url)}" alt="Representative ${esc(photo.label)} photo" loading="lazy"><span class="photo-label">Illustrative image</span></div><div class="place-body"><div class="place-topline"><h3>${esc(p.name||'Unnamed place')}</h3>${ratingMarkup(p)}</div><div class="place-tags">${isOnline?'<span class="tag online">Live web</span>':''}<span class="tag">${esc(p.food_type||'Restaurant')}</span>${pBadge?`<span class="tag price">${esc(pBadge)}</span>`:''}</div><p class="place-description">${esc(p.description||'Explore this place in Davao City.')}</p><div class="place-location"><span class="pin" aria-hidden="true">⌖</span><span>${esc(address)}</span></div><div class="place-actions"><button class="details" type="button">View details</button>${src?`<a class="source-link" href="${esc(src.href)}" target="_blank" rel="noopener noreferrer" title="${esc(src.host)}">Source ↗</a>`:''}<a class="map-link" href="${esc(mapUrlFor(p))}" target="_blank" rel="noopener noreferrer">Directions ↗</a></div><p class="photo-note">Representative food photo, not a verified photo of this restaurant.</p></div>`;card.querySelector('.details').addEventListener('click',()=>openDetails(p));const image=card.querySelector('.place-photo img');image.addEventListener('error',()=>{image.remove();card.querySelector('.place-photo').style.background='linear-gradient(140deg,#e1ebdf,#b9d3bc)'},{once:true});grid.appendChild(card)});thread.appendChild(group);group.scrollIntoView({behavior:'smooth',block:'nearest'})}
+function renderPlaces(places,title,isOnline=false,metrics={},request=''){
+ if(!Array.isArray(places)||!places.length)return;
+ const intent=metrics?.parsed_intent||{},group=document.createElement('section');group.className='turn-results';
+ const heading=document.createElement('h2');heading.className='results-heading'+(isOnline?' online':'');heading.innerHTML=`<span>${esc(title)}</span><span class="results-count">${places.length}</span>`;group.appendChild(heading);
+ const context=document.createElement('div');context.className='result-context';
+ const requestLine=document.createElement('p');requestLine.textContent=`Your request: ${request}`;context.appendChild(requestLine);
+ const evidenceLine=document.createElement('p');evidenceLine.textContent=evidenceNote(metrics,isOnline);context.appendChild(evidenceLine);
+ const checkLine=document.createElement('p');checkLine.textContent=refinementNote(metrics);context.appendChild(checkLine);
+ const latency=Number(metrics?.total_latency_ms);if(Number.isFinite(latency)&&latency>=0){const speedLine=document.createElement('p');speedLine.textContent=`Search completed in ${(latency/1000).toFixed(1)} seconds.`;context.appendChild(speedLine)}
+ group.appendChild(context);
+ const grid=document.createElement('div');grid.className='results';group.appendChild(grid);
+ places.forEach(p=>{
+  const photo=imageFor(p),address=p.address||p.city||'Location not verified',pBadge=priceBadgeText(p),src=sourceUrlFor(p),reasons=fitReasons(p,intent),maxPrice=Number(intent.max_price_php),minPrice=Number(intent.min_price_php),hasCeiling=intent.max_price_php!==null&&intent.max_price_php!==undefined&&intent.max_price_php!==''&&Number.isFinite(maxPrice),hasMinimum=intent.min_price_php!==null&&intent.min_price_php!==undefined&&intent.min_price_php!==''&&Number.isFinite(minPrice),observedPrice=getPriceEvidence(p),hasPriceConstraint=hasCeiling||hasMinimum,withinPriceConstraint=observedPrice!==null&&(!hasCeiling||observedPrice<=maxPrice)&&(!hasMinimum||observedPrice>=minPrice);
+  const priceCheck=!hasPriceConstraint?'':observedPrice===null?'Price not verified against your budget':!withinPriceConstraint&&hasCeiling&&observedPrice>maxPrice?`Reported price above ₱${Math.round(maxPrice)} ceiling`:!withinPriceConstraint&&hasMinimum&&observedPrice<minPrice?`Reported price below ₱${Math.round(minPrice)} minimum`:hasMinimum&&hasCeiling?`Reported price within ₱${Math.round(minPrice)}–₱${Math.round(maxPrice)} range`:hasCeiling?`Reported price within ₱${Math.round(maxPrice)} ceiling`:`Reported price meets ₱${Math.round(minPrice)} minimum`;
+  const card=document.createElement('article');card.className='place'+(isOnline?' online-card':'');
+  card.innerHTML=`<div class="place-photo"><img src="${esc(photo.url)}" alt="Representative ${esc(photo.label)} photo" loading="lazy"><span class="photo-label">Illustrative image</span></div><div class="place-body"><div class="place-topline"><h3>${esc(p.name||'Unnamed place')}</h3>${ratingMarkup(p)}</div><div class="place-tags">${isOnline?'<span class="tag online">Live web</span>':'<span class="tag evidence">2025 dataset</span>'}<span class="tag">${esc(p.food_type||'Restaurant')}</span>${pBadge?`<span class="tag price">${esc(pBadge)}</span>`:''}${priceCheck?`<span class="tag ${!withinPriceConstraint?'unverified':'evidence'}">${esc(priceCheck)}</span>`:''}</div><p class="place-description">${esc(p.description||'Explore this place in Davao City.')}</p><p class="place-reason"><strong>Why it may fit:</strong> ${esc(reasons.length?reasons.join(' · '):'Selected as a relevant Davao City option. Check its details and source before visiting.')}</p><div class="place-location"><span class="pin" aria-hidden="true">⌖</span><span>${esc(address)}</span></div><div class="place-actions"><button class="details" type="button">View details</button>${src?`<a class="source-link" href="${esc(src.href)}" target="_blank" rel="noopener noreferrer" title="${esc(src.host)}">Source ↗</a>`:'<span class="source-unavailable">Source link unavailable</span>'}<a class="map-link" href="${esc(mapUrlFor(p))}" target="_blank" rel="noopener noreferrer">Directions ↗</a></div><p class="photo-note">Representative food photo, not a verified photo of this restaurant.</p></div>`;
+  card.querySelector('.details').addEventListener('click',()=>openDetails(p));
+  const image=card.querySelector('.place-photo img');image.addEventListener('error',()=>{image.remove();card.querySelector('.place-photo').style.background='linear-gradient(140deg,#e1ebdf,#b9d3bc)'},{once:true});grid.appendChild(card)
+ });
+ thread.appendChild(group);group.scrollIntoView({behavior:'smooth',block:'nearest'})
+}
 form.addEventListener('submit',async e=>{
  e.preventDefault();
- const query=input.value.trim();
- if(!query)return;
+ const typedQuery=input.value.trim(),query=buildSearchQuery(typedQuery);
+ if(!query){statusEl.textContent='Describe what you want, or select an area, budget, or dining need above.';input.focus();return}
+ if(query.length>300){statusEl.textContent='Your combined request is too long. Shorten it or remove a filter.';input.focus();return}
+ const clarification=clarificationFor(query);
+ if(clarification){addClarification(query,typedQuery,clarification);return}
  addBubble('user',query);
+ selectedPrompt='';promptButtons.forEach(item=>item.setAttribute('aria-pressed','false'));areaFilter.value='';budgetFilter.value='';
  input.value='';
  button.disabled=true;
- button.textContent='Thinking…';
- statusEl.textContent='Searching the web and Davao City places…';
+ button.textContent='Searching…';
+ statusEl.textContent='Checking Davao City places, sources, and your criteria…';
  try{
   const controller=new AbortController();
   const timeoutId=setTimeout(()=>controller.abort(),180000);
@@ -139,6 +195,19 @@ form.addEventListener('submit',async e=>{
    assistantBubble=addBubble('assistant',answer);
    history.push({role:'assistant',content:answer});
    addSources(data.sources,assistantBubble);
+   if(data.priceClarification===true){
+    const options=document.createElement('div');
+    options.className='clarification-options';
+    ['Budget-friendly','Mid-range','Upscale'].forEach(choice=>{
+     const option=document.createElement('button');
+     option.type='button';
+     option.className='clarification-choice';
+     option.textContent=choice;
+     option.addEventListener('click',()=>{input.value=choice;form.requestSubmit()});
+     options.appendChild(option);
+    });
+    assistantBubble.appendChild(options);
+   }
   }
   while(history.length>12)history.shift();
   const outOfScope=data.outOfScope===true;
@@ -147,10 +216,12 @@ form.addEventListener('submit',async e=>{
   const localResults=webResults.length?rawLocalResults.filter(lp=>!webResults.some(wp=>isSameVenue(wp,lp))):rawLocalResults;
   [...webResults,...localResults].forEach(p=>{const nm=String(p?.name||'').trim();if(nm)shownNamesSet.add(nm)});
   lastResults=[...webResults,...localResults];
-  renderPlaces(webResults,'Online finds',true);
-  renderPlaces(localResults,'Local finds',false);
+  renderPlaces(webResults,'Online finds',true,data.metrics||{},query);
+  renderPlaces(localResults,'Local finds',false,data.metrics||{},query);
   const wCount=webResults.length,lCount=localResults.length;
-  statusEl.textContent=outOfScope
+  statusEl.textContent=data.priceClarification===true
+   ?'Choose a price range or type a peso budget to see matching Davao City places.'
+   :outOfScope
    ?'This assistant only recommends places in Davao City.'
    :(wCount&&lCount)
     ?`${wCount} online ${wCount===1?'find':'finds'} and ${lCount} local ${lCount===1?'find':'finds'} shown.`
@@ -173,9 +244,15 @@ form.addEventListener('submit',async e=>{
   statusEl.textContent='Could not send your request. The query is still in the input so you can retry.';
  }finally{
   button.disabled=false;
-  button.textContent='Send';
+   button.textContent='Find places';
   input.focus();
  }
 });
+promptButtons.forEach(promptButton=>promptButton.addEventListener('click',()=>{
+  const wasSelected=promptButton.getAttribute('aria-pressed')==='true';
+  promptButtons.forEach(item=>item.setAttribute('aria-pressed','false'));
+  selectedPrompt=wasSelected?'':promptButton.dataset.prompt||'';
+  if(selectedPrompt)promptButton.setAttribute('aria-pressed','true');
+}));
 document.getElementById('closeModal').addEventListener('click',()=>backdrop.classList.remove('open'));backdrop.addEventListener('click',e=>{if(e.target===backdrop)backdrop.classList.remove('open')});document.addEventListener('keydown',e=>{if(e.key==='Escape')backdrop.classList.remove('open')});
 </script></body></html>

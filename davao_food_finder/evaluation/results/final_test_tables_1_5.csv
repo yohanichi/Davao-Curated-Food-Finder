@@ -1,0 +1,59 @@
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=fdb54c83f17a8a0a598e6bfd36c50a760d61932af7e793ba6b271e332a34ce60"
+"TABLE 1: RANKING & INTENT MATCHING METRICS (Combined Web+Local, n=38)"
+"Config ID","P@5 Mean","P@5 CI Lower","P@5 CI Upper","NDCG@5 Mean","NDCG@5 CI Lower","NDCG@5 CI Upper",MRR,"R@5 Mean","R@5 CI Lower","R@5 CI Upper","R@10 Mean","Local P@5","Web P@5","Web Active Queries"
+AGENTIC-LOOP-LOCAL,0,0,0,0,0,0,0,0,0,0,0,0,N/A,0
+DEEPSEEK,0,0,0,0,0,0,0,0,0,0,0,0,N/A,0
+HYBRID,0,0,0,0,0,0,0,0,0,0,0,0,N/A,0
+SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,0,0,0,0,0,0,0,0,0,0,0,N/A,0
+ABLATION-NO-LOOP,0,0,0,0,0,0,0,0,0,0,0,0,N/A,0
+GPT-4O-MINI,0,0,0,0,0,0,0,0,0,0,0,0,N/A,0
+BASELINE-LOCAL,0.6316,0.4999,0.7526,0.5302,0.4202,0.6448,0.7403,0.0697,0.0505,0.0906,0.1332,0.6211,N/A,0
+NON-AGENTIC,0,0,0,0,0,0,0,0,0,0,0,0,N/A,0
+
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=fdb54c83f17a8a0a598e6bfd36c50a760d61932af7e793ba6b271e332a34ce60"
+"TABLE 2: CONSTRAINT ADHERENCE, SCOPE SAFETY, MULTI-TURN, FAITHFULNESS, RELIABILITY & COST"
+"Config ID","Constraint Item Pass Rate","Scope Rejection Accuracy","Follow-up Resolution Rate","Faithfulness Mean","Factual Correctness Mean","Repeat Consistency","Error Rate",Retries,"Mean Cost USD"
+AGENTIC-LOOP-LOCAL,0,0,0,0,0,N/A,1,0,0
+DEEPSEEK,0,0,0,0,0,N/A,1,0,0
+HYBRID,0,0,0,0,0,N/A,1,0,0
+SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,0,0,0,0,N/A,1,0,0
+ABLATION-NO-LOOP,0,0,0,0,0,N/A,1,0,0
+GPT-4O-MINI,0,0,0,0,0,N/A,1,0,0
+BASELINE-LOCAL,0.6184,1,0.2,1,1,1,0,0,0
+NON-AGENTIC,0,0,0,0,0,N/A,1,0,0
+
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=fdb54c83f17a8a0a598e6bfd36c50a760d61932af7e793ba6b271e332a34ce60"
+"TABLE 3: LATENCY DECOMPOSITION & CACHE BEHAVIOR"
+"Config ID","Mean Latency (s)","P50 Latency (s)","P95 Latency (s)","P99 Latency (s)","Cold P50 (s)","Warm P50 (s)","Dataset Mean (ms)","Playwright Mean (ms)","AI Mean (ms)","Playwright Cache Hits","Playwright Cache Misses"
+AGENTIC-LOOP-LOCAL,0.0233,0.022,0.0293,0.0304,N/A,N/A,0,0,0,0,0
+DEEPSEEK,0.0242,0.0236,0.0284,0.029,N/A,N/A,0,0,0,0,0
+HYBRID,0.733,0.5931,1.2133,1.3341,N/A,N/A,0,0,0,0,0
+SELECTED-DEV-DEEPSEEK-T0.1-BASE,0.0275,0.0263,0.0327,0.0337,N/A,N/A,0,0,0,0,0
+ABLATION-NO-LOOP,0.0241,0.0253,0.0257,0.0258,N/A,N/A,0,0,0,0,0
+GPT-4O-MINI,0.0228,0.0231,0.0248,0.025,N/A,N/A,0,0,0,0,0
+BASELINE-LOCAL,24.2415,18.5146,57.0634,62.2992,25.0483,N/A,21.82,24193.89,0,0,45
+NON-AGENTIC,23.2507,21.2197,33.0605,34.695,21.2197,N/A,18.8,22027.4,1156.2,0,5
+
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=fdb54c83f17a8a0a598e6bfd36c50a760d61932af7e793ba6b271e332a34ce60"
+"TABLE 4: QUALITATIVE ERROR & GROUNDING AUDIT COUNTS"
+"Config ID",Duplicates,"Wrong Locations","Missing Sources","Fabricated Details","Unsupported Claims","Constraint Failures","Scope Violations"
+AGENTIC-LOOP-LOCAL,0,0,0,0,0,0,0
+DEEPSEEK,0,0,0,0,0,0,0
+HYBRID,0,0,0,0,0,0,0
+SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,0,0,0,0,0,0
+ABLATION-NO-LOOP,0,0,0,0,0,0,0
+GPT-4O-MINI,0,0,0,0,0,0,0
+BASELINE-LOCAL,0,0,0,0,0,14,0
+NON-AGENTIC,0,0,0,0,0,0,0
+
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=fdb54c83f17a8a0a598e6bfd36c50a760d61932af7e793ba6b271e332a34ce60"
+"TABLE 5: STUDY OBJECTIVES BREAKDOWN — DISAMBIGUATION, NUMERIC PRICE CEILINGS & AUTONOMOUS ITERATIVE LOOP"
+"Config ID","Disambiguation Accuracy","Trap-Free Rate","Price Ceiling Accuracy","Price Ceiling NDCG@5","Loop Initial Compliance","Loop Final Compliance","Violations Repaired","Violations Detected","Re-Retrieval Rate"
+AGENTIC-LOOP-LOCAL,0,0,0,0,disabled,disabled,-,-,-
+DEEPSEEK,0,0,0,0,disabled,disabled,-,-,-
+HYBRID,0,0,0,0,disabled,disabled,-,-,-
+SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,0,0,0,disabled,disabled,-,-,-
+ABLATION-NO-LOOP,0,0,0,0,disabled,disabled,-,-,-
+GPT-4O-MINI,0,0,0,0,disabled,disabled,-,-,-
+BASELINE-LOCAL,0.3846,0.9231,0,0.1779,disabled,disabled,-,-,-
+NON-AGENTIC,0,0,0,0,disabled,disabled,-,-,-

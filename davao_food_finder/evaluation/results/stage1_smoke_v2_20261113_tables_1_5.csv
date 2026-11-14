@@ -1,0 +1,24 @@
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=2142ac0cbddd91595417a3879b8cfde5b4e6b1c9c25e8a1e12e7726f1fd48788"
+"TABLE 1: RANKING & INTENT MATCHING METRICS (Combined Web+Local, n=1)"
+"Config ID","P@5 Mean","P@5 CI Lower","P@5 CI Upper","NDCG@5 Mean","NDCG@5 CI Lower","NDCG@5 CI Upper",MRR,"R@5 Mean","R@5 CI Lower","R@5 CI Upper","R@10 Mean","Local P@5","Web P@5","Web Active Queries"
+BASELINE-LOCAL,0.8,0.8,0.8,0.7465,0.7465,0.7465,1,0.1333,0.1333,0.1333,0.2667,0.8,N/A,0
+
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=2142ac0cbddd91595417a3879b8cfde5b4e6b1c9c25e8a1e12e7726f1fd48788"
+"TABLE 2: CONSTRAINT ADHERENCE, SCOPE SAFETY, MULTI-TURN, FAITHFULNESS, RELIABILITY & COST"
+"Config ID","Constraint Item Pass Rate","Scope Rejection Accuracy","Follow-up Resolution Rate","Faithfulness Mean","Factual Correctness Mean","Repeat Consistency","Error Rate",Retries,"Mean Cost USD"
+BASELINE-LOCAL,1,1,N/A,1,1,1,0,0,0
+
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=2142ac0cbddd91595417a3879b8cfde5b4e6b1c9c25e8a1e12e7726f1fd48788"
+"TABLE 3: LATENCY DECOMPOSITION & CACHE BEHAVIOR"
+"Config ID","Mean Latency (s)","P50 Latency (s)","P95 Latency (s)","P99 Latency (s)","Cold P50 (s)","Warm P50 (s)","Dataset Mean (ms)","Playwright Mean (ms)","AI Mean (ms)","Playwright Cache Hits","Playwright Cache Misses"
+BASELINE-LOCAL,0.1016,0.1016,0.1133,0.1144,N/A,N/A,16,0,0,0,0
+
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=2142ac0cbddd91595417a3879b8cfde5b4e6b1c9c25e8a1e12e7726f1fd48788"
+"TABLE 4: QUALITATIVE ERROR & GROUNDING AUDIT COUNTS"
+"Config ID",Duplicates,"Wrong Locations","Missing Sources","Fabricated Details","Unsupported Claims","Constraint Failures","Scope Violations"
+BASELINE-LOCAL,0,0,0,0,0,0,0
+
+"SOURCE: script=evaluation/run_evaluation.php; function=exportTables1To5; inputs=ground_truth.json,ph_restos_2025.csv,ph_reviews_2025.csv; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; source_tree_sha256=2142ac0cbddd91595417a3879b8cfde5b4e6b1c9c25e8a1e12e7726f1fd48788"
+"TABLE 5: STUDY OBJECTIVES BREAKDOWN — DISAMBIGUATION, NUMERIC PRICE CEILINGS & AUTONOMOUS ITERATIVE LOOP"
+"Config ID","Disambiguation Accuracy","Trap-Free Rate","Price Ceiling Accuracy","Price Ceiling NDCG@5","Loop Initial Compliance","Loop Final Compliance","Violations Repaired","Violations Detected","Re-Retrieval Rate"
+BASELINE-LOCAL,N/A,N/A,N/A,N/A,disabled,disabled,-,-,-

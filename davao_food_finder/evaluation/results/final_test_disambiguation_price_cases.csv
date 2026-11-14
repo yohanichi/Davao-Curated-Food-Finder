@@ -1,0 +1,130 @@
+"SOURCE: script=evaluation/run_evaluation.php; function=exportCaseFailureAndObjectiveTables; inputs=ground_truth.json,data/*; ground_truth_sha256=479d9432b824f818cd6a676079790bd2b66ef8dc21480f372b1d98f2a9fbbb06; dataset_sha256={""ph_restos_2025.csv"":""bdd741dc8d83d3ba119e7a99ea6a69c2228aa0d458389a09543576a0cef8caaa"",""ph_reviews_2025.csv"":""1b95b980334534314d8c918457de5eea5751f7a121af7b39c7c3a1c21d161070""}; source_tree_sha256=fdb54c83f17a8a0a598e6bfd36c50a760d61932af7e793ba6b271e332a34ce60"
+case_id,case_category,query,config_id,trial,disambiguation_case,price_ceiling_case,max_price_php,top5_returned,failed_constraints,numeric_price_compliant,disambiguation_trap_free,error_type
+Q036,ambiguous,"Where is a great place to eat tonight with top reviews?",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+Q036,ambiguous,"Where is a great place to eat tonight with top reviews?",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+Q036,ambiguous,"Where is a great place to eat tonight with top reviews?",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+Q036,ambiguous,"Where is a great place to eat tonight with top reviews?",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+Q036,ambiguous,"Where is a great place to eat tonight with top reviews?",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+Q036,ambiguous,"Where is a great place to eat tonight with top reviews?",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+Q036,ambiguous,"Where is a great place to eat tonight with top reviews?",BASELINE-LOCAL,1,1,0,,"[""Tip-Top Finest Yogurt Drink - Gaisano Mall"",""GREENEATS - SM Lanang Premier"",""Sukidesu Modern Japanese Cuisine - Aurora"",""Eat! Chiro - Tavera"",""Greenwich - Gaisano Mall Davao""]",,,1,
+Q036,ambiguous,"Where is a great place to eat tonight with top reviews?",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D001,disambiguation,"Fresh green salads and plant-based healthy bowls in Davao City",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D001,disambiguation,"Fresh green salads and plant-based healthy bowls in Davao City",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D001,disambiguation,"Fresh green salads and plant-based healthy bowls in Davao City",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D001,disambiguation,"Fresh green salads and plant-based healthy bowls in Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D001,disambiguation,"Fresh green salads and plant-based healthy bowls in Davao City",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D001,disambiguation,"Fresh green salads and plant-based healthy bowls in Davao City",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D001,disambiguation,"Fresh green salads and plant-based healthy bowls in Davao City",BASELINE-LOCAL,1,1,0,,"[""Fast Fresh By SKCO - Torres"",""The Green Bounty Kitchen - Ecoland"",""Fast Fresh by SKCO - Lanang"",""FoodBowls - Katipunan Diner"",""CoCo Fresh Tea & Juice - SM Lanang""]",,,1,
+D001,disambiguation,"Fresh green salads and plant-based healthy bowls in Davao City",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D002,disambiguation,"Food places open 24 hours or after midnight in Davao City",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D002,disambiguation,"Food places open 24 hours or after midnight in Davao City",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D002,disambiguation,"Food places open 24 hours or after midnight in Davao City",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D002,disambiguation,"Food places open 24 hours or after midnight in Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D002,disambiguation,"Food places open 24 hours or after midnight in Davao City",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D002,disambiguation,"Food places open 24 hours or after midnight in Davao City",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D002,disambiguation,"Food places open 24 hours or after midnight in Davao City",BASELINE-LOCAL,1,1,0,,"[""Chikoy's Lugawan - Torres"",""24 Chicken - Bajada"",""S&R New York Style Pizza - Abreeza Ayala Mall"",""Sukidesu Modern Japanese Cuisine - Aurora"",""S&R New York Style Pizza - SM City Davao""]",hours,,0,
+D002,disambiguation,"Food places open 24 hours or after midnight in Davao City",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D003,disambiguation,"Authentic Tokyo-style Japanese sushi and ramen in Davao City",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D003,disambiguation,"Authentic Tokyo-style Japanese sushi and ramen in Davao City",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D003,disambiguation,"Authentic Tokyo-style Japanese sushi and ramen in Davao City",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D003,disambiguation,"Authentic Tokyo-style Japanese sushi and ramen in Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D003,disambiguation,"Authentic Tokyo-style Japanese sushi and ramen in Davao City",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D003,disambiguation,"Authentic Tokyo-style Japanese sushi and ramen in Davao City",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D003,disambiguation,"Authentic Tokyo-style Japanese sushi and ramen in Davao City",BASELINE-LOCAL,1,1,0,,"[""Tokyo Tokyo - SM Lanang"",""Saikono Japanese Restaurant - Matina"",""Tokyo Tokyo - SM Davao Ecoland"",""Zutto Tomodachi Japanese Cuisine - Jose Abad Santos Street"",""Ramen-Ju On The Go""]",,,1,
+D003,disambiguation,"Authentic Tokyo-style Japanese sushi and ramen in Davao City",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D005,disambiguation,"Specialty hot brewed espresso and coffee roasteries in Davao City",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D005,disambiguation,"Specialty hot brewed espresso and coffee roasteries in Davao City",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D005,disambiguation,"Specialty hot brewed espresso and coffee roasteries in Davao City",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D005,disambiguation,"Specialty hot brewed espresso and coffee roasteries in Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D005,disambiguation,"Specialty hot brewed espresso and coffee roasteries in Davao City",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D005,disambiguation,"Specialty hot brewed espresso and coffee roasteries in Davao City",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D005,disambiguation,"Specialty hot brewed espresso and coffee roasteries in Davao City",BASELINE-LOCAL,1,1,0,,"[""KapeMore Roastery and Specialty Coffee - Matina Town Square"",""J.CO Donuts & Coffee - Abreeza"",""BO's Coffee - SM Davao"",""Green Coffee - Marfori"",""J.CO Donuts & Coffee - SM Davao Quimpo""]",,,1,
+D005,disambiguation,"Specialty hot brewed espresso and coffee roasteries in Davao City",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D006,disambiguation,"Cebu puso and grilled BBQ house inside Davao City",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D006,disambiguation,"Cebu puso and grilled BBQ house inside Davao City",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D006,disambiguation,"Cebu puso and grilled BBQ house inside Davao City",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D006,disambiguation,"Cebu puso and grilled BBQ house inside Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D006,disambiguation,"Cebu puso and grilled BBQ house inside Davao City",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D006,disambiguation,"Cebu puso and grilled BBQ house inside Davao City",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D006,disambiguation,"Cebu puso and grilled BBQ house inside Davao City",BASELINE-LOCAL,1,1,0,,"[""MAXIMUS CEBU PUSO AND LAGAO BBQ HOUSE - Loyola Street"",""Better Bite BBQ House - Crossing Bayabas"",""Jepoy's Grill House - Rasay Street"",""Whawha Barbeque House - Cabantian"",""John's Food House - Sandawa""]",,,1,
+D006,disambiguation,"Cebu puso and grilled BBQ house inside Davao City",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D008,disambiguation,"Lami ug barato nga kan-anan or karinderya sa Davao City",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D008,disambiguation,"Lami ug barato nga kan-anan or karinderya sa Davao City",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D008,disambiguation,"Lami ug barato nga kan-anan or karinderya sa Davao City",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D008,disambiguation,"Lami ug barato nga kan-anan or karinderya sa Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D008,disambiguation,"Lami ug barato nga kan-anan or karinderya sa Davao City",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D008,disambiguation,"Lami ug barato nga kan-anan or karinderya sa Davao City",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D008,disambiguation,"Lami ug barato nga kan-anan or karinderya sa Davao City",BASELINE-LOCAL,1,1,0,,"[""Classic Savory - SM Lanang"",""Tola, Kan-anan sa Balay Oboza"",""Chikoy's Lugawan - Torres"",""Mang Inasal - GMall Toril"",""Patok sa Manok - Lanang""]",cuisine|budget,,1,
+D008,disambiguation,"Lami ug barato nga kan-anan or karinderya sa Davao City",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D009,disambiguation,"Where to eat sinugba ug kinilaw or sutukil in Davao City",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D009,disambiguation,"Where to eat sinugba ug kinilaw or sutukil in Davao City",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D009,disambiguation,"Where to eat sinugba ug kinilaw or sutukil in Davao City",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D009,disambiguation,"Where to eat sinugba ug kinilaw or sutukil in Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D009,disambiguation,"Where to eat sinugba ug kinilaw or sutukil in Davao City",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D009,disambiguation,"Where to eat sinugba ug kinilaw or sutukil in Davao City",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D009,disambiguation,"Where to eat sinugba ug kinilaw or sutukil in Davao City",BASELINE-LOCAL,1,1,0,,"[""Chikoy's Lugawan - Torres"",""Pasugba - Torres"",""Pizza Treat Delight - Toril"",""The Dough Story - Abreeza"",""SharEat Davao (Samgyupsal Store) - Matina Aplaya Road""]",cuisine,,1,
+D009,disambiguation,"Where to eat sinugba ug kinilaw or sutukil in Davao City",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D010,disambiguation,"Good sangyup and ramyun places in Davao City",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D010,disambiguation,"Good sangyup and ramyun places in Davao City",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D010,disambiguation,"Good sangyup and ramyun places in Davao City",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D010,disambiguation,"Good sangyup and ramyun places in Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D010,disambiguation,"Good sangyup and ramyun places in Davao City",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D010,disambiguation,"Good sangyup and ramyun places in Davao City",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D010,disambiguation,"Good sangyup and ramyun places in Davao City",BASELINE-LOCAL,1,1,0,,"[""McDonald's - Davao Bajada"",""McDonald's - SPMC"",""Jollibee - Phoenix Lanang"",""Burger King - J.P. Laurel Davao"",""Burger King - Buhangin Davao""]",cuisine,,1,
+D010,disambiguation,"Good sangyup and ramyun places in Davao City",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D012,disambiguation,"Places in SM Lanang or Damosa where our group can get either Japanese ramen or specialty coffee",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D012,disambiguation,"Places in SM Lanang or Damosa where our group can get either Japanese ramen or specialty coffee",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D012,disambiguation,"Places in SM Lanang or Damosa where our group can get either Japanese ramen or specialty coffee",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D012,disambiguation,"Places in SM Lanang or Damosa where our group can get either Japanese ramen or specialty coffee",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D012,disambiguation,"Places in SM Lanang or Damosa where our group can get either Japanese ramen or specialty coffee",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D012,disambiguation,"Places in SM Lanang or Damosa where our group can get either Japanese ramen or specialty coffee",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D012,disambiguation,"Places in SM Lanang or Damosa where our group can get either Japanese ramen or specialty coffee",BASELINE-LOCAL,1,1,0,,"[""Tori Yamu - SM Lanang"",""Classic Savory - SM Lanang"",""Toryano's Chicken Haus - SM Lanang"",""Manna Korean Restaurant - Sm Lanang"",""KapeMore Roastery and Specialty Coffee - Matina Town Square""]",cuisine,,1,
+D012,disambiguation,"Places in SM Lanang or Damosa where our group can get either Japanese ramen or specialty coffee",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+D014,ambiguous,"Hungry near Ateneo Roxas Avenue, any top-rated comfort food?",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+D014,ambiguous,"Hungry near Ateneo Roxas Avenue, any top-rated comfort food?",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+D014,ambiguous,"Hungry near Ateneo Roxas Avenue, any top-rated comfort food?",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+D014,ambiguous,"Hungry near Ateneo Roxas Avenue, any top-rated comfort food?",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+D014,ambiguous,"Hungry near Ateneo Roxas Avenue, any top-rated comfort food?",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+D014,ambiguous,"Hungry near Ateneo Roxas Avenue, any top-rated comfort food?",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+D014,ambiguous,"Hungry near Ateneo Roxas Avenue, any top-rated comfort food?",BASELINE-LOCAL,1,1,0,,"[""Daghaus Korean Fusion - Roxas Avenue"",""LA (Olah) Halo - Halo - Cabaguio Avenue"",""Chachago - Ateneo Davao"",""Smokin' Toppings, Fiamma, Panwiches & Nutwater - Juna"",""Driver's Stop Carinderia - Bangkal""]",location_area,,1,
+D014,ambiguous,"Hungry near Ateneo Roxas Avenue, any top-rated comfort food?",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+PC001,price_ceiling,"Fried chicken or rice meals under ₱160 in Davao City",AGENTIC-LOOP-LOCAL,0,0,1,160,[],,,,not_run_after_circuit_breaker
+PC001,price_ceiling,"Fried chicken or rice meals under ₱160 in Davao City",DEEPSEEK,0,0,1,160,[],,,,not_run_after_circuit_breaker
+PC001,price_ceiling,"Fried chicken or rice meals under ₱160 in Davao City",HYBRID,0,0,1,160,[],,,,not_run_after_circuit_breaker
+PC001,price_ceiling,"Fried chicken or rice meals under ₱160 in Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,0,1,160,[],,,,not_run_after_circuit_breaker
+PC001,price_ceiling,"Fried chicken or rice meals under ₱160 in Davao City",ABLATION-NO-LOOP,0,0,1,160,[],,,,not_run_after_circuit_breaker
+PC001,price_ceiling,"Fried chicken or rice meals under ₱160 in Davao City",GPT-4O-MINI,0,0,1,160,[],,,,not_run_after_circuit_breaker
+PC001,price_ceiling,"Fried chicken or rice meals under ₱160 in Davao City",BASELINE-LOCAL,1,0,1,160,"[""Flavored Boneless Chicken - Poblacion"",""Marfori's Best Chicken - Marfori"",""Grilled Chicken - Marfori"",""The Chicken Haus - Marfori"",""Sunburst Fried Chicken - Davao""]",,0,1,
+PC001,price_ceiling,"Fried chicken or rice meals under ₱160 in Davao City",NON-AGENTIC,0,0,1,160,[],,,,not_run_after_circuit_breaker
+PC002,price_ceiling,"Pasta, pancit, or snacks under ₱150 in Davao City",AGENTIC-LOOP-LOCAL,0,0,1,150,[],,,,not_run_after_circuit_breaker
+PC002,price_ceiling,"Pasta, pancit, or snacks under ₱150 in Davao City",DEEPSEEK,0,0,1,150,[],,,,not_run_after_circuit_breaker
+PC002,price_ceiling,"Pasta, pancit, or snacks under ₱150 in Davao City",HYBRID,0,0,1,150,[],,,,not_run_after_circuit_breaker
+PC002,price_ceiling,"Pasta, pancit, or snacks under ₱150 in Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,0,1,150,[],,,,not_run_after_circuit_breaker
+PC002,price_ceiling,"Pasta, pancit, or snacks under ₱150 in Davao City",ABLATION-NO-LOOP,0,0,1,150,[],,,,not_run_after_circuit_breaker
+PC002,price_ceiling,"Pasta, pancit, or snacks under ₱150 in Davao City",GPT-4O-MINI,0,0,1,150,[],,,,not_run_after_circuit_breaker
+PC002,price_ceiling,"Pasta, pancit, or snacks under ₱150 in Davao City",BASELINE-LOCAL,1,0,1,150,"[""EMS Pasta and Rolls - F Torres Street"",""Pasta Sorpresa - Matina"",""Pomodoro Pasta House - Artiaga"",""Ristorante Spirale - Damosa"",""Ahok’s Food Corner - Inigo""]",,0,1,
+PC002,price_ceiling,"Pasta, pancit, or snacks under ₱150 in Davao City",NON-AGENTIC,0,0,1,150,[],,,,not_run_after_circuit_breaker
+PC003,price_ceiling,"Quiet coffee shops with wifi for studying under ₱200 in Davao City",AGENTIC-LOOP-LOCAL,0,0,1,200,[],,,,not_run_after_circuit_breaker
+PC003,price_ceiling,"Quiet coffee shops with wifi for studying under ₱200 in Davao City",DEEPSEEK,0,0,1,200,[],,,,not_run_after_circuit_breaker
+PC003,price_ceiling,"Quiet coffee shops with wifi for studying under ₱200 in Davao City",HYBRID,0,0,1,200,[],,,,not_run_after_circuit_breaker
+PC003,price_ceiling,"Quiet coffee shops with wifi for studying under ₱200 in Davao City",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,0,1,200,[],,,,not_run_after_circuit_breaker
+PC003,price_ceiling,"Quiet coffee shops with wifi for studying under ₱200 in Davao City",ABLATION-NO-LOOP,0,0,1,200,[],,,,not_run_after_circuit_breaker
+PC003,price_ceiling,"Quiet coffee shops with wifi for studying under ₱200 in Davao City",GPT-4O-MINI,0,0,1,200,[],,,,not_run_after_circuit_breaker
+PC003,price_ceiling,"Quiet coffee shops with wifi for studying under ₱200 in Davao City",BASELINE-LOCAL,1,0,1,200,"[""J.CO Donuts & Coffee - Abreeza"",""BO's Coffee - SM Davao"",""Green Coffee - Marfori"",""J.CO Donuts & Coffee - SM Davao Quimpo"",""Urbanica Milk Coffee - SM City Davao""]",,0,1,
+PC003,price_ceiling,"Quiet coffee shops with wifi for studying under ₱200 in Davao City",NON-AGENTIC,0,0,1,200,[],,,,not_run_after_circuit_breaker
+MT002,multi_turn,"Which ones are in Obrero or near Abreeza Bajada?",AGENTIC-LOOP-LOCAL,0,1,0,,[],,,,not_run_after_circuit_breaker
+MT002,multi_turn,"Which ones are in Obrero or near Abreeza Bajada?",DEEPSEEK,0,1,0,,[],,,,not_run_after_circuit_breaker
+MT002,multi_turn,"Which ones are in Obrero or near Abreeza Bajada?",HYBRID,0,1,0,,[],,,,not_run_after_circuit_breaker
+MT002,multi_turn,"Which ones are in Obrero or near Abreeza Bajada?",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,0,,[],,,,not_run_after_circuit_breaker
+MT002,multi_turn,"Which ones are in Obrero or near Abreeza Bajada?",ABLATION-NO-LOOP,0,1,0,,[],,,,not_run_after_circuit_breaker
+MT002,multi_turn,"Which ones are in Obrero or near Abreeza Bajada?",GPT-4O-MINI,0,1,0,,[],,,,not_run_after_circuit_breaker
+MT002,multi_turn,"Which ones are in Obrero or near Abreeza Bajada?",BASELINE-LOCAL,1,1,0,,"[""S&R New York Style Pizza - Abreeza Ayala Mall"",""Maura Shore Creamery - Obrero"",""Honestea - Bajada"",""The Dough Story - Abreeza"",""Avocadoria - Ayala Malls Abreeza""]",cuisine,,1,
+MT002,multi_turn,"Which ones are in Obrero or near Abreeza Bajada?",NON-AGENTIC,0,1,0,,[],,,,not_run_after_circuit_breaker
+MT007,multi_turn,"Which of those have the cheaper ones under ₱200?",AGENTIC-LOOP-LOCAL,0,1,1,200,[],,,,not_run_after_circuit_breaker
+MT007,multi_turn,"Which of those have the cheaper ones under ₱200?",DEEPSEEK,0,1,1,200,[],,,,not_run_after_circuit_breaker
+MT007,multi_turn,"Which of those have the cheaper ones under ₱200?",HYBRID,0,1,1,200,[],,,,not_run_after_circuit_breaker
+MT007,multi_turn,"Which of those have the cheaper ones under ₱200?",SELECTED-DEV-DEEPSEEK-T0.1-BASE,0,1,1,200,[],,,,not_run_after_circuit_breaker
+MT007,multi_turn,"Which of those have the cheaper ones under ₱200?",ABLATION-NO-LOOP,0,1,1,200,[],,,,not_run_after_circuit_breaker
+MT007,multi_turn,"Which of those have the cheaper ones under ₱200?",GPT-4O-MINI,0,1,1,200,[],,,,not_run_after_circuit_breaker
+MT007,multi_turn,"Which of those have the cheaper ones under ₱200?",BASELINE-LOCAL,1,1,1,200,"[""Honestea - Bajada"",""Miko's Brew - Chavez"",""Haveli King - DMSF""]",cuisine,0,1,
+MT007,multi_turn,"Which of those have the cheaper ones under ₱200?",NON-AGENTIC,0,1,1,200,[],,,,not_run_after_circuit_breaker

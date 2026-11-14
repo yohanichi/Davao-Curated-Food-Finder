@@ -19,13 +19,13 @@ Run these once when setting up the project for the first time:
 
 ```powershell
 # 1. Install Playwright & Chromium in the workspace root (Thesis20261028-main):
-Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main'
-npm install
-npx playwright install chromium
+Set-Location 'C:\Users\Rodelia M. Estenzo\OneDrive\Documents\Davao-Curated-Food-Finder-main'
+npm.cmd install
+npx.cmd playwright install chromium
 
-# 2. Install PHP dependencies inside davao_food_finder:
-Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\davao_food_finder'
-& 'C:\xampp\php\php.exe' 'C:\xampp\php\composer' install
+# 2. Install PHP dependencies inside davao_food_finder (Composer must be installed):
+Set-Location 'C:\Users\Rodelia M. Estenzo\OneDrive\Documents\Davao-Curated-Food-Finder-main\davao_food_finder'
+composer install
 
 # 3. Download the local DeepSeek R1 model in Ollama:
 ollama pull deepseek-r1:8b
@@ -121,8 +121,9 @@ php -S 127.0.0.1:8080 -t .
 ```
 
 ## What works
-- Chat-style search with multi-turn follow-ups such as “show me more”, “what about Japanese food?”, or “similar but cheaper”.
-- **5-Stage Hybrid AI & Web Pipeline:** (1) `GPT-4o mini` interprets user intent & plans the web search query → (2) `Playwright` actively scrapes live Davao City web pages (cached for 12h in `data/.web-cache`) → (3) `GPT-4o mini` cleans & structures raw unstructured Playwright text into JSON → (4) `DeepSeek R1` reasons over constraints, resolves conflicts/duplicates, ranks local candidates, and drafts an answer → (5) `GPT-4o mini` delivers the grounded final reply with source links alongside 2025 local dataset cards.
+- Restaurant discovery starts with optional area and per-person budget filters, one-tap dining prompts, or a free-text request. Known ambiguous terms such as “green”, “24”, “Tokyo”, and “matcha” trigger a short choice prompt before search; multi-turn follow-ups such as “show me more”, “what about Japanese food?”, or “similar but cheaper” remain supported.
+- Result cards explain visible matches, link to sources when available, label local records as coming from the 2025 dataset, and distinguish a reported price within budget from a price that could not be verified. Search summaries show the live-evidence cache timestamp/age when available, the automatic criteria-review status, and response time. Cached web details and older dataset records may be stale; confirm prices, hours, and business status directly.
+- **5-Stage Hybrid AI & Web Pipeline:** (1) `GPT-4o mini` interprets user intent & plans the web search query → (2) `Playwright` searches live Davao City web pages, with a location-verified Photon/OpenStreetMap place lookup fallback when search engines return too few results (cached for 12h in `data/.web-cache`) → (3) `GPT-4o mini` cleans & structures raw unstructured Playwright text into JSON → (4) `DeepSeek R1` reasons over constraints, resolves conflicts/duplicates, ranks local candidates, and drafts an answer → (5) `GPT-4o mini` delivers the grounded final reply with source links alongside 2025 local dataset cards. Place listings include links and OpenStreetMap contributor attribution.
 - Recommendations are limited to Davao City. Requests for another location receive a brief clarification instead of AI or dataset recommendations; online recommendations are only displayed when their city is verified as Davao City.
 - The app defaults to `gpt-4o-mini` for OpenAI stages and `deepseek-r1:8b` (via local Ollama) for reasoning. OpenAI stages incur standard token API charges, while local Ollama inference is free.
 - The page footer displays the active pipeline and updates after each successful AI response to confirm the exact models executed (`gpt-4o-mini+deepseek-r1:8b`).
@@ -190,3 +191,4 @@ Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\davao_food_f
 - The review CSV is aggregated by `StoreId` and can take a little time on the first request. After the cache is built, normal requests should be faster.
 - If you have multiple copies of the same restaurant/review dataset in `data/`, review counts can be double-counted. Prefer keeping one current version of each dataset.
 - Web information is generated from live search and displayed with source links. Local result cards remain grounded in the supplied dataset; the app does not fabricate missing prices, addresses, or review scores.
+- For numeric price ceilings, the agentic iterative flow runs targeted menu/price searches for up to three relevant local candidates without a verified price, then uses matching web evidence in the existing ceiling filter. Verified prices above the ceiling are excluded and the price source is linked on the result; places whose prices remain unknown may still appear as **Not verified**. Web menu prices are indicative and should be confirmed with the restaurant.

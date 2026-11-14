@@ -157,6 +157,24 @@ assertCheck($pesos === [145, 420], 'Extracts genuine PHP prices while ignoring c
 
 $priceIntent = parseQueryIntent('Burgers under ₱200 in Davao City');
 assertApprox((float)$priceIntent['max_price_php'], 200.0, 1e-6, 'Extracts hard max_price_php = 200');
+$plainFoodIntent = parseQueryIntent('Japanese restaurants in Davao City');
+assertCheck(!shouldAskPriceClarification('Japanese restaurants in Davao City', $plainFoodIntent), 'Does not ask about price unless the user raises it');
+$unspecifiedPriceIntent = parseQueryIntent('What price range do Japanese restaurants have in Davao City?');
+assertCheck(shouldAskPriceClarification('What price range do Japanese restaurants have in Davao City?', $unspecifiedPriceIntent), 'Asks for clarification when price is raised without a usable range');
+assertCheck(!shouldAskPriceClarification('Japanese restaurants under ₱200 in Davao City', $priceIntent), 'Does not ask again when a price ceiling is specified');
+$upscaleIntent = parseQueryIntent('Upscale Japanese restaurants in Davao City');
+assertCheck($upscaleIntent['price_preference'] === 'upscale', 'Extracts an upscale price preference');
+$midRangeIntent = parseQueryIntent('Mid-range Japanese restaurants in Davao City');
+assertCheck($midRangeIntent['price_preference'] === 'mid_range', 'Extracts a mid-range price preference');
+$budgetAmountIntent = parseQueryIntent('My budget is ₱500 per person');
+assertApprox((float)$budgetAmountIntent['max_price_php'], 500.0, 1e-6, 'Extracts a per-person peso budget ceiling');
+$bareBudgetAmountIntent = parseQueryIntent('₱500');
+assertApprox((float)$bareBudgetAmountIntent['max_price_php'], 500.0, 1e-6, 'Accepts a bare peso amount as a budget ceiling');
+$priceFollowupIntent = parseQueryIntent('Upscale', [
+    ['role'=>'user', 'content'=>'Japanese restaurants in Davao City'],
+    ['role'=>'assistant', 'content'=>'What price range works for you?'],
+]);
+assertCheck($priceFollowupIntent['price_preference'] === 'upscale' && in_array('Japanese', $priceFollowupIntent['cuisines'], true), 'Applies an upscale follow-up to the original cuisine request');
 $expensiveBurger = ['name'=>'Harleys Burgers', 'food_type'=>'Burgers', '_observed_prices_php'=>['min'=>270, 'median'=>330, 'max'=>377, 'mentions'=>3]];
 $budgetBurger = ['name'=>'Jollibee Magsaysay', 'food_type'=>'Burgers', '_observed_prices_php'=>['min'=>95, 'median'=>135, 'max'=>175, 'mentions'=>3]];
 assertCheck(enforceNumericPriceCeiling([$expensiveBurger, $budgetBurger], 200.0) === [$budgetBurger], 'Enforces hard numeric peso price ceiling');
@@ -169,12 +187,16 @@ $mockPlaces = [
 ];
 $mockEvidence = [
     'results'=>[
-        ['title'=>'Update', 'text'=>'Resto Closed - Aurora is permanently closed as of 2026. Resto Hiked - Matina updated 2026 menu meals now ₱350 to ₱420.'],
+        ['title'=>'Resto Hiked - Matina menu prices', 'url'=>'https://example.com/resto-hiked-menu', 'text'=>'Resto Closed - Aurora is permanently closed as of 2026. Resto Hiked - Matina updated menu prices now ₱350 to ₱420.'],
     ],
 ];
 $reconciled = reconcileVolatilityWithEvidence($mockPlaces, $mockEvidence);
 assertCheck(in_array('Resto Closed - Aurora', $reconciled['report']['closed_places'], true), 'Volatility engine detects closed restaurant');
 assertCheck(($reconciled['places'][1]['_live_price_php'] ?? 0) >= 350, 'Volatility engine updates drifted live menu price');
+assertCheck(($reconciled['places'][1]['_live_price_source_url'] ?? '') === 'https://example.com/resto-hiked-menu', 'Web price evidence retains its source URL');
+assertCheck((publicPlace($reconciled['places'][1])['price_evidence']['source_url'] ?? '') === 'https://example.com/resto-hiked-menu', 'Public result exposes the price source for details');
+assertCheck(enforceNumericPriceCeiling([$reconciled['places'][1]], 500.0) === [$reconciled['places'][1]], 'Web-derived price under the ceiling remains eligible');
+assertCheck(enforceNumericPriceCeiling([$reconciled['places'][1]], 400.0) === [], 'Web-derived price above the ceiling is excluded');
 
 $loopIntent = parseQueryIntent('Japanese restaurants in Davao City under ₱200');
 [, $repairedIds, , $loopStats] = runAutonomousRefinementLoop(
@@ -239,4 +261,3 @@ assertCheck(
 
 echo "Unit & Integration Suite: {$passed} passed, {$failed} failed.\n";
 exit($failed > 0 ? 1 : 0);
-

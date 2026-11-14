@@ -123,7 +123,7 @@ if (!is_file($script)) {
         if (is_array($json) && !empty($json['results'])) {
             $playwrightOk = true;
             $cnt = count($json['results']);
-            echo "  [OK] Playwright scraped {$cnt} live Davao City page(s) in {$elapsed} ms!\n";
+            echo "  [OK] Playwright found {$cnt} live Davao City source(s) in {$elapsed} ms!\n";
             echo "       Sample source: " . ($json['results'][0]['title'] ?? 'Untitled') . " (" . ($json['results'][0]['url'] ?? '') . ")\n\n";
         } else {
             echo "  [FAIL/WARN] Exit code: {$exitCode} ({$elapsed} ms)\n";

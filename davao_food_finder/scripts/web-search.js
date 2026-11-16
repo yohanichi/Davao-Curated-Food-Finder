@@ -134,13 +134,141 @@ function parseBraveBrowserResults(rawItems) {
     .filter(item => item.title && !isLowValueNonFoodUrl(item.url, item.title));
 }
 
-async function collectBraveBrowser(context, searchQuery, errors) {
+function parseBraveSearchApiResults(payload, resultLimit = 10) {
+  const limit = Math.max(1, Math.min(20, Math.trunc(Number(resultLimit) || 10)));
+  const results = payload && payload.web && Array.isArray(payload.web.results)
+    ? payload.web.results
+    : [];
+  return results.slice(0, limit)
+    .map(item => ({
+      title: String(item.title || '').trim(),
+      url: decodeRedirectUrl(item.url),
+      snippet: String(item.description || '').trim(),
+      playwright_search_result: false,
+      discovery_provider: 'Brave Search API'
+    }))
+    .filter(item => item.title && !isLowValueNonFoodUrl(item.url, item.title));
+}
+
+function retryAfterTimestamp(retryAfter, now = Date.now()) {
+  const value = String(retryAfter || '').trim();
+  if (/^\d+(?:\.\d+)?$/.test(value)) {
+    return now + Math.max(0, Number(value) * 1000);
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? Math.max(now, parsed) : null;
+}
+
+function braveCooldownFile(cacheDir, source) {
+  return path.join(cacheDir, `brave-${source}-cooldown.json`);
+}
+
+function readBraveCooldown(cacheDir, source, errors = []) {
+  try {
+    const value = JSON.parse(fs.readFileSync(braveCooldownFile(cacheDir, source), 'utf8'));
+    return Number.isFinite(value.until) ? value.until : 0;
+  } catch (error) {
+    if (error.code !== 'ENOENT') errors.push(`Brave ${source} cooldown: ${error.message}`);
+    return 0;
+  }
+}
+
+function writeBraveCooldown(cacheDir, source, retryAfter, errors = []) {
+  try {
+    fs.mkdirSync(cacheDir, { recursive: true });
+    const until = retryAfterTimestamp(retryAfter) || Date.now() + 60000;
+    fs.writeFileSync(braveCooldownFile(cacheDir, source), JSON.stringify({ until }), 'utf8');
+    return until;
+  } catch (error) {
+    errors.push(`Brave ${source} cooldown could not be saved: ${error.message}`);
+    return 0;
+  }
+}
+
+function fetchBraveSearchApi(searchQuery, resultLimit = 8, errors = [], cacheDir = NOMINATIM_CACHE_DIR) {
+  const apiKey = String(process.env.BRAVE_SEARCH_API_KEY || '').trim();
+  if (!apiKey) return Promise.resolve([]);
+
+  const cooldownUntil = readBraveCooldown(cacheDir, 'api', errors);
+  if (cooldownUntil > Date.now()) {
+    errors.push(`Brave Search API: skipped during rate-limit cooldown until ${new Date(cooldownUntil).toISOString()}.`);
+    return Promise.resolve([]);
+  }
+
+  const url = new URL('https://api.search.brave.com/res/v1/web/search');
+  url.searchParams.set('q', searchQuery);
+  url.searchParams.set('count', String(Math.max(1, Math.min(20, Math.trunc(Number(resultLimit) || 8)))));
+  url.searchParams.set('country', 'PH');
+  url.searchParams.set('search_lang', 'en');
+
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = results => {
+      if (settled) return;
+      settled = true;
+      resolve(results);
+    };
+    const req = https.get(url, {
+      headers: {
+        'X-Subscription-Token': apiKey,
+        'Accept': 'application/json'
+      },
+      timeout: HTTP_TIMEOUT
+    }, res => {
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        if (res.statusCode === 429) writeBraveCooldown(cacheDir, 'api', res.headers['retry-after'], errors);
+        const retryAfter = res.headers['retry-after'];
+        errors.push(`Brave Search API: HTTP ${res.statusCode || 'unknown status'}${retryAfter ? ` (Retry-After: ${retryAfter})` : ''}`);
+        res.resume();
+        return finish([]);
+      }
+
+      let body = '';
+      res.on('data', chunk => {
+        body += chunk;
+        if (body.length > 500000) {
+          errors.push('Brave Search API: response exceeded 500 KB.');
+          req.destroy();
+          finish([]);
+        }
+      });
+      res.on('end', () => {
+        if (settled) return;
+        try {
+          finish(parseBraveSearchApiResults(JSON.parse(body), resultLimit));
+        } catch (error) {
+          errors.push(`Brave Search API: invalid JSON response (${error.message}).`);
+          finish([]);
+        }
+      });
+    });
+    req.on('error', error => {
+      if (!settled) errors.push(`Brave Search API: ${error.message}`);
+      finish([]);
+    });
+    req.on('timeout', () => {
+      if (!settled) errors.push(`Brave Search API: request timed out after ${HTTP_TIMEOUT} ms.`);
+      req.destroy();
+      finish([]);
+    });
+  });
+}
+
+async function collectBraveBrowser(context, searchQuery, errors, cacheDir = NOMINATIM_CACHE_DIR) {
+  const cooldownUntil = readBraveCooldown(cacheDir, 'browser', errors);
+  if (cooldownUntil > Date.now()) {
+    errors.push(`Brave: skipped during rate-limit cooldown until ${new Date(cooldownUntil).toISOString()}.`);
+    return [];
+  }
   const page = await context.newPage();
   await page.setDefaultTimeout(PLAYWRIGHT_STEP_TIMEOUT);
   try {
     const braveUrl = 'https://search.brave.com/search?q=' + encodeURIComponent(searchQuery) + '&source=web';
     const response = await page.goto(braveUrl, { waitUntil: 'commit', timeout: SEARCH_NAVIGATION_TIMEOUT });
     if (response && !response.ok()) {
+      if (response.status() === 429) {
+        writeBraveCooldown(cacheDir, 'browser', response.headers()['retry-after'], errors);
+      }
       errors.push(`Brave: HTTP ${response.status()}`);
       return [];
     }
@@ -599,64 +727,6 @@ async function collectPhotonPlaces(context, searchQuery, resultLimit, errors, al
   return [];
 }
 
-function fetchBraveHttp(searchQuery) {
-  return new Promise((resolve) => {
-    const url = 'https://search.brave.com/search?q=' + encodeURIComponent(searchQuery) + '&source=web';
-    const req = https.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9'
-      },
-      timeout: HTTP_TIMEOUT
-    }, res => {
-      if (res.statusCode < 200 || res.statusCode >= 300) return resolve([]);
-      let html = '';
-      res.on('data', chunk => {
-        html += chunk;
-        if (html.length > 900000) {
-          req.destroy();
-          resolve(parseBraveHtml(html));
-        }
-      });
-      res.on('end', () => resolve(parseBraveHtml(html)));
-    });
-    req.on('error', () => resolve([]));
-    req.on('timeout', () => { req.destroy(); resolve([]); });
-  });
-}
-
-function parseBraveHtml(html) {
-  const decodeHtml = value => String(value || '')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&#039;|&apos;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const items = [];
-  const blockRegex = /<div class="snippet svelte-[^"]*"[^>]*data-pos="(\d+)"[^>]*data-type="web"[\s\S]*?(?=<div class="snippet svelte-[^"]*"[^>]*(?:data-pos="\d+"[^>]*data-type="web"|id="))/gi;
-  let match;
-  while ((match = blockRegex.exec(html)) !== null && items.length < 10) {
-    const block = match[0];
-    const linkMatch = block.match(/<a\s[^>]*href="(https?:\/\/[^"]+)"/i);
-    const titleMatch = block.match(/class="title search-snippet-title[^"]*"[^>]*title="([^"]+)"/i);
-    const snippetMatch = block.match(/class="generic-snippet[^"]*"[\s\S]*?<div class="content[^>]*>([\s\S]*?)<\/div>/i);
-    if (!linkMatch) continue;
-    const url = decodeHtml(linkMatch[1]);
-    const title = decodeHtml(titleMatch ? titleMatch[1] : '');
-    const snippet = decodeHtml(snippetMatch ? snippetMatch[1] : '');
-    const blob = `${title} ${snippet} ${url}`;
-    if (title && url && !isLowValueNonFoodUrl(url, title) && /\bdavao\b/i.test(blob)) {
-      items.push({ title, url, snippet });
-    }
-  }
-  return items;
-}
-
 function buildReviewSearchQuery(searchQuery) {
   return /\b(reviews?|ratings?)\b/i.test(searchQuery)
     ? searchQuery
@@ -804,6 +874,25 @@ async function run() {
   const playwrightErrors = [];
   const browserContext = await getContext();
   let browserSearchCount = 0;
+  const braveApiConfigured = String(process.env.BRAVE_SEARCH_API_KEY || '').trim() !== '';
+  let braveApiRateLimited = false;
+  let braveApiQueue = Promise.resolve();
+  const queueBraveApiSearch = query => {
+    const queuedSearch = braveApiQueue.then(async () => {
+      if (braveApiRateLimited) return [];
+      const errorStart = playwrightErrors.length;
+      const results = await fetchBraveSearchApi(query, 8, playwrightErrors);
+      if (playwrightErrors.slice(errorStart).some(error =>
+        error.includes('Brave Search API: HTTP 429')
+        || error.includes('Brave Search API: skipped during rate-limit cooldown')
+      )) {
+        braveApiRateLimited = true;
+      }
+      return results;
+    });
+    braveApiQueue = queuedSearch.then(() => undefined, () => undefined);
+    return queuedSearch;
+  };
   const collectPhotonSearch = async (query, limit, allowBrowserFallback = false, allowNominatimFallback = true) => {
     const places = await collectPhotonPlaces(
       browserContext,
@@ -857,21 +946,32 @@ async function run() {
   const photonPlacesPromise = includeNearby
     ? Promise.resolve([])
     : collectPhotonSearch(searchQuery, 8, true);
-  const collectSearchResults = async query => {
-    browserSearchCount += 2;
-    const [braveBrowser, bingBrowser, brave, duckDuckGoHttp, bingHttp] = await Promise.all([
-      collectBraveBrowser(browserContext, query, playwrightErrors),
+  const collectSearchResults = async (query, useBraveBrowser = false) => {
+    browserSearchCount += 1 + (!braveApiConfigured && useBraveBrowser ? 1 : 0);
+    const braveResultsPromise = braveApiConfigured
+      ? queueBraveApiSearch(query)
+      : useBraveBrowser
+        ? collectBraveBrowser(browserContext, query, playwrightErrors)
+        : Promise.resolve([]);
+    const [braveResults, bingBrowser, duckDuckGoHttp, bingHttp] = await Promise.all([
+      braveResultsPromise,
       collectBingBrowser(browserContext, query, playwrightErrors),
-      fetchBraveHttp(query),
       fetchDuckDuckGoHttp(query),
       fetchBingHttp(query)
     ]);
     const byUrl = new Map();
-    for (const item of [...braveBrowser, ...bingBrowser]) {
+    for (const item of braveResults) {
+      const key = String(item.url || '').split('#')[0].replace(/\/+$/, '');
+      if (key) byUrl.set(key, {
+        ...item,
+        playwright_search_result: item.playwright_search_result === true
+      });
+    }
+    for (const item of bingBrowser) {
       const key = String(item.url || '').split('#')[0].replace(/\/+$/, '');
       if (key) byUrl.set(key, { ...item, playwright_search_result: true });
     }
-    for (const item of [...brave, ...duckDuckGoHttp, ...bingHttp]) {
+    for (const item of [...duckDuckGoHttp, ...bingHttp]) {
       const key = String(item.url || '').split('#')[0].replace(/\/+$/, '');
       if (!key) continue;
       const existing = byUrl.get(key);
@@ -885,13 +985,13 @@ async function run() {
   };
 
   const discoveryQueries = [
-    { query: searchQuery, reviewSearch: false },
+    { query: searchQuery, reviewSearch: false, useBraveBrowser: true },
     { query: `${searchQuery} branches locations`, reviewSearch: false },
     { query: reviewSearchQuery, reviewSearch: true }
   ];
   const searchGroups = await Promise.all(discoveryQueries.map(async group => ({
     ...group,
-    results: await collectSearchResults(group.query)
+    results: await collectSearchResults(group.query, group.useBraveBrowser === true)
   })));
   let candidates = [];
   const maxSearchResults = Math.max(...searchGroups.map(group => group.results.length));
@@ -1038,14 +1138,18 @@ if (require.main === module) {
 }
 
 module.exports = {
+  collectBraveBrowser,
   buildReviewSearchQuery,
   collectPhotonPlaces,
+  fetchBraveSearchApi,
   fetchPhotonPlaces,
   nominatimSearchUrl,
   parseBraveBrowserResults,
+  parseBraveSearchApiResults,
   parseNominatimPlaces,
   photonPlaceSearchUrl,
   parseBingHtml,
+  retryAfterTimestamp,
   shouldFetchSourcePage,
   waitForSearchResults
 };

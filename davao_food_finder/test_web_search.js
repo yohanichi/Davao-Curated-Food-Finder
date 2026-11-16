@@ -1,16 +1,23 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const https = require('node:https');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { EventEmitter } = require('node:events');
 const { buildOsmSnapshot } = require('./scripts/update-osm-places');
 const {
+  collectBraveBrowser,
   collectPhotonPlaces,
+  fetchBraveSearchApi,
   fetchPhotonPlaces,
   nominatimSearchUrl,
   parseBraveBrowserResults,
+  parseBraveSearchApiResults,
   parseNominatimPlaces,
   photonPlaceSearchUrl,
   parseBingHtml,
+  retryAfterTimestamp,
   shouldFetchSourcePage,
   waitForSearchResults
 } = require('./scripts/web-search');
@@ -445,4 +452,152 @@ test('parses Brave browser results as Playwright evidence and rejects low-value 
   assert.equal(results[0].title, 'Quiet cafes in Obrero, Davao City');
   assert.equal(results[0].snippet, 'Study-friendly cafe in Davao City.');
   assert.equal(results[0].playwright_search_result, true);
+});
+
+test('parses Brave API results as discovery candidates, not Playwright evidence', () => {
+  const results = parseBraveSearchApiResults({
+    web: {
+      results: [
+        {
+          title: 'Burger cafe in Davao City',
+          url: 'https://example.com/davao-burger',
+          description: 'Burgers and fries in Davao City.'
+        },
+        {
+          title: 'Davao City - Wikipedia',
+          url: 'https://en.wikipedia.org/wiki/Davao',
+          description: 'General city information.'
+        }
+      ]
+    }
+  });
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].title, 'Burger cafe in Davao City');
+  assert.equal(results[0].playwright_search_result, false);
+  assert.equal(results[0].discovery_provider, 'Brave Search API');
+});
+
+test('uses the Brave Search API and parses source candidates without treating them as scraped evidence', async () => {
+  const originalGet = https.get;
+  const originalApiKey = process.env.BRAVE_SEARCH_API_KEY;
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dff-brave-api-'));
+  process.env.BRAVE_SEARCH_API_KEY = 'test-token';
+  https.get = (url, options, onResponse) => {
+    assert.equal(new URL(url).origin, 'https://api.search.brave.com');
+    assert.equal(new URL(url).pathname, '/res/v1/web/search');
+    assert.equal(new URL(url).searchParams.get('q'), 'burger Davao City');
+    assert.equal(options.headers['X-Subscription-Token'], 'test-token');
+    const request = new EventEmitter();
+    request.destroy = () => {};
+    process.nextTick(() => {
+      const response = new EventEmitter();
+      response.statusCode = 200;
+      response.headers = {};
+      response.resume = () => {};
+      onResponse(response);
+      response.emit('data', JSON.stringify({
+        web: {
+          results: [{
+            title: 'Burger cafe in Davao City',
+            url: 'https://example.com/davao-burger',
+            description: 'Burgers in Davao City.'
+          }]
+        }
+      }));
+      response.emit('end');
+    });
+    return request;
+  };
+
+  try {
+    const errors = [];
+    const results = await fetchBraveSearchApi('burger Davao City', 8, errors, cacheDir);
+    assert.equal(results.length, 1);
+    assert.equal(results[0].playwright_search_result, false);
+    assert.deepEqual(errors, []);
+  } finally {
+    https.get = originalGet;
+    if (originalApiKey === undefined) delete process.env.BRAVE_SEARCH_API_KEY;
+    else process.env.BRAVE_SEARCH_API_KEY = originalApiKey;
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test('records Retry-After on Brave API rate limits and skips calls during cooldown', async () => {
+  const originalGet = https.get;
+  const originalApiKey = process.env.BRAVE_SEARCH_API_KEY;
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dff-brave-cooldown-'));
+  process.env.BRAVE_SEARCH_API_KEY = 'test-token';
+  let requestCount = 0;
+  https.get = (url, options, onResponse) => {
+    requestCount++;
+    const request = new EventEmitter();
+    request.destroy = () => {};
+    process.nextTick(() => {
+      const response = new EventEmitter();
+      response.statusCode = 429;
+      response.headers = { 'retry-after': '120' };
+      response.resume = () => {};
+      onResponse(response);
+    });
+    return request;
+  };
+
+  try {
+    const errors = [];
+    const before = Date.now();
+    assert.deepEqual(await fetchBraveSearchApi('burger Davao City', 8, errors, cacheDir), []);
+    assert.match(errors.join(' '), /HTTP 429 \(Retry-After: 120\)/);
+    const cooldown = JSON.parse(fs.readFileSync(path.join(cacheDir, 'brave-api-cooldown.json'), 'utf8'));
+    assert.ok(cooldown.until >= before + 119000);
+    assert.deepEqual(await fetchBraveSearchApi('burger branches Davao City', 8, errors, cacheDir), []);
+    assert.equal(requestCount, 1);
+    assert.match(errors.join(' '), /skipped during rate-limit cooldown/);
+  } finally {
+    https.get = originalGet;
+    if (originalApiKey === undefined) delete process.env.BRAVE_SEARCH_API_KEY;
+    else process.env.BRAVE_SEARCH_API_KEY = originalApiKey;
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test('records Retry-After on Brave browser rate limits and skips future browser searches', async () => {
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dff-brave-browser-cooldown-'));
+  let pageCount = 0;
+  const context = {
+    newPage: async () => {
+      pageCount++;
+      return {
+        setDefaultTimeout: () => {},
+        goto: async () => ({
+          ok: () => false,
+          status: () => 429,
+          headers: () => ({ 'retry-after': '120' })
+        }),
+        close: async () => {}
+      };
+    }
+  };
+
+  try {
+    const errors = [];
+    assert.deepEqual(await collectBraveBrowser(context, 'burger Davao City', errors, cacheDir), []);
+    assert.match(errors.join(' '), /Brave: HTTP 429/);
+    const cooldown = JSON.parse(fs.readFileSync(path.join(cacheDir, 'brave-browser-cooldown.json'), 'utf8'));
+    assert.ok(cooldown.until > Date.now());
+    assert.deepEqual(await collectBraveBrowser(context, 'burger branches Davao City', errors, cacheDir), []);
+    assert.equal(pageCount, 1);
+    assert.match(errors.join(' '), /Brave: skipped during rate-limit cooldown/);
+  } finally {
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test('parses both Retry-After seconds and HTTP dates', () => {
+  const now = Date.now();
+  const retryDate = new Date(now + 8000).toUTCString();
+  assert.equal(retryAfterTimestamp('5', now), now + 5000);
+  assert.equal(retryAfterTimestamp(retryDate, now), Date.parse(retryDate));
+  assert.equal(retryAfterTimestamp('', now), null);
 });

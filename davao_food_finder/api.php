@@ -101,6 +101,13 @@ try {
     $nearbyMapSnapshotMetadata = null;
     $nearbyRelevantCandidates = [];
     $moreNearbyMapResults = [];
+    $mapFindResults = [];
+    $mapFindSearch = [
+        'status'=>'not_applicable',
+        'source'=>'OpenStreetMap local snapshot',
+        'snapshot_updated_at'=>null,
+        'result_count'=>0,
+    ];
     if (array_key_exists('location', $body)) {
         $location = $body['location'];
         if (!is_array($location)
@@ -723,7 +730,7 @@ try {
         }
         unset($wp);
 
-        // Deduplicate web results and merge web results that repeat a local record into it
+        // Keep verified online finds in their own list so the UI can show them as online cards.
         $dedupedWeb = [];
         $seenWebVenues = [];
         foreach ($webResults as $wp) {
@@ -733,31 +740,22 @@ try {
             $wCore = $normCoreName($wName);
             $wKey = $wCore . '::' . $normAlnum($wBranch);
 
-            // Check if this web result repeats a local record in $results
-            $matchedLocalIdx = null;
-            if (empty($intent['online_only'])) {
+            // Map-only entries are proximity metadata, not online finds; keep their existing local merge.
+            if (!empty($wp['map_only'])) {
                 foreach ($results as $idx => $lr) {
                     $ck = $normCoreName((string)($lr['name'] ?? ''));
-                    if ($venuesMatch($wp, $lr, $localCoreCounts[$ck] ?? 1)) {
-                        $matchedLocalIdx = $idx;
-                        break;
+                    if (!$venuesMatch($wp, $lr, $localCoreCounts[$ck] ?? 1)) continue;
+                    if (!empty($wp['source_url']) && empty($results[$idx]['source_url'])) {
+                        $results[$idx]['source_url'] = $wp['source_url'];
                     }
+                    if (!empty($wp['maps_url']) && empty($results[$idx]['maps_url'])) {
+                        $results[$idx]['maps_url'] = $wp['maps_url'];
+                    }
+                    if (!empty($wp['description']) && empty($results[$idx]['description'])) {
+                        $results[$idx]['description'] = $wp['description'];
+                    }
+                    continue 2;
                 }
-            }
-
-            if ($matchedLocalIdx !== null) {
-                // Web result repeats a local record: merge into it!
-                if (!empty($wp['source_url']) && empty($results[$matchedLocalIdx]['source_url'])) {
-                    $results[$matchedLocalIdx]['source_url'] = $wp['source_url'];
-                }
-                if (!empty($wp['maps_url']) && empty($results[$matchedLocalIdx]['maps_url'])) {
-                    $results[$matchedLocalIdx]['maps_url'] = $wp['maps_url'];
-                }
-                if (!empty($wp['description']) && empty($results[$matchedLocalIdx]['description'])) {
-                    $results[$matchedLocalIdx]['description'] = $wp['description'];
-                }
-                // Do not keep in $webResults to prevent duplicate cross-list appearance
-                continue;
             }
 
             if ($wKey !== '::' && isset($seenWebVenues[$wKey])) continue;
@@ -785,6 +783,56 @@ try {
 
     if (!empty($intent['online_only'])) {
         $results = [];
+    }
+
+    if ($nearbyLocation === null
+        && !isset($body['evaluation'])
+        && !$outOfScope
+        && mapFindIntentIsSupported($intent, $requestedRestaurantCore)) {
+        try {
+            $mapSnapshot = loadLocalOsmNearbySnapshot(__DIR__ . '/data/osm-nearby-places.json');
+            $mapFindSearch['snapshot_updated_at'] = $mapSnapshot['updated_at'];
+            $mapFindResults = buildMapFindResults(
+                $mapSnapshot['places'],
+                (string)($intent['effective_query'] !== '' ? $intent['effective_query'] : $query),
+                $intent,
+                $requestedRestaurantCore,
+                100
+            );
+
+            $mapCoreCounts = [];
+            foreach ($places as $place) {
+                $core = $normCoreName((string)($place['name'] ?? ''));
+                if ($core !== '') $mapCoreCounts[$core] = ($mapCoreCounts[$core] ?? 0) + 1;
+            }
+            $existingPlaces = array_merge($results, $webResults);
+            $supplementalMapResults = [];
+            foreach ($mapFindResults as $mapResult) {
+                $duplicate = false;
+                foreach ($existingPlaces as $existingPlace) {
+                    $core = $normCoreName((string)($existingPlace['name'] ?? ''));
+                    if ($venuesMatch($mapResult, $existingPlace, $mapCoreCounts[$core] ?? 1)) {
+                        $duplicate = true;
+                        break;
+                    }
+                }
+                if (!$duplicate && !empty($intent['exclude_shown'])) {
+                    foreach ($shownNames as $shownName) {
+                        if ($venuesMatch($mapResult, ['name'=>(string)$shownName], $mapCoreCounts[$normCoreName((string)$shownName)] ?? 1)) {
+                            $duplicate = true;
+                            break;
+                        }
+                    }
+                }
+                if (!$duplicate) $supplementalMapResults[] = $mapResult;
+            }
+            $mapFindResults = array_slice($supplementalMapResults, 0, 20);
+            $mapFindSearch['status'] = $mapFindResults ? 'ok' : 'no_matching_map_places';
+            $mapFindSearch['result_count'] = count($mapFindResults);
+        } catch (RuntimeException $error) {
+            $mapFindSearch['status'] = 'unavailable';
+            error_log('OpenStreetMap map finds unavailable: ' . $error->getMessage());
+        }
     }
 
     if ($nearbyLocation !== null && !$outOfScope) {
@@ -928,6 +976,7 @@ try {
         'agentic_loop'=>$loopTelemetry,
         'volatility'=>$volatilityReport,
         'nearby_search'=>$nearbySearch['enabled'] ?? false,
+        'map_finds'=>$mapFindSearch,
         'parsed_intent'=>[
             'disambiguation_type'=>$intent['disambiguation_type'] ?? 'none',
             'max_price_php'=>$intent['max_price_php'] ?? null,
@@ -996,6 +1045,7 @@ try {
         'outOfScope'=>$outOfScope,
         'sources'=>$sources,
         'webResults'=>$webResults,
+        'mapResults'=>$mapFindResults,
         'results'=>$results,
         'count'=>count($results),
         'locationSearch'=>$nearbySearch,

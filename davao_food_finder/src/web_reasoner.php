@@ -143,6 +143,10 @@ function extractAndDecodeJson(string $rawText): ?array {
     return null;
 }
 
+function shouldRetryDeepSeekHybridJson(?array $parsed, string $finishReason): bool {
+    return !is_array($parsed) || $finishReason === 'length';
+}
+
 function normalizeJsonPayloadSchema(array $parsed): array {
     if (isset($parsed['out_of_scope'])) {
         if (is_string($parsed['out_of_scope'])) {
@@ -2018,7 +2022,7 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
 
     if ($shouldCurate) {
         $curatorMessages = [
-            ['role'=>'system','content'=>'You are Stage 4 (DeepSeek Reasoner) of Davao Food Finder. Treat GPT-structured Playwright evidence as the primary source for discovering recommendations; use the 2025 local records only as supplementary context and never as a whitelist for online venues. Include every genuinely matching supported online venue in `evidence_places`, whether or not it appears in the dataset, and use local IDs only for additional relevant options not already represented online. Reason over ALL prior conversation layers, web evidence, and local records before formulating recommendations. Keep the reasoning and draft answer concise. '
+            ['role'=>'system','content'=>'You are Stage 4 (DeepSeek Reasoner) of Davao Food Finder. Treat GPT-structured Playwright evidence as the primary source for discovering recommendations; use the 2025 local records only as supplementary context and never as a whitelist for online venues. Include every genuinely matching supported online venue in `evidence_places`, whether or not it appears in the dataset, and use local IDs only for additional relevant options not already represented online. Reason over ALL prior conversation layers, web evidence, and local records before formulating recommendations. Keep reasoning to one concise rationale, the answer to at most two sentences, and each evidence description to at most 280 characters; never copy full source text. '
                 . 'Critical reasoning checks: '
                 . '1) Dish & Menu Accuracy: Verify from `food_type`, `name`, `description`, `sample_reviews`, or Playwright text that each selected place genuinely serves the requested dish/cuisine (e.g., never select a coffee shop, pizzeria, bakery, or satti stall when the user asked for sisig/sisigan!). Review mentions may establish a match even when the food is not in the brand name, but assess sentiment about the requested food: reject a place when its only relevant review evidence is negative and be cautious with mixed or unclear evidence. Return all genuinely matching local `ids` supported by the records, up to 8; do not arbitrarily stop after a few and never pad with unrelated places. '
                 . '2) Layered Multi-Turn Context & Pushbacks: Preserve every active constraint from earlier turns (`conversation_layers`), including street/area, dish, and budget. If `user_correction=true` or `exclude_shown=true`, strictly exclude rejected/previously shown places and address why the new picks actually fit. '
@@ -2050,7 +2054,7 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
             $curReq = [
                 'model'=>$dsModel,
                 'messages'=>$curatorMessages,
-                'max_tokens'=>2048,
+                'max_tokens'=>4096,
                 'thinking'=>['type'=>'disabled'],
                 'temperature'=>$temp,
                 'response_format'=>['type'=>'json_object'],
@@ -2095,6 +2099,81 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
                 $thinkTagContent = trim(implode("\n", $thinkMatches[1]));
             }
             $parsedCurator = is_string($curatorText) ? extractAndDecodeJson($curatorText) : null;
+            $curatorFinishReason = (string)($curatorDecoded['choices'][0]['finish_reason'] ?? '');
+            if (shouldRetryDeepSeekHybridJson($parsedCurator, $curatorFinishReason) && $reasonerBackend === 'hosted_api') {
+                if ($curatorFinishReason === 'length') $parsedCurator = null;
+                $GLOBALS['aiTelemetry']['deepseek_retries'] = ($GLOBALS['aiTelemetry']['deepseek_retries'] ?? 0) + 1;
+                error_log('DeepSeek hybrid reasoner returned incomplete or invalid JSON; retrying once with a larger zero-temperature JSON output budget.');
+                $retryMessages = $curatorMessages;
+                $retryMessages[] = [
+                    'role'=>'user',
+                    'content'=>'Your previous response was not valid JSON. Return one concise, valid JSON object now using exactly the required keys and value types. Do not include markdown, comments, or text outside the JSON object.'
+                ];
+                $retryRequest = $curReq;
+                $retryRequest['messages'] = $retryMessages;
+                $retryRequest['temperature'] = 0.0;
+                $retryRequest['max_tokens'] = $curatorFinishReason === 'length'
+                    ? min(8192, max(4096, (int)$curReq['max_tokens'] * 2))
+                    : max(4096, (int)$curReq['max_tokens']);
+                $retryStartedAt = microtime(true);
+                [$retryRaw, $retryStatus] = deepSeekHttpPost(
+                    $base . '/chat/completions',
+                    ['Content-Type: application/json','Authorization: Bearer ' . DEEPSEEK_API_KEY],
+                    json_encode($retryRequest, JSON_UNESCAPED_UNICODE),
+                    $curatorTimeout
+                );
+                $retryDecoded = $retryRaw !== '' ? json_decode($retryRaw, true) : null;
+                $retryModel = is_array($retryDecoded) ? trim((string)($retryDecoded['model'] ?? '')) : '';
+                recordAiCallTelemetry(
+                    'hybrid_curator_retry',
+                    (int)round((microtime(true) - $retryStartedAt) * 1000),
+                    'deepseek_hosted',
+                    $retryModel !== '' ? $retryModel : $dsModel,
+                    is_array($retryDecoded) ? $retryDecoded : null
+                );
+                $retryFinishReason = (string)($retryDecoded['choices'][0]['finish_reason'] ?? '');
+                if ($retryStatus >= 200 && $retryStatus < 300 && isExpectedHybridReasonerModel($retryModel, 'hosted_api')) {
+                    $retryMessage = $retryDecoded['choices'][0]['message'] ?? [];
+                    $retryReasoningContent = trim((string)($retryMessage['reasoning_content'] ?? ''));
+                    $retryText = $retryMessage['content'] ?? '';
+                    if (!is_string($retryText) || trim($retryText) === '') {
+                        $retryText = $retryReasoningContent;
+                    }
+                    $retryParsed = is_string($retryText) ? extractAndDecodeJson($retryText) : null;
+                    if (is_array($retryParsed)) {
+                        $parsedCurator = $retryParsed;
+                        $apiReasoningContent = $retryReasoningContent;
+                        $actualReasonerModel = $retryModel;
+                        $curatorFinishReason = $retryFinishReason;
+                    }
+                }
+                if (!is_array($parsedCurator)) {
+                    if ($retryStatus < 200 || $retryStatus >= 300) {
+                        $GLOBALS['providerErrors']['deepseek'] = [
+                            'http'=>$retryStatus,
+                            'message'=>'DeepSeek JSON repair request failed: ' . mb_substr(trim($retryRaw), 0, 240),
+                        ];
+                        $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'error';
+                    } elseif (!isExpectedHybridReasonerModel($retryModel, 'hosted_api')) {
+                        $GLOBALS['providerErrors']['deepseek'] = [
+                            'http'=>$retryStatus,
+                            'message'=>'DeepSeek returned an unexpected model during JSON repair.',
+                        ];
+                        $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'unexpected_model';
+                    } else {
+                        $GLOBALS['providerErrors']['deepseek'] = [
+                            'http'=>$retryStatus,
+                            'message'=>'DeepSeek returned unparseable JSON after one retry (finish_reason='
+                                . ($retryFinishReason !== '' ? $retryFinishReason : 'unknown')
+                                . ', response_chars=' . (is_string($retryText ?? null) ? strlen($retryText) : 0) . ').',
+                        ];
+                        $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'invalid_json';
+                        error_log('DeepSeek hybrid JSON retry failed: finish_reason='
+                            . ($retryFinishReason !== '' ? $retryFinishReason : 'unknown')
+                            . ', response_chars=' . (is_string($retryText ?? null) ? strlen($retryText) : 0));
+                    }
+                }
+            }
             if (is_array($parsedCurator)) {
                 $parsedCurator = normalizeJsonPayloadSchema($parsedCurator);
                 $jsonReasoning = is_string($parsedCurator['reasoning'] ?? null) ? trim($parsedCurator['reasoning']) : '';
@@ -2111,8 +2190,20 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
                 $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'ok';
                 }
             } else {
-                $GLOBALS['providerErrors']['deepseek'] = ['http'=>$curatorStatus, 'message'=>'DeepSeek returned unparseable JSON'];
-                $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'invalid_json';
+                if (!isset($GLOBALS['providerErrors']['deepseek'])) {
+                    $GLOBALS['providerErrors']['deepseek'] = [
+                        'http'=>$curatorStatus,
+                        'message'=>'DeepSeek returned unparseable JSON (finish_reason='
+                            . ($curatorFinishReason !== '' ? $curatorFinishReason : 'unknown')
+                            . ', response_chars=' . (is_string($curatorText) ? strlen($curatorText) : 0) . ').',
+                    ];
+                    error_log('DeepSeek hybrid reasoner returned unparseable JSON: finish_reason='
+                        . ($curatorFinishReason !== '' ? $curatorFinishReason : 'unknown')
+                        . ', response_chars=' . (is_string($curatorText) ? strlen($curatorText) : 0));
+                }
+                if (($GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] ?? '') === '') {
+                    $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'invalid_json';
+                }
             }
             }
         } else {

@@ -28,6 +28,13 @@ function assertApprox(float $actual, float $expected, float $tol, string $label)
     assertCheck(abs($actual - $expected) <= $tol, "{$label} (got {$actual}, expected {$expected})");
 }
 
+assertCheck(
+    shouldRetryDeepSeekHybridJson(null, 'stop')
+    && shouldRetryDeepSeekHybridJson(['answer'=>'partial'], 'length')
+    && !shouldRetryDeepSeekHybridJson(['answer'=>'complete'], 'stop'),
+    'Retries malformed or length-truncated DeepSeek JSON, but not complete output'
+);
+
 // 1. Test Ranking Metrics (P@5, R@5, R@10, NDCG@5, MRR)
 $gradeMap = [
     normalizePlaceName('Resto A - Lanang') => 3,
@@ -255,6 +262,28 @@ assertCheck(
     && buildNearbyMapResults([], $fastFoodMapPlaces, 7.105, 125.635, 5.0, 'salad', parseQueryIntent('salad')) === [],
     'Broad fast-food lookup categories do not prove burger, chicken, or fries relevance without cuisine evidence'
 );
+$mapFindFixtures = [
+    ['name'=>'Burger Stop', 'city'=>'Davao City', 'food_type'=>'fast food', 'cuisine'=>'burger', 'district'=>'Lanang', 'address'=>'Lanang, Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/801'],
+    ['name'=>'Burger Stop', 'city'=>'Davao City', 'food_type'=>'fast food', 'cuisine'=>'burger', 'district'=>'Poblacion', 'address'=>'Poblacion, Davao City', 'latitude'=>7.069, 'longitude'=>125.605, 'url'=>'https://www.openstreetmap.org/node/802'],
+    ['name'=>'Generic Fast Food', 'city'=>'Davao City', 'food_type'=>'fast food', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/803'],
+    ['name'=>'Coffee Stop', 'city'=>'Davao City', 'food_type'=>'cafe', 'cuisine'=>'coffee', 'latitude'=>7.107, 'longitude'=>125.637, 'url'=>'https://www.openstreetmap.org/node/804'],
+];
+$burgerMapFinds = buildMapFindResults($mapFindFixtures, 'burger', $burgerIntent);
+$lanangBurgerIntent = $burgerIntent;
+$lanangBurgerIntent['areas'] = ['Lanang'];
+$lanangMapFinds = buildMapFindResults($mapFindFixtures, 'burger Lanang', $lanangBurgerIntent);
+$budgetBurgerIntent = $burgerIntent;
+$budgetBurgerIntent['max_price_php'] = 250;
+assertCheck(
+    count($burgerMapFinds) === 2
+    && count($lanangMapFinds) === 1
+    && str_contains($lanangMapFinds[0]['name'], 'Lanang')
+    && $burgerMapFinds[0]['map_only'] === true
+    && $burgerMapFinds[0]['rating'] === null
+    && $burgerMapFinds[0]['review_count'] === null
+    && buildMapFindResults($mapFindFixtures, 'burger under PHP 250', $budgetBurgerIntent) === [],
+    'Map finds require category evidence, honor requested areas, and never imply unverified ratings or prices'
+);
 assertCheck(
     !nearbyFeatureMatchesRequest(
         ['name'=>'Fast Fresh', 'food_type'=>'restaurant', 'place_search_query'=>'fast food Davao City'],
@@ -333,6 +362,23 @@ assertCheck(
     && count($localOsmSnapshot['places']) > 0
     && count(array_filter($localOsmSnapshot['places'], 'isValidNearbyMapPlace')) === count($localOsmSnapshot['places']),
     'Loads Davao OpenStreetMap nearby places locally and filters them to the rounded search bounds'
+);
+$fullLocalOsmSnapshot = loadLocalOsmNearbySnapshot($appRoot . '/data/osm-nearby-places.json');
+assertCheck(
+    count($fullLocalOsmSnapshot['places']) > count($localOsmSnapshot['places']),
+    'Loads the full local Davao OSM snapshot for non-location map supplements'
+);
+$fullSnapshotBurgerFinds = buildMapFindResults(
+    $fullLocalOsmSnapshot['places'],
+    'burger',
+    parseQueryIntent('burger')
+);
+assertCheck(
+    count($fullSnapshotBurgerFinds) > 0
+    && count(array_filter($fullSnapshotBurgerFinds, fn($place) =>
+        !empty($place['map_only']) && $place['rating'] === null && $place['review_count'] === null
+    )) === count($fullSnapshotBurgerFinds),
+    'The general-search map supplement returns category-matched, non-rated OSM listings'
 );
 $localHalalResults = buildNearbyMapResults(
     [],

@@ -117,7 +117,7 @@ function isValidNearbyMapPlace(array $place): bool {
         && preg_match('#^/(?:node|way|relation)/\d+$#', $path) === 1;
 }
 
-function loadLocalOsmNearbySnapshot(string $snapshotPath, array $bounds): array {
+function loadLocalOsmNearbySnapshot(string $snapshotPath, ?array $bounds = null): array {
     if (!is_file($snapshotPath) || !is_readable($snapshotPath)) {
         throw new RuntimeException('The local OpenStreetMap nearby index is missing or unreadable. Run node scripts/update-osm-places.js to build it.');
     }
@@ -137,19 +137,23 @@ function loadLocalOsmNearbySnapshot(string $snapshotPath, array $bounds): array 
         || trim((string)($snapshot['osm_base_timestamp'] ?? '')) === '') {
         throw new RuntimeException('The local OpenStreetMap nearby index has an unsupported or incomplete format.');
     }
-    foreach (['west', 'south', 'east', 'north'] as $key) {
-        if (!is_numeric($bounds[$key] ?? null) || !is_finite((float)$bounds[$key])) {
-            throw new InvalidArgumentException('Local OpenStreetMap filtering requires valid rounded search bounds.');
+    if ($bounds !== null) {
+        foreach (['west', 'south', 'east', 'north'] as $key) {
+            if (!is_numeric($bounds[$key] ?? null) || !is_finite((float)$bounds[$key])) {
+                throw new InvalidArgumentException('Local OpenStreetMap filtering requires valid rounded search bounds.');
+            }
         }
     }
 
     $places = [];
     foreach ($snapshot['places'] as $place) {
         if (!is_array($place) || !isValidNearbyMapPlace($place)) continue;
-        $latitude = (float)$place['latitude'];
-        $longitude = (float)$place['longitude'];
-        if ($longitude < (float)$bounds['west'] || $longitude > (float)$bounds['east']
-            || $latitude < (float)$bounds['south'] || $latitude > (float)$bounds['north']) continue;
+        if ($bounds !== null) {
+            $latitude = (float)$place['latitude'];
+            $longitude = (float)$place['longitude'];
+            if ($longitude < (float)$bounds['west'] || $longitude > (float)$bounds['east']
+                || $latitude < (float)$bounds['south'] || $latitude > (float)$bounds['north']) continue;
+        }
         $places[] = $place;
     }
     return [
@@ -418,6 +422,105 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
         }
     }
     return false;
+}
+
+function mapFindIntentIsSupported(array $intent, ?string $requestedRestaurantCore = null): bool {
+    $areas = is_array($intent['areas'] ?? null) ? $intent['areas'] : [];
+    $cuisines = is_array($intent['cuisines'] ?? null) ? $intent['cuisines'] : [];
+    $dishes = is_array($intent['specific_dishes'] ?? null) ? $intent['specific_dishes'] : [];
+    $dietary = is_array($intent['dietary'] ?? null) ? $intent['dietary'] : [];
+    if (!empty($intent['out_of_scope'])
+        || !empty($intent['is_ambiguous'])
+        || !empty($intent['online_only'])
+        || !empty($intent['min_rating'])
+        || !empty($intent['min_price_php'])
+        || !empty($intent['max_price_php'])
+        || !empty($intent['budget'])
+        || !empty($intent['price_preference'])
+        || !empty($intent['ambiance'])
+        || !empty($intent['thematic'])
+        || !empty($intent['hours'])
+        || count($areas) > 1) {
+        return false;
+    }
+
+    $supportedDietaryTerms = ['halal', 'vegan', 'vegetarian'];
+    $dietary = array_map(
+        fn($term) => mb_strtolower(trim((string)$term), 'UTF-8'),
+        $dietary
+    );
+    if (array_diff($dietary, $supportedDietaryTerms)) return false;
+
+    $foodTermCount = count($cuisines) + count($dishes);
+    return $requestedRestaurantCore !== null
+        || $foodTermCount === 1
+        || ($foodTermCount === 0 && count($dietary) === 1);
+}
+
+function buildMapFindResults(
+    array $mapPlaces,
+    string $query,
+    array $intent,
+    ?string $requestedRestaurantCore = null,
+    int $limit = 20
+): array {
+    if (!mapFindIntentIsSupported($intent, $requestedRestaurantCore)) return [];
+
+    $requestedAreas = is_array($intent['areas'] ?? null) ? $intent['areas'] : [];
+    $results = [];
+    $seenUrls = [];
+    foreach ($mapPlaces as $feature) {
+        if (!is_array($feature) || !isValidNearbyMapPlace($feature)
+            || !nearbyFeatureMatchesRequest($feature, $query, $intent)) {
+            continue;
+        }
+        $name = nearbyFeatureDisplayName($feature);
+        if ($requestedRestaurantCore !== null && !restaurantNameMatchesCore($name, $requestedRestaurantCore)) {
+            continue;
+        }
+        $address = trim((string)($feature['address'] ?? ''));
+        if ($requestedAreas
+            && evaluateDavaoAreaProximity(['name'=>$name, 'address'=>$address], $requestedAreas) !== 'exact') {
+            continue;
+        }
+
+        $url = trim((string)$feature['url']);
+        if (isset($seenUrls[$url])) continue;
+        $seenUrls[$url] = true;
+        $foodType = trim((string)($feature['food_type'] ?? 'Restaurant')) ?: 'Restaurant';
+        $cuisine = trim(str_replace(';', ', ', (string)($feature['cuisine'] ?? '')));
+        $category = $cuisine !== '' ? $foodType . ' (' . $cuisine . ')' : $foodType;
+        if ($address === '') {
+            $address = implode(', ', array_filter([
+                trim((string)($feature['street'] ?? '')),
+                trim((string)($feature['district'] ?? '')) ?: trim((string)($feature['locality'] ?? '')),
+                'Davao City',
+            ]));
+        }
+
+        $results[] = [
+            'name'=>$name,
+            'food_type'=>$category,
+            'description'=>"OpenStreetMap lists this {$category} at {$address}. Menu, prices, reviews, hours, and current business status are not verified.",
+            'address'=>$address,
+            'city'=>'Davao City',
+            'rating'=>null,
+            'review_count'=>null,
+            'price_range'=>'',
+            'source_url'=>$url,
+            'source_reference'=>$url,
+            'source_status'=>'supported',
+            'unsupported'=>false,
+            'map_only'=>true,
+            'location_source'=>'OpenStreetMap',
+            'location_source_url'=>$url,
+            'latitude'=>(float)$feature['latitude'],
+            'longitude'=>(float)$feature['longitude'],
+        ];
+    }
+
+    usort($results, fn($a, $b) => strnatcasecmp((string)$a['name'], (string)$b['name']));
+    return array_slice($results, 0, max(1, min(100, $limit)));
 }
 
 function buildNearbyMapResults(

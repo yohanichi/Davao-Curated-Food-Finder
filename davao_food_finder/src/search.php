@@ -571,13 +571,22 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         preg_match('/\b(more|other|another|alternatives?|different|else|instead|cheaper|not\s+shown|not\s+listed|new\s+options)\b/iu', $lower) === 1
         && preg_match('/^which\s+(ones?|of\s+those)\b/iu', $lower) !== 1
     );
+    $lastAssistantMessage = '';
+    foreach (array_reverse($history) as $hTurn) {
+        if (is_array($hTurn) && ($hTurn['role'] ?? '') === 'assistant') {
+            $lastAssistantMessage = trim((string)($hTurn['content'] ?? ''));
+            break;
+        }
+    }
+    $isPriceClarificationAnswer = preg_match('/\bwhat price range works for you\b|\bchoose budget[- ]friendly\b/iu', $lastAssistantMessage) === 1
+        && preg_match('/^(?:budget[- ]friendly|affordable|cheap|mid[- ]range|upscale|(?:₱|php\s*)?\d{2,4})(?:\s*(?:pesos?|php|per\s+person))?[.!?]*$/iu', $trimmed) === 1;
     $isFollowupSyntax = isContinuationQuery($trimmed)
         || $isUserCorrection
         || $isExcludeMore
         || $hasAnaphora
         || $isOnlineOnlyRequested
-        || preg_match('/^(what\s+about|how\s+about|which\s+ones?|any(\s+of\s+those|\s+options|\s+places|\s+under|\s+near|\s+around)?|ones?\s+(in|near|at|with|that)|actually|instead|and\s+(in|near|around|with|under)|filter\s+by|narrow\s+down|under\s+₱?\d+|below\s+₱?\d+|around\s+₱?\d+)\b/iu', $lower) === 1
-        || (count($history) > 0 && mb_strlen($trimmed, 'UTF-8') < 85 && preg_match('/\b(ones?|those|them|there|instead|cheaper|closer|nearby|quiet|halal|healthy|under|below|reportedly|actually)\b/iu', $lower) === 1);
+        || $isPriceClarificationAnswer
+        || preg_match('/^(what\s+about|how\s+about|which\s+ones?|any\s+(?:of\s+(?:those|them)|options|places|under|near|around)|ones?\s+(in|near|at|with|that)|actually|instead|and\s+(in|near|around|with|under)|filter\s+by|narrow\s+down|under\s+₱?\d+|below\s+₱?\d+|around\s+₱?\d+)\b/iu', $lower) === 1;
 
     $extractFromText = function (string $rawText): array {
         $syn = normalizeDavaoQuerySynonyms($rawText);
@@ -741,7 +750,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
     $isLayeredFollowup = !$scope['out_of_scope']
         && count($history) > 0
         && !$isStandaloneTopicReset
-        && ($isFollowupSyntax || empty($currentOnly['cuisines']) || empty($currentOnly['areas']));
+        && $isFollowupSyntax;
 
     // Accumulate active constraints chronologically (oldest -> newest -> current) so multi-turn layers never drop prior context
     $conversationLayers = [];
@@ -809,6 +818,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
                     $state['hours'] = [];
                 }
             } elseif (!empty($extracted['specific_dishes'])) {
+                $state['cuisines'] = [];
                 $state['specific_dishes'] = $extracted['specific_dishes'];
                 $state['strict_dishes'] = $extracted['strict_dishes'];
             }

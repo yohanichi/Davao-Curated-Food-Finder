@@ -96,8 +96,47 @@ assertCheck(count($nearbyMapResults) === 2
     && $nearbyMapResults[0]['name'] === 'KFC - Lanang (Damosa Road)'
     && $nearbyMapResults[1]['name'] === 'KFC - Bajada (J.P. Laurel Avenue)'
     && str_contains($nearbyMapResults[0]['address'], 'Damosa Road')
+    && $nearbyMapResults[0]['latitude'] === 7.105
+    && $nearbyMapResults[0]['longitude'] === 125.635
     && $nearbyMapResults[0]['rating'] === null,
     'Near-me results identify distinct chain branches by their OSM street and district without borrowing ratings');
+$manyNearbyMapPlaces = [];
+for ($i = 1; $i <= 25; $i++) {
+    $manyNearbyMapPlaces[] = [
+        'name'=>"Sample Cafe {$i}",
+        'city'=>'Davao City',
+        'food_type'=>'cafe',
+        'latitude'=>7.105 + ($i / 100000),
+        'longitude'=>125.635,
+        'url'=>"https://www.openstreetmap.org/node/{$i}",
+    ];
+}
+$manyNearbyMapResults = buildNearbyMapResults(
+    [],
+    $manyNearbyMapPlaces,
+    7.105,
+    125.635,
+    5.0,
+    'coffee shops',
+    ['cuisines'=>['Coffee'], 'specific_dishes'=>[]]
+);
+$limitedNearbyMapResults = buildNearbyMapResults(
+    [],
+    $manyNearbyMapPlaces,
+    7.105,
+    125.635,
+    5.0,
+    'coffee shops',
+    ['cuisines'=>['Coffee'], 'specific_dishes'=>[]],
+    0.0,
+    20
+);
+assertCheck(
+    count($manyNearbyMapResults) === 25
+    && count($limitedNearbyMapResults) === 20
+    && count(array_unique(array_column($manyNearbyMapResults, 'location_source_url'))) === 25,
+    'Nearby map matching supports more than 20 distinct places while honoring the requested page limit'
+);
 $starbucksMapPlaces = [
     ['name'=>'Starbucks', 'city'=>'Davao City', 'food_type'=>'cafe', 'district'=>'Poblacion', 'street'=>'J.P. Laurel Avenue', 'address'=>'J.P. Laurel Avenue, Poblacion, Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/201'],
 ];
@@ -140,8 +179,47 @@ assertCheck(
     && $coffeeAfterBurgerResults[0]['name'] === 'Local Coffee House',
     'A coffeeshop query pivots away from prior burger context and excludes fast-food map results'
 );
+$progressiveHistory = [
+    ['role'=>'user', 'content'=>'burger'],
+    ['role'=>'assistant', 'content'=>'Here are some nearby burger places.'],
+    ['role'=>'user', 'content'=>'coffeeshop'],
+    ['role'=>'assistant', 'content'=>'Here are some nearby coffee places.'],
+];
+$friesAfterProgressiveHistory = parseQueryIntent('fries', $progressiveHistory);
+$halalAfterProgressiveHistory = parseQueryIntent('halal', array_merge($progressiveHistory, [
+    ['role'=>'user', 'content'=>'fries'],
+    ['role'=>'assistant', 'content'=>'Here are places nearby.'],
+]));
+$friesFollowupAfterBurger = parseQueryIntent('what about fries?', $progressiveHistory);
+$halalFollowupAfterFries = parseQueryIntent('what about halal?', array_merge($progressiveHistory, [
+    ['role'=>'user', 'content'=>'fries'],
+    ['role'=>'assistant', 'content'=>'Here are fries places.'],
+]));
+assertCheck(
+    !$friesAfterProgressiveHistory['is_followup']
+    && $friesAfterProgressiveHistory['cuisines'] === []
+    && $friesAfterProgressiveHistory['specific_dishes'] === ['fries']
+    && !$halalAfterProgressiveHistory['is_followup']
+    && $halalAfterProgressiveHistory['cuisines'] === []
+    && $halalAfterProgressiveHistory['specific_dishes'] === []
+    && $halalAfterProgressiveHistory['dietary'] === ['halal'],
+    'Standalone dish and dietary searches start fresh after unrelated searches'
+);
+assertCheck(
+    $friesFollowupAfterBurger['is_followup']
+    && $friesFollowupAfterBurger['cuisines'] === []
+    && $friesFollowupAfterBurger['specific_dishes'] === ['fries']
+    && $halalFollowupAfterFries['is_followup']
+    && $halalFollowupAfterFries['specific_dishes'] === ['fries']
+    && $halalFollowupAfterFries['dietary'] === ['halal'],
+    'Explicit follow-ups retain relevant context while a new dish pivots away from the previous cuisine'
+);
 $fastFoodMapPlaces = [
     ['name'=>'Quick Bites', 'city'=>'Davao City', 'food_type'=>'fast_food', 'district'=>'Poblacion', 'street'=>'Roxas Avenue', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/202'],
+];
+$explicitBurgerMapPlaces = [
+    $fastFoodMapPlaces[0],
+    ['name'=>'Burger Stop', 'city'=>'Davao City', 'food_type'=>'fast_food', 'cuisine'=>'burger', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/203'],
 ];
 $burgerIntent = parseQueryIntent('burger');
 $chickenIntent = parseQueryIntent('chicken');
@@ -155,25 +233,56 @@ foreach ([
 ] as [$query, $intent]) {
     $fastFoodResults[$query] = buildNearbyMapResults([], $fastFoodMapPlaces, 7.105, 125.635, 5.0, $query, $intent);
 }
+$explicitBurgerResults = buildNearbyMapResults(
+    [],
+    $explicitBurgerMapPlaces,
+    7.105,
+    125.635,
+    5.0,
+    'burger',
+    $burgerIntent
+);
 assertCheck(
     $friesIntent['specific_dishes'] === ['fries']
     && nearbyCategoryQueryTerms($burgerIntent) === ['fast food']
     && nearbyCategoryQueryTerms($chickenIntent) === ['fast food']
     && nearbyCategoryQueryTerms($friesIntent) === ['fast food']
-    && count($fastFoodResults['burger']) === 1
-    && count($fastFoodResults['chicken']) === 1
-    && count($fastFoodResults['fries']) === 1
+    && count($fastFoodResults['burger']) === 0
+    && count($fastFoodResults['chicken']) === 0
+    && count($fastFoodResults['fries']) === 0
+    && count($explicitBurgerResults) === 1
+    && $explicitBurgerResults[0]['name'] === 'Burger Stop'
     && buildNearbyMapResults([], $fastFoodMapPlaces, 7.105, 125.635, 5.0, 'salad', parseQueryIntent('salad')) === [],
-    'Near-me burger, chicken, and fries searches include nearby mapped fast-food venues without broadening unrelated food searches'
+    'Broad fast-food lookup categories do not prove burger, chicken, or fries relevance without cuisine evidence'
 );
 assertCheck(
-    nearbyFeatureMatchesRequest(
+    !nearbyFeatureMatchesRequest(
         ['name'=>'Fast Fresh', 'food_type'=>'restaurant', 'place_search_query'=>'fast food Davao City'],
         'fries',
         $friesIntent
     ),
-    'Nominatim restaurant results from a fast-food category lookup remain eligible for fries searches'
+    'A fast-food lookup query is not evidence that a restaurant serves fries'
 );
+$unverifiedFriesMapResults = buildNearbyMapResults(
+    [['name'=>'Angel Burger', 'food_type'=>'Burgers', 'description'=>'Burger restaurant']],
+    [['name'=>'Angel Burger', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/213']],
+    7.105,
+    125.635,
+    5.0,
+    'fries',
+    $friesIntent
+);
+assertCheck($unverifiedFriesMapResults === [], 'Locally relevant burger candidates cannot bypass a fries-evidence check');
+$verifiedFriesMapResults = buildNearbyMapResults(
+    [['name'=>'Potato Corner', 'food_type'=>'Fries', 'description'=>'Serves fries']],
+    [['name'=>'Potato Corner', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/214']],
+    7.105,
+    125.635,
+    5.0,
+    'fries',
+    $friesIntent
+);
+assertCheck(count($verifiedFriesMapResults) === 1, 'A mapped venue with independent fries evidence remains eligible');
 $friesCandidates = [
     ['_id'=>'potato-corner', 'name'=>'Potato Corner - Maa', 'food_type'=>'Fries', 'description'=>'', 'address'=>'Davao City', 'rating'=>4.8, 'review_count'=>100],
     ['_id'=>'fries-b4-guys', 'name'=>'Fries b4 Guys - Buhangin', 'food_type'=>'Chicken', 'description'=>'', 'address'=>'Davao City', 'rating'=>4.5, 'review_count'=>20],
@@ -262,17 +371,38 @@ assertCheck(
     && count(array_filter($localCoffeeResults, fn($place) =>
         preg_match('/\b(?:j&k yogopop|angel\'s burger|chicken namit fried chicken)\b/iu', (string)$place['name']) === 1
     )) === 0
-    && count($localBurgerResults) > 0,
-    'The local OSM snapshot returns coffee venues for coffeeshop without the reported burger-query matches'
+    && count($localBurgerResults) > 0
+    && count(array_filter($localBurgerResults, fn($place) =>
+        preg_match('/\b(?:j&k yogopop|ilonggo mandaya eatery|jenny\'s lechon|balbacua sa buhangin|kambingan sa buhangin)\b/iu', (string)$place['name']) === 1
+    )) === 0,
+    'The local OSM snapshot returns food-specific burger matches without unrelated fast-food venues'
 );
 assertCheck(
-    nearbyFeatureMatchesRequest(
+    !nearbyFeatureMatchesRequest(
         ['name'=>'Fast Fresh', 'food_type'=>'fast food'],
         'fries',
         ['specific_dishes'=>['fries']]
     ),
-    'Near-me fries queries accept mapped fast-food venues'
+    'Near-me fries queries reject mapped fast-food venues without fries evidence'
 );
+assertCheck(
+    !nearbyFeatureMatchesRequest(
+        ['name'=>'Potato Corner', 'food_type'=>'fast food', 'place_search_query'=>'halal restaurant Davao City'],
+        'halal',
+        ['dietary'=>['halal']]
+    ),
+    'A halal search query does not prove a mapped venue is halal'
+);
+$unverifiedHalalMapResults = buildNearbyMapResults(
+    [['name'=>'Potato Corner', 'food_type'=>'Fast Food', 'description'=>'Fries and snacks']],
+    [['name'=>'Potato Corner', 'city'=>'Davao City', 'food_type'=>'fast_food', 'place_search_query'=>'halal restaurant Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/215']],
+    7.105,
+    125.635,
+    5.0,
+    'halal',
+    ['dietary'=>['halal']]
+);
+assertCheck($unverifiedHalalMapResults === [], 'Locally relevant candidates cannot bypass a halal-evidence check');
 assertCheck(
     nearbyFeatureMatchesRequest(
         ['name'=>'Basilio Halal Restaurant', 'food_type'=>'restaurant'],

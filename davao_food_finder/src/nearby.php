@@ -342,17 +342,20 @@ function rankNearbyWebPlaces(
 }
 
 function nearbyFeatureMatchesRequest(array $feature, string $query, array $intent): bool {
-    if (detectExplicitRestaurantCoreQuery([$feature], $query) !== null) {
+    $hasDietaryConstraint = !empty($intent['dietary'])
+        || preg_match('/\b(halal|vegan|vegetarian|muslim[- ]friendly|no\s+pork|pork[- ]free)\b/iu', $query) === 1;
+    if (!$hasDietaryConstraint && detectExplicitRestaurantCoreQuery([$feature], $query) !== null) {
         return true;
     }
 
+    $intentTerms = array_map(
+        fn($value) => mb_strtolower(trim((string)$value), 'UTF-8'),
+        array_merge($intent['cuisines'] ?? [], $intent['specific_dishes'] ?? [], $intent['dietary'] ?? [])
+    );
     $requestedDietaryTerms = array_values(array_filter(
         ['halal', 'vegan', 'vegetarian'],
         fn($term) => preg_match('/(?<![\p{L}\p{N}])' . $term . '(?![\p{L}\p{N}])/iu', $query) === 1
-            || in_array($term, array_map(
-                fn($value) => mb_strtolower(trim((string)$value), 'UTF-8'),
-                array_merge($intent['cuisines'] ?? [], $intent['specific_dishes'] ?? [])
-            ), true)
+            || in_array($term, $intentTerms, true)
     ));
 
     $cuisineTerms = [
@@ -363,13 +366,13 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
         'filipino'=>['filipino'],
         'pizza'=>['pizza','italian'],
         'seafood'=>['seafood','fish','shrimp'],
-        'burgers'=>['burger','burgers','hamburger','hamburgers','fast food'],
-        'chicken'=>['chicken','fried chicken','fast food'],
-        'fried chicken'=>['chicken','fried chicken','fast food'],
+        'burgers'=>['burger','burgers','hamburger','hamburgers'],
+        'chicken'=>['chicken','fried chicken'],
+        'fried chicken'=>['chicken','fried chicken'],
         'milk tea'=>['milk tea','bubble tea','tea'],
     ];
     $dishTerms = [
-        'fries'=>['fries','french fries','fast food'],
+        'fries'=>['fries','french fries'],
     ];
     $requestedTerms = [];
     foreach (($intent['cuisines'] ?? []) as $cuisine) {
@@ -388,7 +391,7 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
         $feature['name'] ?? '',
         $feature['food_type'] ?? '',
         $feature['cuisine'] ?? '',
-        $feature['place_search_query'] ?? '',
+        $feature['description'] ?? '',
     ])), 'UTF-8');
     $dietaryTags = is_array($feature['dietary_tags'] ?? null) ? $feature['dietary_tags'] : [];
     foreach ($requestedDietaryTerms as $dietaryTerm) {
@@ -425,21 +428,34 @@ function buildNearbyMapResults(
     float $radiusKm,
     string $query = '',
     array $intent = [],
-    float $locationAccuracyKm = 0.0
+    float $locationAccuracyKm = 0.0,
+    int $limit = 400
 ): array {
     $relevantCores = [];
+    $relevantCandidatesByCore = [];
     foreach ($relevantCandidates as $candidate) {
         $core = nearbyPlaceCore((string)($candidate['name'] ?? ''));
         if ($core === '') continue;
         $score = reviewBasedRankingScore($candidate);
         $relevantCores[$core] = max($relevantCores[$core] ?? 0.0, $score);
+        $relevantCandidatesByCore[$core][] = $candidate;
     }
 
     $results = [];
     foreach ($mapPlaces as $feature) {
         if (!is_array($feature) || !isValidNearbyMapPlace($feature)) continue;
         $core = nearbyPlaceCore((string)$feature['name']);
-        if ($core === '' || (!isset($relevantCores[$core]) && !nearbyFeatureMatchesRequest($feature, $query, $intent))) continue;
+        if ($core === '') continue;
+        $matchesRequest = nearbyFeatureMatchesRequest($feature, $query, $intent);
+        if (!$matchesRequest) {
+            foreach ($relevantCandidatesByCore[$core] ?? [] as $candidate) {
+                if (nearbyFeatureMatchesRequest($candidate, $query, $intent)) {
+                    $matchesRequest = true;
+                    break;
+                }
+            }
+        }
+        if (!$matchesRequest) continue;
         $distance = nearbyDistanceKm($latitude, $longitude, (float)$feature['latitude'], (float)$feature['longitude']);
         if (!nearbyDistanceWithinRadius($distance, $radiusKm, $locationAccuracyKm)) continue;
 
@@ -470,6 +486,8 @@ function buildNearbyMapResults(
             'map_only'=>true,
             'location_source'=>'OpenStreetMap',
             'location_source_url'=>$url,
+            'latitude'=>(float)$feature['latitude'],
+            'longitude'=>(float)$feature['longitude'],
             'distance_km'=>round($distance, 2),
             '_nearby_core_key'=>$core,
             '_nearby_sort_score'=>$relevantCores[$core] ?? 0.0,
@@ -486,7 +504,7 @@ function buildNearbyMapResults(
         $seenLocations[$locationKey] = true;
         unset($result['_nearby_core_key'], $result['_nearby_sort_score']);
         $deduped[] = $result;
-        if (count($deduped) >= 20) break;
+        if (count($deduped) >= max(1, min(400, $limit))) break;
     }
     return $deduped;
 }

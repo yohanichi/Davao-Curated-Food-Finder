@@ -52,6 +52,45 @@ try {
         $rawInput = stream_get_contents(STDIN);
     }
     $body = json_decode((string)$rawInput, true) ?: [];
+    if (($body['action'] ?? '') === 'load_nearby_map_more') {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            http_response_code(503);
+            throw new RuntimeException('Nearby map results are not available in this session. Run the search again.');
+        }
+        $token = (string)($body['token'] ?? '');
+        if (preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
+            http_response_code(422);
+            throw new RuntimeException('The nearby results page token is invalid.');
+        }
+        $offset = filter_var($body['offset'] ?? null, FILTER_VALIDATE_INT);
+        if ($offset === false || $offset < 0) {
+            http_response_code(422);
+            throw new RuntimeException('The nearby results page offset is invalid.');
+        }
+        $savedPage = $_SESSION['nearby_map_pages'][$token] ?? null;
+        if (!is_array($savedPage)
+            || (int)($savedPage['expires_at'] ?? 0) < time()
+            || !is_array($savedPage['places'] ?? null)) {
+            unset($_SESSION['nearby_map_pages'][$token]);
+            http_response_code(410);
+            throw new RuntimeException('These nearby results have expired. Run the search again to refresh them.');
+        }
+        $allPlaces = $savedPage['places'];
+        if ($offset > count($allPlaces)) {
+            http_response_code(422);
+            throw new RuntimeException('The nearby results page offset is out of range.');
+        }
+        $places = array_slice($allPlaces, $offset, 20);
+        $nextOffset = $offset + count($places);
+        if (ob_get_level() > 0) ob_clean();
+        echo json_encode([
+            'places'=>$places,
+            'nextOffset'=>$nextOffset,
+            'hasMore'=>$nextOffset < count($allPlaces),
+            'totalCount'=>count($allPlaces),
+        ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        exit;
+    }
     $query = trim((string)($body['query'] ?? ''));
     $history = is_array($body['history'] ?? null) ? array_slice($body['history'], -12) : [];
     $shownNames = is_array($body['shownNames'] ?? null) ? array_slice($body['shownNames'], 0, 50) : [];
@@ -61,6 +100,7 @@ try {
     $nearbyMapPlaces = [];
     $nearbyMapSnapshotMetadata = null;
     $nearbyRelevantCandidates = [];
+    $moreNearbyMapResults = [];
     if (array_key_exists('location', $body)) {
         $location = $body['location'];
         if (!is_array($location)
@@ -198,6 +238,8 @@ try {
     if ($requestedRestaurantCore !== null) {
         $intent['requested_restaurant_core'] = $requestedRestaurantCore;
     }
+    $contextHistory = !empty($intent['is_followup']) ? $history : [];
+    $contextShownNames = !empty($intent['exclude_shown']) ? $shownNames : [];
     $intentParseMs = (int)round((microtime(true) - $retrievalStart) * 1000);
 
     $hasFoodRequest = !empty($intent['cuisines'])
@@ -221,7 +263,7 @@ try {
     }
 
     if ($reasoningProvider === 'hybrid' && $isAgentic) {
-        $intent = planSearchQueryWithGPT4oMini($query, $history, $shownNames, $intent, $openAIOptions);
+        $intent = planSearchQueryWithGPT4oMini($query, $contextHistory, $contextShownNames, $intent, $openAIOptions);
     }
     if ($requestedRestaurantCore !== null) {
         $intent['requested_restaurant_core'] = $requestedRestaurantCore;
@@ -371,11 +413,11 @@ try {
             $modelUsed = 'agentic-single-pass-no-loop';
         }
     } elseif ($reasoningProvider === 'gpt-4o-mini') {
-        [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithGPT4oMini($query, $history, $candidates, $evidence, $openAIOptions);
+        [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithGPT4oMini($query, $contextHistory, $candidates, $evidence, $openAIOptions);
     } elseif ($reasoningProvider === 'deepseek') {
-        [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithDeepSeek($query, $history, $candidates, $evidence, $openAIOptions);
+        [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithDeepSeek($query, $contextHistory, $candidates, $evidence, $openAIOptions);
     } elseif ($reasoningProvider === 'deepseek-api') {
-        [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithDeepSeekApi($query, $history, $candidates, $evidence, $openAIOptions);
+        [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithDeepSeekApi($query, $contextHistory, $candidates, $evidence, $openAIOptions);
     } elseif ($reasoningProvider === 'non-agentic') {
         $nonAgenticOpts = $openAIOptions;
         $nonAgenticOpts['agentic'] = false;
@@ -387,7 +429,7 @@ try {
         }
     } else {
         // 'hybrid' (default production & agentic hybrid benchmark pipeline)
-        [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithHybridPipeline($query, $history, $candidates, $evidence, $openAIOptions);
+        [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithHybridPipeline($query, $contextHistory, $candidates, $evidence, $openAIOptions);
     }
 
     // Agentic scope safety net: if deterministic parser found an unambiguous outside city and AI errored or missed it in strict/agentic mode
@@ -770,7 +812,39 @@ try {
             }
         }
         usort($webResults, fn($a, $b) => ((float)($a['distance_km'] ?? PHP_FLOAT_MAX)) <=> ((float)($b['distance_km'] ?? PHP_FLOAT_MAX)));
+        $allNearbyWebResults = $webResults;
         $webResults = array_slice($webResults, 0, 20);
+        $displayedMapUrls = [];
+        foreach ($webResults as $displayedPlace) {
+            if (!empty($displayedPlace['map_only'])) {
+                $mapUrl = trim((string)($displayedPlace['location_source_url'] ?? ''));
+                if ($mapUrl !== '') $displayedMapUrls[$mapUrl] = true;
+            }
+        }
+        $moreNearbyMapResults = array_values(array_filter(
+            $allNearbyWebResults,
+            fn($place) => !empty($place['map_only'])
+                && !isset($displayedMapUrls[(string)($place['location_source_url'] ?? '')])
+        ));
+        if ($requestedRestaurantCore !== null) {
+            $moreNearbyMapResults = filterPlacesByRestaurantCore($moreNearbyMapResults, $requestedRestaurantCore);
+        }
+        if ($moreNearbyMapResults && session_status() === PHP_SESSION_ACTIVE) {
+            $savedPages = is_array($_SESSION['nearby_map_pages'] ?? null) ? $_SESSION['nearby_map_pages'] : [];
+            foreach ($savedPages as $savedToken => $savedPage) {
+                if (!is_array($savedPage) || (int)($savedPage['expires_at'] ?? 0) < time()) {
+                    unset($savedPages[$savedToken]);
+                }
+            }
+            $pageToken = bin2hex(random_bytes(16));
+            $savedPages[$pageToken] = [
+                'expires_at'=>time() + 600,
+                'places'=>$moreNearbyMapResults,
+            ];
+            $_SESSION['nearby_map_pages'] = array_slice($savedPages, -5, null, true);
+            $nearbySearch['page_token'] = $pageToken;
+            $nearbySearch['more_count'] = count($moreNearbyMapResults);
+        }
         $nearbyItems = array_merge($results, $webResults);
         usort($nearbyItems, fn($a, $b) => ((float)($a['distance_km'] ?? PHP_FLOAT_MAX)) <=> ((float)($b['distance_km'] ?? PHP_FLOAT_MAX)));
         $nearbySearch['status'] = !$mapPlaces ? 'no_map_data' : ($nearbyItems ? 'ok' : 'no_matching_places_within_radius');

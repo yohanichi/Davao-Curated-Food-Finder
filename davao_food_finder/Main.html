@@ -33,6 +33,9 @@ h1{font-size:clamp(36px,6vw,62px);letter-spacing:-.055em;line-height:1.03;margin
 .results-count{display:inline-flex;align-items:center;justify-content:center;background:#e7efe8;color:#235c3f;font-size:12px;font-weight:750;padding:3px 9px;border-radius:99px;letter-spacing:0}
 .results-heading.online .results-count{background:#dff2ef;color:#145c51}
 .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:18px}
+.load-more{margin-top:16px;border:1px solid #cfe0d1;border-radius:10px;background:#f4f8f3;color:#235c3f;padding:10px 15px;font-size:13px;font-weight:700;cursor:pointer}
+.load-more:hover{background:#e5f0e5}
+.load-more:disabled{opacity:.6;cursor:wait}
 .place{overflow:hidden;display:flex;flex-direction:column;background:var(--card);border:1px solid #e8ebe5;border-radius:18px;box-shadow:0 7px 22px #293a2810;transition:transform .2s,box-shadow .2s}
 .place.online-card{border-color:#d5e8e4}
 .place:hover{transform:translateY(-3px);box-shadow:0 14px 30px #293a2819}
@@ -144,6 +147,7 @@ function categoryVisual(p,intent={}){const placeText=[p.food_type,p.name,p.descr
 function categoryTile(p,intent={}){const category=categoryVisual(p,intent);return`<div class="place-category category-${category.key}" role="img" aria-label="Category: ${esc(category.label)}"><span class="category-icon" aria-hidden="true">${category.icon}</span><span class="category-label">${esc(category.label)}</span></div>`}
 function mapUrlFor(p){const candidate=String(p.location_source_url||p.maps_url||'');try{const url=new URL(candidate);if(['https:','http:'].includes(url.protocol))return url.href}catch{}return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent([p.name,p.address,p.city||'Davao City'].filter(Boolean).join(' '))}
 function mapLinkLabel(p){return p.location_source_url?'Open mapped location ↗':'Directions ↗'}
+function placeLocationLabel(p){const address=String(p.address||p.city||'Location not verified').trim();if(!p.map_only||address.toLowerCase()!=='davao city')return address;const hasCoordinates=p.latitude!==null&&p.latitude!==undefined&&p.latitude!==''&&p.longitude!==null&&p.longitude!==undefined&&p.longitude!=='';const latitude=Number(p.latitude),longitude=Number(p.longitude);return hasCoordinates&&Number.isFinite(latitude)&&Number.isFinite(longitude)?`Map pin: ${latitude.toFixed(5)}, ${longitude.toFixed(5)} (street not listed)`:'Mapped branch location (street not listed)'}
 function sourceUrlFor(p){const candidate=String(p.price_evidence?.source_url||p.source_url||'').trim();if(!candidate)return null;try{const url=new URL(candidate);if(['https:','http:'].includes(url.protocol))return{href:url.href,host:url.hostname.replace(/^www\./i,'')}}catch{}return null}
 function parseRatingNum(v){if(typeof v==='number')return(Number.isFinite(v)&&v>0&&v<=5)?v:NaN;const m=String(v??'').match(/([1-5](?:\.\d+)?)/);const n=m?parseFloat(m[1]):NaN;return(Number.isFinite(n)&&n>0&&n<=5)?n:NaN}
 function parseCountNum(v){if(typeof v==='number')return(Number.isFinite(v)&&v>0)?Math.round(v):NaN;const m=String(v??'').replace(/,/g,'').match(/(\d+)/);const n=m?parseInt(m[1],10):NaN;return(Number.isFinite(n)&&n>0)?n:NaN}
@@ -158,12 +162,12 @@ function normAlnum(s){return String(s??'').toLowerCase().replace(/[^a-z0-9\u00c0
 function normCore(name){const raw=String(name??'').trim();const stripped=raw.replace(/\s*(?:[-–|]\s*[^-–|]+|\([^)]*\))\s*$/,'').trim();return normAlnum(stripped||raw)}
 function extractBranch(name){const m=String(name??'').match(/\s+[-–]\s+([^-–]{2,80})$/);return m?normAlnum(m[1]):''}
 function isSameVenue(webP,localP){const wf=normAlnum(webP?.name),lf=normAlnum(localP?.name);if(!wf||!lf)return false;if(wf===lf)return true;const wc=normCore(webP?.name),lc=normCore(localP?.name);if(!wc||wc.length<4||wc!==lc)return false;const wb=extractBranch(webP?.name),lb=extractBranch(localP?.name);if(wb&&lb)return wb===lb||wb.includes(lb)||lb.includes(wb);if(!lb)return true;const ctx=normAlnum(`${webP?.address||''} ${webP?.description||''}`);return Boolean(ctx&&ctx.includes(lb))}
-function openDetails(p,intent={}){const rating=parseRatingNum(p.rating);const count=parseCountNum(p.review_count);const stars=Number.isFinite(rating)?`<div class="stars">★ ${esc(rating.toFixed(1))}/5 <span class="small">${Number.isFinite(count)?` · ${esc(count)} reviews`:''}</span></div>`:`<p class="meta">${p.map_only?'No rating is supplied by OpenStreetMap':`No verified rating ${p.online?'found online':'in the dataset'}`}</p>`;const mapUrl=mapUrlFor(p);const src=sourceUrlFor(p);const category=categoryTile(p,intent);const pText=priceBadgeText(p)||'Not verified',distance=Number(p.distance_km),hasDistance=p.distance_km!==null&&p.distance_km!==undefined&&Number.isFinite(distance),distanceText=hasDistance?` · approximately ${distance.toFixed(1)} km away`:'';const freshness=p.online?'Online details may be cached and can change. Check the linked source or contact the restaurant.':'2025 local dataset record; current hours and business status are not verified.';document.getElementById('modalContent').innerHTML=`${category}<h2 id="modalTitle">${esc(p.name||'Unnamed place')}</h2>${stars}<p>${esc(p.description||p.food_type||'No description available.')}</p><p><strong>Restaurant type:</strong> ${esc(p.food_type||'Not verified')}</p><p><strong>Price info:</strong> ${esc(pText)}</p><p><strong>Location:</strong> ${esc(p.address||p.city||'Address not verified')}${esc(distanceText)}</p>${p.volatility_note?`<p class="small"><strong>Live status note:</strong> ${esc(p.volatility_note)}</p>`:''}${src?`<p><a href="${esc(src.href)}" target="_blank" rel="noopener noreferrer">View web source (${esc(src.host)}) ↗</a></p>`:''}${p.location_source_url?`<p><a href="${esc(p.location_source_url)}" target="_blank" rel="noopener noreferrer">Verify mapped location on OpenStreetMap ↗</a></p>`:''}<p><a href="${esc(mapUrl)}" target="_blank" rel="noopener noreferrer">${mapLinkLabel(p)}</a></p><p class="small">${esc(freshness)} ${p.online?'':'Ratings and details are based on supplied data.'}</p>`;backdrop.classList.add('open');document.getElementById('closeModal').focus()}
+function openDetails(p,intent={}){const rating=parseRatingNum(p.rating);const count=parseCountNum(p.review_count);const stars=Number.isFinite(rating)?`<div class="stars">★ ${esc(rating.toFixed(1))}/5 <span class="small">${Number.isFinite(count)?` · ${esc(count)} reviews`:''}</span></div>`:`<p class="meta">${p.map_only?'No rating is supplied by OpenStreetMap':`No verified rating ${p.online?'found online':'in the dataset'}`}</p>`;const mapUrl=mapUrlFor(p);const src=sourceUrlFor(p);const category=categoryTile(p,intent);const pText=priceBadgeText(p)||'Not verified',distance=Number(p.distance_km),hasDistance=p.distance_km!==null&&p.distance_km!==undefined&&Number.isFinite(distance),distanceText=hasDistance?` · approximately ${distance.toFixed(1)} km away`:'';const freshness=p.online?'Online details may be cached and can change. Check the linked source or contact the restaurant.':'2025 local dataset record; current hours and business status are not verified.';document.getElementById('modalContent').innerHTML=`${category}<h2 id="modalTitle">${esc(p.name||'Unnamed place')}</h2>${stars}<p>${esc(p.description||p.food_type||'No description available.')}</p><p><strong>Restaurant type:</strong> ${esc(p.food_type||'Not verified')}</p><p><strong>Price info:</strong> ${esc(pText)}</p><p><strong>Location:</strong> ${esc(placeLocationLabel(p))}${esc(distanceText)}</p>${p.volatility_note?`<p class="small"><strong>Live status note:</strong> ${esc(p.volatility_note)}</p>`:''}${src?`<p><a href="${esc(src.href)}" target="_blank" rel="noopener noreferrer">View web source (${esc(src.host)}) ↗</a></p>`:''}${p.location_source_url?`<p><a href="${esc(p.location_source_url)}" target="_blank" rel="noopener noreferrer">Verify mapped location on OpenStreetMap ↗</a></p>`:''}<p><a href="${esc(mapUrl)}" target="_blank" rel="noopener noreferrer">${mapLinkLabel(p)}</a></p><p class="small">${esc(freshness)} ${p.online?'':'Ratings and details are based on supplied data.'}</p>`;backdrop.classList.add('open');document.getElementById('closeModal').focus()}
 function addSources(sources,bubble){if(!Array.isArray(sources)||!sources.length||!bubble)return;const section=document.createElement('div');section.className='small';section.style.marginTop='8px';const label=document.createElement('strong');label.textContent='Sources:';section.appendChild(label);sources.forEach(source=>{try{const url=new URL(source.url);if(!['http:','https:'].includes(url.protocol))return;const link=document.createElement('a');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent=source.title||url.hostname;link.style.marginLeft='8px';section.appendChild(link)}catch{}});if(section.querySelector('a'))bubble.appendChild(section)}
 function renderPlaces(places,title,isOnline=false,metrics={},request=''){
  if(!Array.isArray(places)||!places.length)return;
  const intent=metrics?.parsed_intent||{},group=document.createElement('section');group.className='turn-results';
- const heading=document.createElement('h2');heading.className='results-heading'+(isOnline?' online':'');heading.innerHTML=`<span>${esc(title)}</span><span class="results-count">${places.length}</span>`;group.appendChild(heading);
+ const heading=document.createElement('h2');heading.className='results-heading'+(isOnline?' online':'');heading.innerHTML=`<span>${esc(title)}</span>`;const countBadge=document.createElement('span');countBadge.className='results-count';countBadge.textContent=String(places.length);heading.appendChild(countBadge);group.appendChild(heading);
  const context=document.createElement('div');context.className='result-context';
  const requestLine=document.createElement('p');requestLine.textContent=`Your request: ${request}`;context.appendChild(requestLine);
  const evidenceLine=document.createElement('p');evidenceLine.textContent=evidenceNote(metrics,isOnline);context.appendChild(evidenceLine);
@@ -171,15 +175,46 @@ function renderPlaces(places,title,isOnline=false,metrics={},request=''){
  const latency=Number(metrics?.total_latency_ms);if(Number.isFinite(latency)&&latency>=0){const speedLine=document.createElement('p');speedLine.textContent=`Search completed in ${(latency/1000).toFixed(1)} seconds.`;context.appendChild(speedLine)}
  group.appendChild(context);
  const grid=document.createElement('div');grid.className='results';group.appendChild(grid);
+ appendPlaceCards(grid,places,isOnline,intent);
+ thread.appendChild(group);group.scrollIntoView({behavior:'smooth',block:'nearest'});
+ return{grid,countBadge,intent};
+}
+function appendPlaceCards(grid,places,isOnline,intent){
  places.forEach(p=>{
-  const category=categoryTile(p,intent),address=p.address||p.city||'Location not verified',pBadge=priceBadgeText(p),src=sourceUrlFor(p),reasons=fitReasons(p,intent),distance=Number(p.distance_km),hasDistance=p.distance_km!==null&&p.distance_km!==undefined&&Number.isFinite(distance),distanceBadge=hasDistance?`<span class="tag evidence">~${distance.toFixed(1)} km away</span>`:'',maxPrice=Number(intent.max_price_php),minPrice=Number(intent.min_price_php),hasCeiling=intent.max_price_php!==null&&intent.max_price_php!==undefined&&intent.max_price_php!==''&&Number.isFinite(maxPrice),hasMinimum=intent.min_price_php!==null&&intent.min_price_php!==undefined&&intent.min_price_php!==''&&Number.isFinite(minPrice),observedPrice=getPriceEvidence(p),hasPriceConstraint=hasCeiling||hasMinimum,withinPriceConstraint=observedPrice!==null&&(!hasCeiling||observedPrice<=maxPrice)&&(!hasMinimum||observedPrice>=minPrice);
+  const category=categoryTile(p,intent),address=placeLocationLabel(p),pBadge=priceBadgeText(p),src=sourceUrlFor(p),reasons=fitReasons(p,intent),distance=Number(p.distance_km),hasDistance=p.distance_km!==null&&p.distance_km!==undefined&&Number.isFinite(distance),distanceBadge=hasDistance?`<span class="tag evidence">~${distance.toFixed(1)} km away</span>`:'',maxPrice=Number(intent.max_price_php),minPrice=Number(intent.min_price_php),hasCeiling=intent.max_price_php!==null&&intent.max_price_php!==undefined&&intent.max_price_php!==''&&Number.isFinite(maxPrice),hasMinimum=intent.min_price_php!==null&&intent.min_price_php!==undefined&&intent.min_price_php!==''&&Number.isFinite(minPrice),observedPrice=getPriceEvidence(p),hasPriceConstraint=hasCeiling||hasMinimum,withinPriceConstraint=observedPrice!==null&&(!hasCeiling||observedPrice<=maxPrice)&&(!hasMinimum||observedPrice>=minPrice);
   const priceCheck=!hasPriceConstraint?'':observedPrice===null?'Price not verified against your budget':!withinPriceConstraint&&hasCeiling&&observedPrice>maxPrice?`Reported price above ₱${Math.round(maxPrice)} ceiling`:!withinPriceConstraint&&hasMinimum&&observedPrice<minPrice?`Reported price below ₱${Math.round(minPrice)} minimum`:hasMinimum&&hasCeiling?`Reported price within ₱${Math.round(minPrice)}–₱${Math.round(maxPrice)} range`:hasCeiling?`Reported price within ₱${Math.round(maxPrice)} ceiling`:`Reported price meets ₱${Math.round(minPrice)} minimum`;
   const card=document.createElement('article');card.className='place'+(isOnline?' online-card':'');
   card.innerHTML=`${category}<div class="place-body"><div class="place-topline"><h3>${esc(p.name||'Unnamed place')}</h3>${ratingMarkup(p)}</div><div class="place-tags">${p.map_only?'<span class="tag evidence">OpenStreetMap</span>':isOnline?'<span class="tag online">Live web</span>':'<span class="tag evidence">2025 dataset</span>'}<span class="tag">${esc(p.food_type||'Restaurant')}</span>${distanceBadge}${pBadge?`<span class="tag price">${esc(pBadge)}</span>`:''}${priceCheck?`<span class="tag ${!withinPriceConstraint?'unverified':'evidence'}">${esc(priceCheck)}</span>`:''}</div><p class="place-description">${esc(p.description||'Explore this place in Davao City.')}</p><p class="place-reason"><strong>Why it may fit:</strong> ${esc(reasons.length?reasons.join(' · '):'Selected as a relevant Davao City option. Check its details and source before visiting.')}</p><div class="place-location"><span class="pin" aria-hidden="true">⌖</span><span>${esc(address)}</span></div><div class="place-actions"><button class="details" type="button">View details</button>${src?`<a class="source-link" href="${esc(src.href)}" target="_blank" rel="noopener noreferrer" title="${esc(src.host)}">Source ↗</a>`:'<span class="source-unavailable">Source link unavailable</span>'}<a class="map-link" href="${esc(mapUrlFor(p))}" target="_blank" rel="noopener noreferrer">${mapLinkLabel(p)}</a></div></div>`;
   card.querySelector('.details').addEventListener('click',()=>openDetails(p,intent));
   grid.appendChild(card)
  });
- thread.appendChild(group);group.scrollIntoView({behavior:'smooth',block:'nearest'})
+}
+function attachNearbyLoadMore(section,token,moreCount){
+ let offset=0,shown=Number(section.countBadge.textContent)||0;
+ const button=document.createElement('button');button.type='button';button.className='load-more';button.textContent=`Load ${Math.min(20,moreCount)} more mapped places`;
+ button.addEventListener('click',async()=>{
+  button.disabled=true;button.textContent='Loading mapped places…';
+  try{
+   const response=await fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'load_nearby_map_more',token,offset})});
+   let data;
+   try{data=await response.json()}catch{throw new Error(`The PHP server returned invalid JSON (${response.status}).`)}
+   if(!response.ok){const error=new Error(data.error||`Could not load more places (${response.status}).`);error.status=response.status;throw error}
+   const places=Array.isArray(data.places)?data.places:[];
+   const nextOffset=Number(data.nextOffset);
+   if(!places.length||!Number.isInteger(nextOffset)||nextOffset!==offset+places.length)throw new Error('The nearby results page was incomplete. Please retry.');
+   appendPlaceCards(section.grid,places,true,section.intent);
+   offset=nextOffset;shown+=places.length;section.countBadge.textContent=String(shown);
+   places.forEach(place=>{const name=String(place?.name||'').trim();if(name)shownNamesSet.add(name)});
+   lastResults=[...lastResults,...places];
+   statusEl.textContent=`Loaded ${places.length} additional mapped places; ${shown} nearby results now shown. These additional places come from OpenStreetMap and are not live-web verified.`;
+   if(data.hasMore!==true){button.remove();return}
+   button.disabled=false;button.textContent=`Load ${Math.min(20,Math.max(1,Number(data.totalCount)-offset))} more mapped places`;
+  }catch(error){
+   if(error.status===410){button.remove();statusEl.textContent=error.message;return}
+   button.disabled=false;button.textContent='Retry loading mapped places';statusEl.textContent=`Could not load additional nearby places: ${error.message}`;
+  }
+ });
+ section.grid.after(button);
 }
 form.addEventListener('submit',async e=>{
  e.preventDefault();
@@ -254,7 +289,8 @@ form.addEventListener('submit',async e=>{
   const localResults=webResults.length?rawLocalResults.filter(lp=>!webResults.some(wp=>!wp.map_only&&isSameVenue(wp,lp))):rawLocalResults;
   [...webResults,...localResults].forEach(p=>{const nm=String(p?.name||'').trim();if(nm)shownNamesSet.add(nm)});
   lastResults=[...webResults,...localResults];
-  renderPlaces(webResults,data.locationSearch?.enabled?'Nearby mapped / online finds':'Online finds',true,data.metrics||{},displayQuery);
+  const nearbySection=renderPlaces(webResults,data.locationSearch?.enabled?'Nearby mapped / online finds':'Online finds',true,data.metrics||{},displayQuery);
+  if(nearbySection&&data.locationSearch?.page_token&&Number(data.locationSearch.more_count)>0)attachNearbyLoadMore(nearbySection,data.locationSearch.page_token,Number(data.locationSearch.more_count));
   renderPlaces(localResults,'Local finds',false,data.metrics||{},displayQuery);
   const wCount=webResults.length,lCount=localResults.length;
   statusEl.textContent=data.locationSearch?.enabled

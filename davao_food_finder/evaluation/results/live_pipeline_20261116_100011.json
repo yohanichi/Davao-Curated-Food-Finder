@@ -1,0 +1,418 @@
+{
+    "report_type": "interactive_live_provider_verification",
+    "created_at_utc": "2026-11-16T10:00:11+00:00",
+    "api_endpoint": "local_php_worker",
+    "run_configuration": {
+        "provider": "hybrid",
+        "deepseek_backend_requested": "hosted-api",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 4,
+        "request_successes": 0,
+        "provider_call_successes": 0,
+        "full_live_pipeline_successes": 0
+    },
+    "requests": [
+        {
+            "case_id": "LIVE-001",
+            "query": "burger",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": false,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "burger Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 0,
+                    "browser_search_errors": [
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants%20branches%20locations&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants%20customer%20reviews&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n"
+                    ],
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 11805
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "skipped_no_playwright_evidence",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "backend": "not_run",
+                    "model": null,
+                    "requested_model": null,
+                    "model_matches": false,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 200,
+            "assistant_status": "error",
+            "final_answer": "Playwright did not return usable live browser evidence; the hybrid pipeline stopped without a fallback response.",
+            "model_used": "hybrid_pipeline_incomplete",
+            "client_latency_ms": 14625,
+            "server_latency_ms": 14533,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 11805,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "not_observed",
+                "iterations": 1,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": false,
+                "status": "one_or_more_stages_failed",
+                "model": "hybrid_pipeline_incomplete"
+            }
+        },
+        {
+            "case_id": "LIVE-002",
+            "query": "burger",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": false,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "burger Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 0,
+                    "browser_search_errors": [
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants%20branches%20locations&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants%20customer%20reviews&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n"
+                    ],
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 12442
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "skipped_no_playwright_evidence",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "backend": "not_run",
+                    "model": null,
+                    "requested_model": null,
+                    "model_matches": false,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 200,
+            "assistant_status": "error",
+            "final_answer": "Playwright did not return usable live browser evidence; the hybrid pipeline stopped without a fallback response.",
+            "model_used": "hybrid_pipeline_incomplete",
+            "client_latency_ms": 15042,
+            "server_latency_ms": 14961,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 12442,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "not_observed",
+                "iterations": 1,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": false,
+                "status": "one_or_more_stages_failed",
+                "model": "hybrid_pipeline_incomplete"
+            }
+        },
+        {
+            "case_id": "LIVE-003",
+            "query": "fries",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": false,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "fries Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 0,
+                    "browser_search_errors": [
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=fries%20Davao%20City%20(fries%20OR%20%22french%20fries%22%20OR%20%22Potato%20Corner%22)%20restaurants%20food&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=fries%20Davao%20City%20(fries%20OR%20%22french%20fries%22%20OR%20%22Potato%20Corner%22)%20restaurants%20food%20branches%20locations&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=fries%20Davao%20City%20(fries%20OR%20%22french%20fries%22%20OR%20%22Potato%20Corner%22)%20restaurants%20food%20customer%20reviews&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n"
+                    ],
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 11822
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "skipped_no_playwright_evidence",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "backend": "not_run",
+                    "model": null,
+                    "requested_model": null,
+                    "model_matches": false,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 200,
+            "assistant_status": "error",
+            "final_answer": "Playwright did not return usable live browser evidence; the hybrid pipeline stopped without a fallback response.",
+            "model_used": "hybrid_pipeline_incomplete",
+            "client_latency_ms": 14731,
+            "server_latency_ms": 14625,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 11822,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "not_observed",
+                "iterations": 1,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": false,
+                "status": "one_or_more_stages_failed",
+                "model": "hybrid_pipeline_incomplete"
+            }
+        },
+        {
+            "case_id": "LIVE-004",
+            "query": "burger",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": false,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "burger Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 0,
+                    "browser_search_errors": [
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants%20branches%20locations&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants%20customer%20reviews&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n"
+                    ],
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 12754
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "skipped_no_playwright_evidence",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "backend": "not_run",
+                    "model": null,
+                    "requested_model": null,
+                    "model_matches": false,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 200,
+            "assistant_status": "error",
+            "final_answer": "Playwright did not return usable live browser evidence; the hybrid pipeline stopped without a fallback response.",
+            "model_used": "hybrid_pipeline_incomplete",
+            "client_latency_ms": 15654,
+            "server_latency_ms": 15546,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 12754,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "not_observed",
+                "iterations": 1,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": false,
+                "status": "one_or_more_stages_failed",
+                "model": "hybrid_pipeline_incomplete"
+            }
+        }
+    ]
+}

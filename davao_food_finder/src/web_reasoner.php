@@ -10,6 +10,8 @@ function resetAiTelemetry(): void {
         'total_tokens' => 0,
         'estimated_cost_usd' => 0.0,
         'llm_calls' => 0,
+        'stage_models' => [],
+        'hybrid_reasoner' => ['backend'=>'not_run', 'model'=>null],
     ];
 }
 
@@ -19,6 +21,10 @@ function recordAiCallTelemetry(string $stage, int $elapsedMs, string $providerTy
     }
     $GLOBALS['aiTelemetry']['ai_inference_ms'] += $elapsedMs;
     $GLOBALS['aiTelemetry']['stages_ms'][$stage] = ($GLOBALS['aiTelemetry']['stages_ms'][$stage] ?? 0) + $elapsedMs;
+    $returnedModel = is_array($decodedResponse) && is_string($decodedResponse['model'] ?? null)
+        ? trim($decodedResponse['model'])
+        : '';
+    $GLOBALS['aiTelemetry']['stage_models'][$stage] = $returnedModel;
     $GLOBALS['aiTelemetry']['llm_calls']++;
 
     $promptTokens = 0;
@@ -41,9 +47,17 @@ function recordAiCallTelemetry(string $stage, int $elapsedMs, string $providerTy
         // gpt-4o-mini standard pricing: $0.15 / 1M input tokens, $0.60 / 1M output tokens
         $cost = ($promptTokens * 0.15 + $completionTokens * 0.60) / 1_000_000.0;
     } elseif ($providerType === 'deepseek_hosted') {
-        $isReasoner = stripos($model, 'reasoner') !== false;
-        $inRate = $isReasoner ? 0.55 : 0.14;
-        $outRate = $isReasoner ? 2.19 : 0.28;
+        $modelId = strtolower(trim($model));
+        if ($modelId === 'deepseek-flash') {
+            $inRate = 0.30;
+            $outRate = 1.20;
+        } elseif ($modelId === 'deepseek-v4-pro') {
+            $inRate = 1.32;
+            $outRate = 3.96;
+        } else {
+            $inRate = 0.55;
+            $outRate = 2.19;
+        }
         $cost = ($promptTokens * $inRate + $completionTokens * $outRate) / 1_000_000.0;
     }
     // Local Ollama inference incurs $0 API token cost.
@@ -145,12 +159,12 @@ function normalizeJsonPayloadSchema(array $parsed): array {
     return $parsed;
 }
 
-function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeconds = 43200, string $cachePolicy = 'default', array $priceQueries = [], bool $includeNearby = false, array $nearbyQueries = []): array {
+function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeconds = 43200, string $cachePolicy = 'default', array $priceQueries = [], bool $includeNearby = false, array $nearbyQueries = [], ?array $nearbySearchArea = null): array {
     $startedAt = microtime(true);
     $elapsed = fn(): int => (int)round((microtime(true) - $startedAt) * 1000);
 
     if ($cachePolicy === 'none' || $cachePolicy === 'disabled') {
-        return ['results'=>[], 'sources'=>[], 'cache'=>'disabled', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'latency_ms'=>0];
+        return ['results'=>[], 'sources'=>[], 'cache'=>'disabled', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'browser_used'=>false, 'browser_result_count'=>0, 'latency_ms'=>0];
     }
 
     if (!is_dir($cacheDir) && !@mkdir($cacheDir, 0775, true)) {
@@ -160,7 +174,7 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
     $searchQuery = trim(preg_replace('/\b(can|could|please|show|me|you|recommend|to|what|where|good)\b/iu', ' ', $searchQuery));
     $searchQuery = trim(preg_replace('/\s+/u', ' ', $searchQuery));
     if (!preg_match('/\bdavao(\s+city)?\b/i', $searchQuery)) $searchQuery = 'Davao City ' . $searchQuery;
-    if (!preg_match('/\b(restaurant|restaurants|cafe|coffee|food|eatery|foodhouse|sisig|sisigan|silog|pares|ramen|pizza|chicken|bbq|grill)\b/i', $searchQuery)) $searchQuery .= ' restaurants food';
+    if (!preg_match('/\b(restaurant|restaurants|cafe|coffee|food|eatery|foodhouse|burger|burgers|sisig|sisigan|silog|pares|ramen|pizza|chicken|bbq|grill)\b/i', $searchQuery)) $searchQuery .= ' restaurants food';
     $priceQueries = array_values(array_filter(array_map(
         fn($priceQuery) => trim(preg_replace('/\s+/u', ' ', (string)$priceQuery) ?? ''),
         array_slice($priceQueries, 0, 3)
@@ -169,7 +183,16 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
         fn($nearbyQuery) => trim(preg_replace('/\s+/u', ' ', (string)$nearbyQuery) ?? ''),
         array_slice($nearbyQueries, 0, 3)
     ), fn($nearbyQuery) => $nearbyQuery !== '')) : [];
-    $key = hash('sha256', 'v8:' . ($includeNearby ? 'nearby|' . mb_strtolower(implode('|', $nearbyQueries), 'UTF-8') . '|' : '') . mb_strtolower(preg_replace('/\s+/u', ' ', $searchQuery) . '|' . implode('|', $priceQueries)));
+    $nearbyAreaJson = '';
+    if ($includeNearby && $nearbySearchArea !== null) {
+        $nearbyAreaJson = json_encode($nearbySearchArea, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($nearbyAreaJson === false) {
+            error_log('Nominatim nearby search area could not be encoded as JSON.');
+            return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'browser_used'=>false, 'browser_result_count'=>0, 'error'=>'Nearby search area could not be encoded as JSON.', 'latency_ms'=>$elapsed()];
+        }
+    }
+    $nearbyAreaCacheKey = $nearbyAreaJson !== '' ? hash('sha256', $nearbyAreaJson) : '';
+    $key = hash('sha256', ($includeNearby ? 'v10:' : 'v9:') . ($includeNearby ? 'nearby|' . mb_strtolower(implode('|', $nearbyQueries), 'UTF-8') . '|' . $nearbyAreaCacheKey . '|' : '') . mb_strtolower(preg_replace('/\s+/u', ' ', $searchQuery) . '|' . implode('|', $priceQueries)));
     $cacheFile = rtrim($cacheDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $key . '.json';
 
     $bypassCacheRead = in_array($cachePolicy, ['cold', 'bypass'], true);
@@ -196,6 +219,8 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
                     'cache_age_seconds'=>max(0, time() - $cachedAt),
                     'cached_at'=>$cachedAt,
                     'success'=>count($cachedResults) > 0 || count($cachedNearbyPlaces) > 0,
+                    'browser_used'=>false,
+                    'browser_result_count'=>0,
                     'latency_ms'=>$elapsed(),
                 ];
             }
@@ -208,28 +233,31 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
 
     $script = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . 'web-search.js';
     $node = trim((string)getenv('PLAYWRIGHT_NODE')) !== '' ? trim((string)getenv('PLAYWRIGHT_NODE')) : 'node';
-    $command = escapeshellarg($node) . ' ' . escapeshellarg($script) . ' ' . escapeshellarg($searchQuery);
+    $command = [$node, $script, $searchQuery];
     if ($priceQueries || $includeNearby) {
         $priceQueriesJson = json_encode($priceQueries, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         if ($priceQueriesJson === false) {
             error_log('Playwright price lookup queries could not be encoded as JSON.');
-            return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'latency_ms'=>$elapsed()];
+            return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'browser_used'=>false, 'browser_result_count'=>0, 'error'=>'Price lookup queries could not be encoded as JSON.', 'latency_ms'=>$elapsed()];
         }
-        $command .= ' ' . escapeshellarg(base64_encode($priceQueriesJson));
+        $command[] = base64_encode($priceQueriesJson);
     }
     if ($includeNearby) {
-        $command .= ' --nearby';
+        $command[] = '--nearby';
         $nearbyQueriesJson = json_encode($nearbyQueries, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         if ($nearbyQueriesJson === false) {
             error_log('Photon place lookup queries could not be encoded as JSON.');
-            return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'latency_ms'=>$elapsed()];
+            return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'browser_used'=>false, 'browser_result_count'=>0, 'error'=>'Nearby lookup queries could not be encoded as JSON.', 'latency_ms'=>$elapsed()];
         }
-        $command .= ' ' . escapeshellarg(base64_encode($nearbyQueriesJson));
+        $command[] = base64_encode($nearbyQueriesJson);
+    }
+    if ($nearbyAreaJson !== '') {
+        $command[] = base64_encode($nearbyAreaJson);
     }
     $pipes = [];
     $process = proc_open($command, [1=>['pipe','w'], 2=>['pipe','w']], $pipes);
     if (!is_resource($process)) {
-        return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'latency_ms'=>$elapsed()];
+        return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'browser_used'=>false, 'browser_result_count'=>0, 'error'=>'Unable to start the Playwright Node worker.', 'latency_ms'=>$elapsed()];
     }
     stream_set_blocking($pipes[1], false);
     stream_set_blocking($pipes[2], false);
@@ -237,12 +265,14 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
     $stderr = '';
     $pwProcTimeout = defined('TIMEOUT_PLAYWRIGHT_PROC') ? TIMEOUT_PLAYWRIGHT_PROC : 30;
     $deadline = microtime(true) + $pwProcTimeout;
+    $timedOut = false;
     do {
         $stdout .= stream_get_contents($pipes[1]);
         $stderr .= stream_get_contents($pipes[2]);
         $status = proc_get_status($process);
         if (!$status['running']) break;
         if (microtime(true) >= $deadline) {
+            $timedOut = true;
             proc_terminate($process);
             break;
         }
@@ -254,12 +284,20 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
     fclose($pipes[2]);
     $exitCode = proc_close($process);
     if ($exitCode !== 0) {
-        error_log('Playwright search failed: ' . trim($stderr));
-        return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'latency_ms'=>$elapsed()];
+        $error = $timedOut ? 'Playwright search exceeded its process timeout.' : trim($stderr);
+        error_log('Playwright search failed: ' . $error);
+        return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'browser_used'=>false, 'browser_result_count'=>0, 'error'=>$error !== '' ? $error : 'Playwright worker exited unsuccessfully.', 'latency_ms'=>$elapsed()];
     }
     $payload = json_decode(trim($stdout), true);
+    if (!is_array($payload)) {
+        $error = json_last_error_msg();
+        error_log('Playwright search returned invalid JSON: ' . $error);
+        return ['results'=>[], 'sources'=>[], 'cache'=>'error', 'cache_age_seconds'=>null, 'cached_at'=>null, 'success'=>false, 'browser_used'=>false, 'browser_result_count'=>0, 'error'=>'Playwright worker returned invalid JSON: ' . $error, 'latency_ms'=>$elapsed()];
+    }
     $results = is_array($payload['results'] ?? null) ? array_slice($payload['results'], 0, 12) : [];
     $nearbyPlaces = is_array($payload['nearby_places'] ?? null) ? array_slice($payload['nearby_places'], 0, 400) : [];
+    $browserUsed = ($payload['browser_used'] ?? false) === true;
+    $browserResultCount = (int)($payload['browser_result_count'] ?? 0);
     $now = time();
     if (count($results) > 0 || count($nearbyPlaces) > 0) {
         @file_put_contents($cacheFile, json_encode(['query'=>$query,'results'=>$results,'nearby_places'=>$nearbyPlaces,'cached_at'=>$now], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), LOCK_EX);
@@ -272,7 +310,12 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
         'cache'=>'miss',
         'cache_age_seconds'=>0,
         'cached_at'=>$now,
-        'success'=>count($results) > 0 || count($nearbyPlaces) > 0,
+        'success'=>$browserUsed && $browserResultCount > 0 && (count($results) > 0 || count($nearbyPlaces) > 0),
+        'browser_used'=>$browserUsed,
+        'browser_result_count'=>$browserResultCount,
+        'browser_search_count'=>(int)($payload['browser_search_count'] ?? 0),
+        'browser_search_errors'=>is_array($payload['browser_search_errors'] ?? null) ? $payload['browser_search_errors'] : [],
+        'error'=>null,
         'latency_ms'=>$elapsed(),
     ];
 }
@@ -320,6 +363,30 @@ function buildCompactCandidates(array $candidates, int $limit = 20, bool $includ
             if (!empty($p['_live_volatility_note'])) {
                 $entry['live_web_update'] = $p['_live_volatility_note'];
             }
+        }
+        $compact[] = $entry;
+    }
+    return $compact;
+}
+
+function buildHybridReasonerEvidence(array $places): array {
+    $compact = [];
+    foreach ($places as $place) {
+        if (!is_array($place)) continue;
+        $entry = [];
+        foreach ([
+            'name'=>100,
+            'food_type'=>80,
+            'rating'=>40,
+            'review_count'=>40,
+            'price_range'=>50,
+            'address'=>100,
+            'city'=>50,
+            'description'=>180,
+            'source_url'=>240,
+        ] as $key=>$maxLength) {
+            $value = $place[$key] ?? '';
+            $entry[$key] = is_scalar($value) ? mb_substr(trim((string)$value), 0, $maxLength) : '';
         }
         $compact[] = $entry;
     }
@@ -1286,7 +1353,7 @@ function answerWithEvidenceFallback(string $query, array $candidates, array $evi
 }
 
 function localOllamaAvailable(): bool {
-    if (DEEPSEEK_API_KEY !== '') return true;
+    if (DEEPSEEK_BACKEND === 'hosted_api') return DEEPSEEK_API_KEY !== '';
     $ch = curl_init(rtrim(DEEPSEEK_BASE_URL, '/') . '/api/tags');
     $timeout = defined('TIMEOUT_OLLAMA_CONNECT') ? TIMEOUT_OLLAMA_CONNECT : 5;
     curl_setopt_array($ch, [
@@ -1324,8 +1391,11 @@ function answerWithDeepSeekPipelineFallback(string $query, array $history, array
         return [$answer, $fallbackIds, 'error', $evidence['sources'] ?? [], $webPlaces, false, DEEPSEEK_MODEL];
     };
     if (!localOllamaAvailable()) {
-        $GLOBALS['providerErrors']['deepseek'] = ['http'=>0, 'message'=>'Ollama is not reachable at ' . DEEPSEEK_BASE_URL];
-        error_log('DeepSeek unavailable: Ollama is not reachable at ' . DEEPSEEK_BASE_URL);
+        $message = DEEPSEEK_BACKEND === 'hosted_api'
+            ? 'DeepSeek API key is not configured: set DEEPSEEK_API_KEY.'
+            : 'Ollama is not reachable at ' . DEEPSEEK_BASE_URL;
+        $GLOBALS['providerErrors']['deepseek'] = ['http'=>0, 'message'=>$message];
+        error_log('DeepSeek unavailable: ' . $message);
         return $localAnswer();
     }
     $reqAreas = isset($options['intent']['areas']) && is_array($options['intent']['areas']) ? $options['intent']['areas'] : [];
@@ -1403,20 +1473,24 @@ SYS;
     $temp = (float)($options['temperature'] ?? 0.2);
     $seed = isset($options['seed']) && is_numeric($options['seed']) ? (int)$options['seed'] : null;
     $timeout = defined('TIMEOUT_LLM') ? TIMEOUT_LLM : 120;
-    $isLocalOllama = (DEEPSEEK_API_KEY === '');
+    $isLocalOllama = DEEPSEEK_BACKEND === 'local_ollama';
+    if ($isLocalOllama) {
+        $timeout = max($timeout, defined('TIMEOUT_OLLAMA_INFERENCE') ? TIMEOUT_OLLAMA_INFERENCE : 240);
+    }
     $base = '';
     $reqBody = [];
 
     $callStart = microtime(true);
-    if (DEEPSEEK_API_KEY !== '') {
+    if (DEEPSEEK_BACKEND === 'hosted_api') {
         $base = rtrim(DEEPSEEK_BASE_URL !== '' ? DEEPSEEK_BASE_URL : 'https://api.deepseek.com', '/');
-        $isReasoner = stripos(DEEPSEEK_MODEL, 'reasoner') !== false;
-        $reqBody = ['model'=>DEEPSEEK_MODEL,'messages'=>$messages];
-        if (!$isReasoner) {
-            $reqBody['temperature'] = $temp;
-            $reqBody['response_format'] = ['type'=>'json_object'];
-        }
-        if ($seed !== null && !$isReasoner) $reqBody['seed'] = $seed;
+        $reqBody = [
+            'model'=>DEEPSEEK_MODEL,
+            'messages'=>$messages,
+            'max_tokens'=>1200,
+            'thinking'=>['type'=>'disabled'],
+            'temperature'=>$temp,
+            'response_format'=>['type'=>'json_object'],
+        ];
         $payload = json_encode($reqBody, JSON_UNESCAPED_UNICODE);
         [$raw,$status] = deepSeekHttpPost($base . '/chat/completions', ['Content-Type: application/json','Authorization: Bearer ' . DEEPSEEK_API_KEY], $payload, $timeout);
         $providerType = 'deepseek_hosted';
@@ -1662,8 +1736,11 @@ function planSearchQueryWithGPT4oMini(string $query, array $history, array $show
 
     $planText = $decoded['choices'][0]['message']['content'] ?? '{}';
     $plan = json_decode((string)$planText, true);
-    if (!is_array($plan)) {
-        $GLOBALS['aiTelemetry']['pipeline_trace']['1_gpt4o_query_planner'] = 'invalid_json';
+    if (!is_array($plan)
+        || !is_bool($plan['out_of_scope'] ?? null)
+        || !is_string($plan['playwright_query'] ?? null)
+        || (empty($plan['out_of_scope']) && trim($plan['playwright_query']) === '')) {
+        $GLOBALS['aiTelemetry']['pipeline_trace']['1_gpt4o_query_planner'] = 'invalid_output';
         $baseIntent['planner_used'] = false;
         return $baseIntent;
     }
@@ -1779,28 +1856,72 @@ function planSearchQueryWithGPT4oMini(string $query, array $history, array $show
 /**
  * Stages 3, 4, and 5 of the Hybrid Pipeline:
  * - Stage 3 (GPT-4o mini): Structures raw unstructured Playwright scraping output into clean JSON.
- * - Stage 4 (DeepSeek R1): Reasons over structured Playwright evidence + local dataset + conversation layers, resolves conflicts/constraints, ranks IDs, and drafts an answer.
- * - Stage 5 (GPT-4o mini): Receives DeepSeek R1's reasoning and draft answer to craft the grounded, conversational final reply to the user.
+ * - Stage 4 (DeepSeek): Reasons over structured Playwright evidence + local dataset + conversation layers, resolves conflicts/constraints, ranks IDs, and drafts an answer.
+ * - Stage 5 (GPT-4o mini): Receives DeepSeek's concise rationale and draft answer to craft the grounded, conversational final reply to the user.
  */
+function hybridPipelineReadyForFinalResponse(array $intent, array $evidence, array $stageTrace, bool $deepSeekUsed): bool {
+    return ($intent['planner_used'] ?? false) === true
+        && ($evidence['success'] ?? false) === true
+        && ($evidence['browser_used'] ?? false) === true
+        && (int)($evidence['browser_result_count'] ?? 0) > 0
+        && !empty($evidence['results'])
+        && ($stageTrace['3_gpt4o_structurer'] ?? '') === 'ok'
+        && ($stageTrace['4_deepseek_r1_reasoner'] ?? '') === 'ok'
+        && $deepSeekUsed;
+}
+
+function shouldAllowLocalDatasetFallback(string $provider, bool $isEvaluation, string $assistantStatus): bool {
+    return $assistantStatus === 'ready'
+        || $provider !== 'hybrid'
+        || !$isEvaluation;
+}
+
+function isExpectedHybridReasonerModel(string $model, string $backend): bool {
+    $model = strtolower(trim($model));
+    if ($backend === 'local_ollama') {
+        return $model === 'deepseek-r1:8b';
+    }
+    return $backend === 'hosted_api'
+        && in_array($model, ['deepseek-flash', 'deepseek-v4-pro'], true);
+}
+
 function answerWithHybridPipeline(string $query, array $history, array $candidates, array $evidence, array $options = []): array {
     if (!isset($GLOBALS['aiTelemetry']) || !is_array($GLOBALS['aiTelemetry'])) {
         resetAiTelemetry();
     }
     $fallbackIds = array_map(fn($p) => $p['_id'], $candidates);
+    $failureResponse = static function (string $message) use ($evidence): array {
+        return [$message, [], 'error', $evidence['sources'] ?? [], [], false, 'hybrid_pipeline_incomplete'];
+    };
     if (OPENAI_API_KEY === '') {
         $GLOBALS['aiTelemetry']['pipeline_trace']['3_gpt4o_structurer'] = 'skipped_no_openai_key';
+        $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'skipped_incomplete_pipeline';
         $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'skipped_no_openai_key';
-        return answerWithDeepSeekPipelineFallback($query, $history, $candidates, $evidence, $options);
+        return $failureResponse('The hybrid pipeline cannot run because GPT-4o mini is not configured.');
     }
 
-    // If Stage 1 (Query Planner) already failed to reach OpenAI, avoid redundant failing OpenAI calls
+    // Do not invoke later stages or fabricate a final answer when either real prerequisite failed.
+    if (($options['intent']['planner_used'] ?? false) !== true) {
+        $GLOBALS['aiTelemetry']['pipeline_trace']['3_gpt4o_structurer'] = 'skipped_planner_failure';
+        $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'skipped_incomplete_pipeline';
+        $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'skipped_incomplete_pipeline';
+        return $failureResponse('The GPT-4o mini query planner did not return a usable plan; the hybrid pipeline stopped without a fallback response.');
+    }
+    if (($evidence['success'] ?? false) !== true
+        || ($evidence['browser_used'] ?? false) !== true
+        || (int)($evidence['browser_result_count'] ?? 0) < 1
+        || empty($evidence['results'])) {
+        $GLOBALS['aiTelemetry']['pipeline_trace']['3_gpt4o_structurer'] = 'skipped_no_playwright_evidence';
+        $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'skipped_incomplete_pipeline';
+        $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'skipped_incomplete_pipeline';
+        return $failureResponse('Playwright did not return usable live browser evidence; the hybrid pipeline stopped without a fallback response.');
+    }
+
     if (isset($GLOBALS['providerErrors']['gpt4o'])) {
         $GLOBALS['aiTelemetry']['pipeline_trace']['3_gpt4o_structurer'] = 'skipped_openai_error';
+        $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'skipped_incomplete_pipeline';
         $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'skipped_openai_error';
-        if ((DEEPSEEK_API_KEY !== '' || DEEPSEEK_BASE_URL !== '') && localOllamaAvailable()) {
-            return answerWithDeepSeekPipelineFallback($query, $history, $candidates, $evidence, $options);
-        }
-        return answerWithEvidenceFallback($query, $candidates, $evidence, OPENAI_MODEL);
+        return $failureResponse('The GPT-4o mini query planner failed; the hybrid pipeline stopped without a fallback response.');
     }
 
     $temp = isset($options['temperature']) && is_numeric($options['temperature']) ? (float)$options['temperature'] : 0.2;
@@ -1817,6 +1938,9 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
     $localJson = $isOnlineOnlyRequested
         ? '[Excluded by user request - Online search only; do NOT suggest local dataset places]'
         : json_encode(buildCompactCandidates($candidates, 20, true, $reqAreas), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    $reasonerLocalJson = $isOnlineOnlyRequested
+        ? $localJson
+        : json_encode(buildCompactCandidates($candidates, 6, true, $reqAreas), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 
     // Stage 3: GPT-4o mini cleans and structures raw unstructured Playwright web-scraping output.
     $cleanerMessages = [
@@ -1839,12 +1963,21 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
         $GLOBALS['providerErrors']['gpt4o'] = ['http'=>$cleanerStatus, 'message'=>mb_substr($errDetail, 0, 300)];
         $GLOBALS['aiTelemetry']['pipeline_trace']['3_gpt4o_structurer'] = 'error';
         error_log('GPT-4o mini Playwright cleaner failed HTTP ' . $cleanerStatus . ': ' . mb_substr($cleanerRaw,0,500));
-        return answerWithEvidenceFallback($query, $candidates, $evidence, OPENAI_MODEL);
+        $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'skipped_incomplete_pipeline';
+        $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'skipped_incomplete_pipeline';
+        return $failureResponse('GPT-4o mini could not structure the Playwright evidence; the hybrid pipeline stopped.');
     }
-    $GLOBALS['aiTelemetry']['pipeline_trace']['3_gpt4o_structurer'] = 'ok';
     $cleanerText = $cleanerDecoded['choices'][0]['message']['content'] ?? '{}';
     $cleaner = json_decode((string)$cleanerText, true);
-    if (!is_array($cleaner)) $cleaner = [];
+    if (!is_array($cleaner)
+        || !is_array($cleaner['evidence_places'] ?? null)
+        || !is_bool($cleaner['out_of_scope'] ?? null)) {
+        $GLOBALS['aiTelemetry']['pipeline_trace']['3_gpt4o_structurer'] = 'invalid_output';
+        $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'skipped_incomplete_pipeline';
+        $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'skipped_incomplete_pipeline';
+        return $failureResponse('GPT-4o mini returned unusable structured evidence; the hybrid pipeline stopped.');
+    }
+    $GLOBALS['aiTelemetry']['pipeline_trace']['3_gpt4o_structurer'] = 'ok';
 
     $curated = $cleaner;
     $deepSeekUsed = false;
@@ -1854,8 +1987,8 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
         ? ' CRITICAL ONLINE-ONLY DIRECTIVE: The user explicitly commanded online results only (e.g., "dont give me suggestions from the dataset, find it online"). Set `ids: []` (empty array) and focus your reasoning, ranking, and draft recommendations EXCLUSIVELY on online venues from the Playwright evidence (`evidence_places`). Do NOT suggest local dataset records from distant districts (like Matina or Toril).'
         : '';
 
-    // Stage 4: Feed GPT-structured Playwright data + local records + multi-turn history into DeepSeek-R1 for reasoning first.
-    $deepSeekAvailable = (DEEPSEEK_API_KEY !== '' || DEEPSEEK_BASE_URL !== '') && localOllamaAvailable();
+    // Stage 4: Feed GPT-structured Playwright data + local records + multi-turn history into DeepSeek for reasoning first.
+    $deepSeekAvailable = localOllamaAvailable();
     $curationTrigger = 'none';
     $shouldCurate = false;
     if ($deepSeekAvailable) {
@@ -1885,51 +2018,73 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
 
     if ($shouldCurate) {
         $curatorMessages = [
-            ['role'=>'system','content'=>'You are Stage 4 (DeepSeek-R1 Reasoner) of Davao Food Finder. Treat GPT-structured Playwright evidence as the primary source for discovering recommendations; use the 2025 local records only as supplementary context and never as a whitelist for online venues. Include every genuinely matching supported online venue in `evidence_places`, whether or not it appears in the dataset, and use local IDs only for additional relevant options not already represented online. Reason over ALL prior conversation layers, web evidence, and local records before formulating recommendations. '
+            ['role'=>'system','content'=>'You are Stage 4 (DeepSeek Reasoner) of Davao Food Finder. Treat GPT-structured Playwright evidence as the primary source for discovering recommendations; use the 2025 local records only as supplementary context and never as a whitelist for online venues. Include every genuinely matching supported online venue in `evidence_places`, whether or not it appears in the dataset, and use local IDs only for additional relevant options not already represented online. Reason over ALL prior conversation layers, web evidence, and local records before formulating recommendations. Keep the reasoning and draft answer concise. '
                 . 'Critical reasoning checks: '
                 . '1) Dish & Menu Accuracy: Verify from `food_type`, `name`, `description`, `sample_reviews`, or Playwright text that each selected place genuinely serves the requested dish/cuisine (e.g., never select a coffee shop, pizzeria, bakery, or satti stall when the user asked for sisig/sisigan!). Review mentions may establish a match even when the food is not in the brand name, but assess sentiment about the requested food: reject a place when its only relevant review evidence is negative and be cautious with mixed or unclear evidence. Return all genuinely matching local `ids` supported by the records, up to 8; do not arbitrarily stop after a few and never pad with unrelated places. '
                 . '2) Layered Multi-Turn Context & Pushbacks: Preserve every active constraint from earlier turns (`conversation_layers`), including street/area, dish, and budget. If `user_correction=true` or `exclude_shown=true`, strictly exclude rejected/previously shown places and address why the new picks actually fit. '
                 . '3) Street Proximity Honesty (`area_proximity`): Prioritize `area_proximity="exact"` (directly on the requested street/mall), then `area_proximity="nearby"` (1-2 blocks away on adjacent streets in the same neighborhood cluster when exact-street matches lack the dish), and avoid `"none"` (distant Davao districts) when exact or nearby matches exist. Note exact vs. nearby street locations in `reasoning`. '
                 . '4) Scope: Keep only Davao City places (reject Tagum, Panabo, Digos, Samal, Mati, Cebu, Manila with out_of_scope=true, empty ids, empty evidence_places). '
-                . 'Return strict JSON with keys in this order: reasoning (string), out_of_scope (boolean), ids (array of verified local record IDs), evidence_places (array of verified online places with name, food_type, rating, review_count, price_range, address, city, description, source_url), answer (string draft recommendation for GPT-4o mini). Never invent facts.' . $onlineOnlyReasoningGuide . $styleExtra],
+                . 'Return strict JSON with keys in this order: reasoning (one concise rationale, not hidden chain of thought), out_of_scope (boolean), ids (array of verified local record IDs), evidence_places (array of verified online places with name, food_type, rating, review_count, price_range, address, city, description, source_url), answer (string draft recommendation for GPT-4o mini). Never invent facts.' . $onlineOnlyReasoningGuide . $styleExtra],
         ];
-        foreach (array_slice($history, -6) as $turn) {
+        foreach (array_slice($history, -4) as $turn) {
             if (!is_array($turn)) continue;
-            $hContent = mb_substr(trim((string)($turn['content'] ?? '')), 0, 900);
+            $hContent = mb_substr(trim((string)($turn['content'] ?? '')), 0, 400);
             if ($hContent !== '') {
                 $curatorMessages[] = ['role'=>($turn['role'] ?? '') === 'assistant' ? 'assistant' : 'user', 'content'=>$hContent];
             }
         }
         $curatorMessages[] = [
             'role'=>'user',
-            'content'=>"Latest query: {$query}{$intentSummary}\nGPT-4o mini structured Playwright evidence: " . json_encode($cleaner, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n2025 local Davao City candidates: {$localJson}"
+            'content'=>"Latest query: {$query}{$intentSummary}\nGPT-4o mini structured Playwright evidence: " . json_encode([
+                'out_of_scope'=>(bool)$cleaner['out_of_scope'],
+                'evidence_places'=>buildHybridReasonerEvidence($cleaner['evidence_places']),
+            ], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n2025 local Davao City candidates: {$reasonerLocalJson}"
         ];
         $t2 = microtime(true);
         $curatorTimeout = defined('TIMEOUT_LLM') ? TIMEOUT_LLM : 120;
-        if (DEEPSEEK_API_KEY !== '') {
+        if (DEEPSEEK_BACKEND === 'hosted_api') {
             $base = rtrim(DEEPSEEK_BASE_URL !== '' && DEEPSEEK_BASE_URL !== 'http://127.0.0.1:11434' ? DEEPSEEK_BASE_URL : 'https://api.deepseek.com', '/');
-            $dsModel = (DEEPSEEK_MODEL !== '' && DEEPSEEK_MODEL !== 'deepseek-r1:8b') ? DEEPSEEK_MODEL : (defined('DEEPSEEK_API_MODEL') ? DEEPSEEK_API_MODEL : 'deepseek-reasoner');
-            $isReasonerModel = stripos($dsModel, 'reasoner') !== false;
-            $curReq = ['model'=>$dsModel,'messages'=>$curatorMessages];
-            if (!$isReasonerModel) {
-                $curReq['temperature'] = $temp;
-                $curReq['response_format'] = ['type'=>'json_object'];
-            }
-            if ($seed !== null && !$isReasonerModel) $curReq['seed'] = $seed;
+            $dsModel = DEEPSEEK_API_MODEL;
+            $reasonerBackend = 'hosted_api';
+            $GLOBALS['aiTelemetry']['hybrid_reasoner_attempt'] = ['backend'=>$reasonerBackend, 'requested_model'=>$dsModel];
+            $curReq = [
+                'model'=>$dsModel,
+                'messages'=>$curatorMessages,
+                'max_tokens'=>2048,
+                'thinking'=>['type'=>'disabled'],
+                'temperature'=>$temp,
+                'response_format'=>['type'=>'json_object'],
+            ];
             $payload = json_encode($curReq, JSON_UNESCAPED_UNICODE);
             [$curatorRaw,$curatorStatus] = deepSeekHttpPost($base . '/chat/completions', ['Content-Type: application/json','Authorization: Bearer ' . DEEPSEEK_API_KEY], $payload, $curatorTimeout);
             $curType = 'deepseek_hosted';
         } else {
-            $ollamaOpts = ['temperature'=>$temp, 'num_ctx'=>4096, 'num_predict'=>2048];
+            $dsModel = DEEPSEEK_MODEL;
+            $reasonerBackend = 'local_ollama';
+            $GLOBALS['aiTelemetry']['hybrid_reasoner_attempt'] = ['backend'=>$reasonerBackend, 'requested_model'=>$dsModel];
+            $ollamaOpts = ['temperature'=>$temp, 'num_ctx'=>DEEPSEEK_NUM_CTX, 'num_predict'=>2048];
             if ($seed !== null) $ollamaOpts['seed'] = $seed;
             $payload = json_encode(['model'=>DEEPSEEK_MODEL,'messages'=>$curatorMessages,'stream'=>false,'format'=>'json','options'=>$ollamaOpts], JSON_UNESCAPED_UNICODE);
-            [$curatorRaw,$curatorStatus] = deepSeekHttpPost(DEEPSEEK_BASE_URL . '/api/chat', ['Content-Type: application/json'], $payload, $curatorTimeout);
+            $ollamaTimeout = max($curatorTimeout, defined('TIMEOUT_OLLAMA_INFERENCE') ? TIMEOUT_OLLAMA_INFERENCE : 240);
+            [$curatorRaw,$curatorStatus] = deepSeekHttpPost(DEEPSEEK_BASE_URL . '/api/chat', ['Content-Type: application/json'], $payload, $ollamaTimeout);
             $curType = 'ollama';
         }
         $curatorDecoded = $curatorRaw !== '' ? json_decode($curatorRaw, true) : null;
-        recordAiCallTelemetry('hybrid_curator', (int)round((microtime(true) - $t2) * 1000), $curType, DEEPSEEK_MODEL, is_array($curatorDecoded) ? $curatorDecoded : null);
+        $actualReasonerModel = is_array($curatorDecoded) ? trim((string)($curatorDecoded['model'] ?? '')) : '';
+        recordAiCallTelemetry('hybrid_curator', (int)round((microtime(true) - $t2) * 1000), $curType, $actualReasonerModel ?: $dsModel, is_array($curatorDecoded) ? $curatorDecoded : null);
 
         if ($curatorStatus >= 200 && $curatorStatus < 300 && $curatorRaw !== '') {
+            $GLOBALS['aiTelemetry']['hybrid_reasoner'] = [
+                'backend'=>$reasonerBackend,
+                'model'=>$actualReasonerModel !== '' ? $actualReasonerModel : null,
+            ];
+            if (!isExpectedHybridReasonerModel($actualReasonerModel, $reasonerBackend)) {
+                $GLOBALS['providerErrors']['deepseek'] = [
+                    'http'=>$curatorStatus,
+                    'message'=>'DeepSeek returned an unexpected model: ' . ($actualReasonerModel !== '' ? $actualReasonerModel : 'model not reported'),
+                ];
+                $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'unexpected_model';
+            } else {
             $apiReasoningContent = trim((string)($curatorDecoded['choices'][0]['message']['reasoning_content'] ?? ($curatorDecoded['message']['thinking'] ?? '')));
             $curatorText = $curatorDecoded['choices'][0]['message']['content'] ?? ($curatorDecoded['message']['content'] ?? '');
             if (!is_string($curatorText) || trim($curatorText) === '') {
@@ -1942,14 +2097,23 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
             $parsedCurator = is_string($curatorText) ? extractAndDecodeJson($curatorText) : null;
             if (is_array($parsedCurator)) {
                 $parsedCurator = normalizeJsonPayloadSchema($parsedCurator);
-                $curated = $parsedCurator;
-                $deepSeekUsed = true;
                 $jsonReasoning = is_string($parsedCurator['reasoning'] ?? null) ? trim($parsedCurator['reasoning']) : '';
                 $deepSeekReasoning = trim(implode("\n", array_filter([$apiReasoningContent, $thinkTagContent, $jsonReasoning])));
+                if (!is_array($parsedCurator['ids'] ?? null)
+                    || !is_array($parsedCurator['evidence_places'] ?? null)
+                    || trim((string)($parsedCurator['answer'] ?? '')) === ''
+                    || $deepSeekReasoning === '') {
+                    $GLOBALS['providerErrors']['deepseek'] = ['http'=>$curatorStatus, 'message'=>'DeepSeek returned unusable structured output'];
+                    $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'invalid_output';
+                } else {
+                $curated = $parsedCurator;
+                $deepSeekUsed = true;
                 $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'ok';
+                }
             } else {
-                $GLOBALS['providerErrors']['deepseek'] = ['http'=>$curatorStatus, 'message'=>'DeepSeek-R1 returned unparseable JSON'];
+                $GLOBALS['providerErrors']['deepseek'] = ['http'=>$curatorStatus, 'message'=>'DeepSeek returned unparseable JSON'];
                 $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'invalid_json';
+            }
             }
         } else {
             $dsErr = trim(mb_substr($curatorRaw, 0, 300));
@@ -1958,10 +2122,17 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
             }
             $GLOBALS['providerErrors']['deepseek'] = ['http'=>$curatorStatus, 'message'=>mb_substr($dsErr, 0, 300)];
             $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'error';
-            error_log('DeepSeek-R1 stage failed HTTP ' . $curatorStatus . ': ' . mb_substr($curatorRaw, 0, 500));
+            error_log('DeepSeek stage failed HTTP ' . $curatorStatus . ': ' . mb_substr($curatorRaw, 0, 500));
         }
     } else {
-        $GLOBALS['providerErrors']['deepseek'] = ['http'=>0, 'message'=>'Ollama/DeepSeek-R1 not reachable at ' . DEEPSEEK_BASE_URL];
+        $errorMessage = DEEPSEEK_BACKEND === 'hosted_api'
+            ? 'DeepSeek API key is not configured: set DEEPSEEK_API_KEY.'
+            : 'Ollama is not reachable at ' . DEEPSEEK_BASE_URL;
+        $GLOBALS['providerErrors']['deepseek'] = ['http'=>0, 'message'=>$errorMessage];
+        $GLOBALS['aiTelemetry']['hybrid_reasoner_attempt'] = [
+            'backend'=>DEEPSEEK_BACKEND,
+            'requested_model'=>DEEPSEEK_MODEL,
+        ];
         $GLOBALS['aiTelemetry']['pipeline_trace']['4_deepseek_r1_reasoner'] = 'unavailable';
     }
 
@@ -1972,7 +2143,7 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
 
     $structuredEvidence = $curated['evidence_places'] ?? ($curated['web_places'] ?? ($cleaner['evidence_places'] ?? []));
     $deepSeekHandoff = [
-        'deepseek_r1_used' => $deepSeekUsed,
+        'deepseek_reasoner_used' => $deepSeekUsed,
         'reasoning' => mb_substr($deepSeekReasoning, 0, 2200),
         'draft_answer' => is_string($curated['answer'] ?? null) ? trim($curated['answer']) : '',
         'out_of_scope' => isset($curated['out_of_scope']) ? (bool)$curated['out_of_scope'] : (bool)($cleaner['out_of_scope'] ?? false),
@@ -1980,7 +2151,18 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
         'curated_evidence_places' => is_array($structuredEvidence) ? $structuredEvidence : [],
     ];
 
-    // Stage 5: Hand DeepSeek-R1's reasoning, ranked IDs, and draft answer back to GPT-4o mini to craft the final reply to the user.
+    $stageTrace = $GLOBALS['aiTelemetry']['pipeline_trace'] ?? [];
+    if (!hybridPipelineReadyForFinalResponse(
+        is_array($options['intent'] ?? null) ? $options['intent'] : [],
+        $evidence,
+        is_array($stageTrace) ? $stageTrace : [],
+        $deepSeekUsed
+    )) {
+        $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'skipped_incomplete_pipeline';
+        return $failureResponse('DeepSeek did not complete successfully; GPT-4o mini final response was skipped. No GPT-only fallback was used.');
+    }
+
+    // Stage 5: Hand DeepSeek's concise rationale, ranked IDs, and draft answer back to GPT-4o mini.
     $onlineOnlyResponderGuide = $isOnlineOnlyRequested
         ? ' CRITICAL ONLINE-ONLY DIRECTIVE: When `online_only=true` (the user refused dataset suggestions), return empty `ids: []` and answer strictly using verified online finds (`web_places`). Detail the online options found (such as their specific location from the web evidence) and NEVER suggest distant local dataset places.'
         : '';
@@ -1993,7 +2175,7 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
             . '4) End with a brief, natural follow-up question tailored to their craving (e.g., asking if they prefer sizzling pork vs. tuna/chicken, a specific budget, late-night hours, or expanding the area).';
 
     $finalMessages = [
-        ['role'=>'system','content'=>'You are Stage 5 (Final User Responder) of Davao Food Finder. DeepSeek-R1 has reasoned over the GPT-structured Playwright live web evidence, the 2025 local Davao City records, and all conversation layers. Prioritize supported online venues from `curated_evidence_places`; local records are supplemental alternatives, not the default or a discovery limit. Use DeepSeek-R1\'s reasoning, ranked_local_ids, curated_evidence_places, and draft_answer (verified against the supplied records so zero ungrounded ratings, prices, or addresses are invented) to produce the final helpful, conversational response. Recommend only Davao City places (mark out_of_scope=true with empty ids and web_places for any outside city including Tagum, Panabo, Digos, Samal, Mati, Cebu, or Manila). Return strict JSON with answer, out_of_scope, ids, web_places. Every matching online place from curated_evidence_places (and any online place mentioned in `answer`) MUST be included in `web_places` so it renders as an Online Find card (even if it also appears in local records — backend deduplication automatically removes any overlap from local cards). web_places requires name, food_type, rating, review_count, price_range, address, city, description, source_url. Do not fabricate facts. Respect follow-up exclusions (`exclude_names`).' . $onlineOnlyResponderGuide . $conversationalResponderGuide . $styleExtra],
+        ['role'=>'system','content'=>'You are Stage 5 (Final User Responder) of Davao Food Finder. DeepSeek has reasoned over the GPT-structured Playwright live web evidence, the 2025 local Davao City records, and all conversation layers. Prioritize supported online venues from `curated_evidence_places`; local records are supplemental alternatives, not the default or a discovery limit. Use DeepSeek\'s concise rationale, ranked_local_ids, curated_evidence_places, and draft_answer (verified against the supplied records so zero ungrounded ratings, prices, or addresses are invented) to produce the final helpful, conversational response. Recommend only Davao City places (mark out_of_scope=true with empty ids and web_places for any outside city including Tagum, Panabo, Digos, Samal, Mati, Cebu, or Manila). Return strict JSON with answer, out_of_scope, ids, web_places. Every matching online place from curated_evidence_places (and any online place mentioned in `answer`) MUST be included in `web_places` so it renders as an Online Find card (even if it also appears in local records — backend deduplication automatically removes any overlap from local cards). web_places requires name, food_type, rating, review_count, price_range, address, city, description, source_url. Do not fabricate facts. Respect follow-up exclusions (`exclude_names`).' . $onlineOnlyResponderGuide . $conversationalResponderGuide . $styleExtra],
     ];
     foreach (array_slice($history, -8) as $turn) {
         if (!is_array($turn)) continue;
@@ -2002,7 +2184,7 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
     }
     $finalMessages[] = [
         'role'=>'user',
-        'content'=>"Latest query: {$query}{$intentSummary}\nDeepSeek-R1 reasoning & draft output: "
+        'content'=>"Latest query: {$query}{$intentSummary}\nDeepSeek rationale & draft output: "
             . json_encode($deepSeekHandoff, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)
             . "\n2025 local records (grounding verification): {$localJson}"
     ];
@@ -2022,7 +2204,7 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
         $GLOBALS['providerErrors']['gpt4o'] = ['http'=>$finalStatus, 'message'=>mb_substr($errDetail, 0, 300)];
         $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'error';
         error_log('GPT-4o mini final response failed HTTP ' . $finalStatus . ': ' . mb_substr($finalRaw,0,500));
-        return answerWithEvidenceFallback($query, $candidates, $evidence, OPENAI_MODEL);
+        return $failureResponse('GPT-4o mini could not produce the final response after DeepSeek reasoning.');
     }
     $finalText = $finalDecoded['choices'][0]['message']['content'] ?? '{}';
     if (is_string($finalText) && preg_match('/\{.*\}/s', trim($finalText), $match)) {
@@ -2038,9 +2220,9 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
     $rawFinalWeb = is_array($parsed['web_places'] ?? null)
         ? $parsed['web_places']
         : (is_array($parsed['evidence_places'] ?? null) ? $parsed['evidence_places'] : null);
-    if (!is_array($parsed) || !is_string($parsed['answer'] ?? null) || !is_bool($parsed['out_of_scope'] ?? null) || !is_array($parsed['ids'] ?? null) || $rawFinalWeb === null) {
+    if (!is_array($parsed) || !is_string($parsed['answer'] ?? null) || trim($parsed['answer']) === '' || !is_bool($parsed['out_of_scope'] ?? null) || !is_array($parsed['ids'] ?? null) || $rawFinalWeb === null) {
         $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'invalid_json';
-        return ['', $fallbackIds, 'error', $evidence['sources'] ?? [], [], false, OPENAI_MODEL];
+        return $failureResponse('GPT-4o mini returned an unusable final response after DeepSeek reasoning.');
     }
     $GLOBALS['aiTelemetry']['pipeline_trace']['5_gpt4o_final_reply'] = 'ok';
     $modelLabel = $deepSeekUsed ? OPENAI_MODEL . '+' . DEEPSEEK_MODEL : OPENAI_MODEL;
@@ -2181,7 +2363,7 @@ function answerWithGPT4oMini(string $query, array $history, array $candidates, a
 
 function answerWithDeepSeek(string $query, array $history, array $candidates, array $evidence, array $options = []): array {
     $fallbackIds = array_map(fn($p) => $p['_id'], $candidates);
-    if (DEEPSEEK_API_KEY !== '') {
+    if (DEEPSEEK_BACKEND === 'hosted_api') {
         return answerWithDeepSeekApi($query, $history, $candidates, $evidence, $options);
     }
     if (DEEPSEEK_BASE_URL === '') {
@@ -2191,9 +2373,8 @@ function answerWithDeepSeek(string $query, array $history, array $candidates, ar
 }
 
 /**
- * Stage 4/Standalone: Full-size DeepSeek-R1 reasoner via hosted API (https://api.deepseek.com)
- * Uses OpenAI-compatible client, model deepseek-reasoner, key from env var DEEPSEEK_API_KEY.
- * Note: deepseek-reasoner ignores/disallows temperature and response_format parameters.
+ * Stage 4/Standalone: DeepSeek hosted reasoner via the paid API (https://api.deepseek.com).
+ * The default deepseek-flash model uses concise JSON output with thinking disabled.
  */
 function answerWithDeepSeekApi(string $query, array $history, array $candidates, array $evidence, array $options = []): array {
     $fallbackIds = array_map(fn($p) => $p['_id'], $candidates);
@@ -2207,7 +2388,7 @@ function answerWithDeepSeekApi(string $query, array $history, array $candidates,
     }
 
     $base = defined('DEEPSEEK_API_BASE_URL') ? DEEPSEEK_API_BASE_URL : 'https://api.deepseek.com';
-    $model = defined('DEEPSEEK_API_MODEL') ? DEEPSEEK_API_MODEL : 'deepseek-reasoner';
+    $model = defined('DEEPSEEK_API_MODEL') ? DEEPSEEK_API_MODEL : 'deepseek-flash';
 
     if ($apiKey === '') {
         $GLOBALS['providerErrors']['deepseek-api'] = ['http'=>0, 'message'=>'DeepSeek API key is not configured: set DEEPSEEK_API_KEY.'];
@@ -2224,7 +2405,7 @@ function answerWithDeepSeekApi(string $query, array $history, array $candidates,
     $onlineOnlyGuide = $isOnlineOnlyRequested
         ? ' CRITICAL ONLINE-ONLY RULE: The user commanded "dont give me suggestions from the dataset, find it online". You MUST NOT mention or suggest any places from the local dataset. Answer ONLY using the Playwright web evidence. Leave ids empty (ids: []). If no online matches exist in the requested area, politely inform the user that no online listings were found for that dish in that specific area, and ask if they would like to widen the online search to other areas in Davao City. Never suggest places from distant districts (like Matina or Toril).'
         : '';
-    $systemContent = 'You are DeepSeek-R1 (deepseek-reasoner) in Davao Food Finder. Recommend matching places in Davao City. Output strict JSON with: answer, out_of_scope (boolean), ids (array of matching candidate place IDs), web_places (array). Think concisely, then output the strict JSON. Do not invent facts.' . $conversationalExtra . $onlineOnlyGuide . promptStyleInstruction($options);
+    $systemContent = 'You are the DeepSeek model ' . $model . ' in Davao Food Finder. Recommend matching places in Davao City. Output strict JSON with: answer, out_of_scope (boolean), ids (array of matching candidate place IDs), web_places (array). Include one concise rationale in the JSON; do not include hidden chain of thought or invent facts.' . $conversationalExtra . $onlineOnlyGuide . promptStyleInstruction($options);
 
     $messages = [['role'=>'system','content'=>$systemContent]];
     foreach (array_slice($history, -4) as $turn) {
@@ -2261,11 +2442,10 @@ function answerWithDeepSeekApi(string $query, array $history, array $candidates,
         'model' => $model,
         'messages' => $messages,
     ];
-    // Reasoner model ignores/disallows temperature and response_format
-    if (stripos($model, 'reasoner') === false) {
-        $reqBody['temperature'] = (float)($options['temperature'] ?? 0.2);
-        $reqBody['response_format'] = ['type' => 'json_object'];
-    }
+    $reqBody['max_tokens'] = 1200;
+    $reqBody['thinking'] = ['type'=>'disabled'];
+    $reqBody['temperature'] = (float)($options['temperature'] ?? 0.2);
+    $reqBody['response_format'] = ['type'=>'json_object'];
 
     $callStart = microtime(true);
     $payload = json_encode($reqBody, JSON_UNESCAPED_UNICODE);

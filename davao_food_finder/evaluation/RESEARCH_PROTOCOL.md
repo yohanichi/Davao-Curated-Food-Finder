@@ -38,7 +38,7 @@ All conditions run against identical SHA-256 verified CSV files, splits, and see
 2. **`ablation-no-loop` (`ABLATION-NO-LOOP`):** Single-pass retrieval with intent parsing *without* Pass 2 autonomous critique/re-retrieval (`agentic = false`), isolating the exact contribution of the Autonomous Iterative Loop.
 3. **`agentic-local` (`AGENTIC-LOOP-LOCAL`):** Grounded local-and-evidence agentic engine with full 2-pass Autonomous Iterative Critique-and-Refinement Loop (`agentic = true`), runnable deterministically offline (`--local-cli`) or via HTTP.
 4. **`non-agentic` (`NON-AGENTIC-T0.2-STRICT`):** Single-pass LLM over raw shortlist without Playwright live crawl, multi-turn reformulation, or autonomous loop.
-5. **`deepseek` / `gpt-4o-mini` / `hybrid`:** Live LLM reasoning pipelines (`DeepSeek R1`, `GPT-4o mini`, and 3-stage `Hybrid`) coupled with Playwright web evidence reconciliation and the Pass 2 Autonomous Iterative Critique-and-Refinement Loop.
+5. **`deepseek` / `gpt-4o-mini` / `hybrid`:** Live LLM reasoning pipelines (paid `DeepSeek Flash`, `GPT-4o mini`, and 3-stage `Hybrid`) coupled with Playwright web evidence reconciliation and the Pass 2 Autonomous Iterative Critique-and-Refinement Loop.
 
 ---
 
@@ -76,11 +76,11 @@ Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\Davao-Food-F
 & 'C:\xampp\php\php.exe' .\evaluation\test_evaluation_suite.php
 
 # 3. Run Objective 1 Controlled Data Volatility Experiment (15 scenarios x 4 conditions)
-& 'C:\xampp\php\php.exe' .\evaluation\run_volatility_experiment.php --local-cli
+& 'C:\xampp\php\php.exe' .\evaluation\run_volatility_experiment.php --controlled-scenarios --local-cli
 
 # 4. Run Controlled 3-System Ablation & Agentic Loop Benchmark (45 held-out test cases, 3 trials)
 & 'C:\xampp\php\php.exe' .\evaluation\run_evaluation.php --local-ablation --split=test --trials=3 --seed=42
 
-# 5. Run Full Live LLM Comparison (requires PHP server + Ollama DeepSeek R1 / OPENAI_API_KEY)
+# 5. Run Full Live LLM Comparison (requires PHP server + DEEPSEEK_API_KEY + OPENAI_API_KEY)
 & 'C:\xampp\php\php.exe' .\evaluation\run_evaluation.php --research --split=test --trials=3 --seed=42
 ```

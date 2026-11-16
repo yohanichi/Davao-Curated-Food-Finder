@@ -1,0 +1,112 @@
+{
+    "report_type": "interactive_live_hybrid_pipeline_verification",
+    "created_at_utc": "2026-11-16T07:47:52+00:00",
+    "api_endpoint": "local_php_worker",
+    "run_configuration": {
+        "provider": "hybrid",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 1,
+        "request_successes": 1,
+        "full_live_pipeline_successes": 0
+    },
+    "requests": [
+        {
+            "case_id": "LIVE-001",
+            "query": "tuna",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "auto",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "tuna Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "cache_status": "miss",
+                    "evidence_count": 2,
+                    "source_urls": [
+                        "https:\/\/www.openstreetmap.org\/node\/13277937778",
+                        "https:\/\/www.openstreetmap.org\/node\/11985834190"
+                    ],
+                    "retrieval_time_ms": 17289
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "model_is_deepseek_r1": false
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "partial_or_fallback",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "Verified Davao City matches after constraint check: Hangry Tuna - Matina Aplaya, Tuna Republik - La Verna Street, Hangry Tuna - Nova Tierra Village, Martina Tuna Grill (Tuna Choice) - Roxas Street.",
+            "model_used": "gpt-4o-mini+deepseek-reasoner",
+            "client_latency_ms": 56594,
+            "server_latency_ms": 56441,
+            "cache_status": "miss",
+            "evidence_count": 2,
+            "source_urls": [
+                "https:\/\/www.openstreetmap.org\/node\/13277937778",
+                "https:\/\/www.openstreetmap.org\/node\/11985834190"
+            ],
+            "retrieval_time_ms": 17289,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 2,
+                "initial_compliance_rate": 0.6,
+                "final_compliance_rate": 1,
+                "violations_detected": [
+                    "cuisine_mismatch:Ding Dong's Tuna Grill - Poblacion",
+                    "cuisine_mismatch:Pasugba - Torres"
+                ],
+                "violations_repaired": 2,
+                "re_retrieved": true,
+                "measured_outcome": "violation_detected_and_repaired"
+            },
+            "error_category": null,
+            "fixture_used": false
+        }
+    ]
+}

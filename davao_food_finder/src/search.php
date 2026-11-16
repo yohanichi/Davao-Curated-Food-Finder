@@ -162,6 +162,7 @@ function specificDishPatterns(): array {
         'lechon'     => '/\b(lechon|lechonan|litson)\b/iu',
         'takoyaki'   => '/\b(takoyaki)\b/iu',
         'siomai'     => '/\b(siomai|dimsum|dumplings?)\b/iu',
+        'fries'      => '/\b(french\s+fries|fries)\b/iu',
         'wings'      => '/\b(wings|unli\s+wings|buffalo\s+wings)\b/iu',
         'kinilaw'    => '/\b(kinilaw|sutukil)\b/iu',
     ];
@@ -178,18 +179,40 @@ function extractSpecificDishes(string $rawText): array {
     return $dishes;
 }
 
+function expandMenuItemSearchQuery(string $query, array $intent): string {
+    $alternatives = [];
+    $dishes = array_map(fn($dish) => mb_strtolower(trim((string)$dish), 'UTF-8'), $intent['specific_dishes'] ?? []);
+    $cuisines = array_map(fn($cuisine) => mb_strtolower(trim((string)$cuisine), 'UTF-8'), $intent['cuisines'] ?? []);
+
+    if (in_array('fries', $dishes, true)) {
+        $alternatives = array_merge($alternatives, ['fries', '"french fries"', '"Potato Corner"']);
+    }
+    if (in_array('burgers', $cuisines, true)) {
+        $alternatives = array_merge($alternatives, ['burger', 'burgers', 'hamburger', '"Burger King"', '"Minute Burger"']);
+    }
+    if (in_array('chicken', $cuisines, true) || in_array('fried chicken', $cuisines, true)) {
+        $alternatives = array_merge($alternatives, ['chicken', '"fried chicken"', 'KFC', 'Jollibee', '"McDonald\'s"', '"Mang Inasal"']);
+    }
+
+    if (!$alternatives) return trim($query);
+    $alternatives = array_values(array_unique($alternatives));
+    $query = trim($query);
+    $expansion = '(' . implode(' OR ', $alternatives) . ')';
+    return $query !== '' ? $query . ' ' . $expansion : $expansion . ' Davao City';
+}
+
 function extractStrictDishes(string $rawText): array {
     $lower = mb_strtolower($rawText, 'UTF-8');
     $dishes = extractSpecificDishes($lower);
     if (!$dishes) return [];
 
     // Do not enforce single-dish exclusivity if the user also explicitly asked for a broader umbrella cuisine/category
-    $broadUmbrellaRegex = '/\b(filipino|lutong\s+bahay|ulam|carinderia|karinderya|kan[- ]?anan|barbecue|barbeque|bbq|japanese|korean|indian|middle\s+eastern|noodle\s+houses?|cakes?|desserts?|snacks?|street\s+food|breakfast|painitan|24\/7|24\s*hours|late[- ]night)\b/iu';
+    $broadUmbrellaRegex = '/\b(filipino|lutong\s+bahay|ulam|carinderia|karinderya|kan[- ]?anan|barbecue|barbeque|bbq|japanese|korean|indian|middle\s+eastern|noodle\s+houses?|cakes?|desserts?|snacks?|street\s+food|breakfast|painitan|24\/7|24\s*hours|late[- ]night|burgers?|hamburgers?|chicken|fast\s+food)\b/iu';
     if (preg_match($broadUmbrellaRegex, $lower) === 1) {
         return [];
     }
 
-    $strictEligible = ['sisig', 'bulalo', 'balbacua', 'bulcachong', 'satti', 'takoyaki', 'lomi', 'batchoy', 'halo-halo', 'shawarma', 'biryani', 'lugaw', 'pares', 'silog', 'kinilaw'];
+    $strictEligible = ['sisig', 'bulalo', 'balbacua', 'bulcachong', 'satti', 'takoyaki', 'lomi', 'batchoy', 'halo-halo', 'shawarma', 'biryani', 'lugaw', 'pares', 'silog', 'kinilaw', 'fries'];
     return array_values(array_intersect($dishes, $strictEligible));
 }
 
@@ -564,7 +587,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         $cuisines = [];
         $cuisineMap = [
             'Japanese' => '/\b(japanese|japan|ramen|udon|sushi|sashimi|gyoza|katsu|takoyaki|izakaya|tempura|teriyaki)\b/iu',
-            'Coffee' => '/\b(coffee|cafe|café|cafes|cafés|espresso|latte|kapehan|brew|roastery|cappuccino|americano)\b/iu',
+            'Coffee' => '/\b(coffee(?:\s*shops?)?|coffeehouses?|cafe|café|cafes|cafés|espresso|latte|kapehan|brew|roastery|cappuccino|americano)\b/iu',
             'Fried Chicken' => '/\b(fried\s+chicken|boneless\s+chicken|chicken\s+wings?|wings|unli\s+wings|inasal)\b/iu',
             'Chicken' => '/\b(chicken|manok|roasters)\b/iu',
             'Korean' => '/\b(korean|samgyup|samgyupsal|kimchi|bibimbap|jjajang|corndog|k-food)\b/iu',

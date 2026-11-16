@@ -1,0 +1,325 @@
+{
+    "report_type": "interactive_live_provider_verification",
+    "created_at_utc": "2026-11-16T09:01:30+00:00",
+    "api_endpoint": "local_php_worker",
+    "run_configuration": {
+        "provider": "hybrid",
+        "deepseek_backend_requested": "local-ollama",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 3,
+        "request_successes": 0,
+        "provider_call_successes": 0,
+        "full_live_pipeline_successes": 0
+    },
+    "requests": [
+        {
+            "case_id": "LIVE-001",
+            "query": "burger",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "local-ollama",
+                "deepseek_backend_request_matches_observed": false,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "burger Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 0,
+                    "browser_search_errors": [
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20restaurants%20customer%20reviews&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "Bing: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/www.bing.com\/search?q=burger%20Davao%20City%20restaurants%20branches%20locations\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "Bing: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/www.bing.com\/search?q=burger%20Davao%20City%20restaurants\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20restaurants%20branches%20locations&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20restaurants&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "Bing: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/www.bing.com\/search?q=burger%20Davao%20City%20restaurants%20customer%20reviews\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "OpenStreetMap Photon: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/photon.komoot.io\/api\/?q=burger%20Davao%20City%20restaurants&limit=8&lang=en\", waiting until \"domcontentloaded\"\u001b[22m\n"
+                    ],
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 62986
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "skipped_no_playwright_evidence",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "backend": "not_run",
+                    "model": null,
+                    "requested_model": null,
+                    "model_is_deepseek_r1": false,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 200,
+            "assistant_status": "error",
+            "final_answer": "Playwright did not return usable live browser evidence; the hybrid pipeline stopped without a fallback response.",
+            "model_used": "hybrid_pipeline_incomplete",
+            "client_latency_ms": 65963,
+            "server_latency_ms": 65870,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 62986,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "not_observed",
+                "iterations": 1,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": false,
+                "status": "one_or_more_stages_failed",
+                "model": "hybrid_pipeline_incomplete"
+            }
+        },
+        {
+            "case_id": "LIVE-002",
+            "query": "coffeeshop",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "local-ollama",
+                "deepseek_backend_request_matches_observed": false,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "coffeeshop Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 0,
+                    "browser_search_errors": [
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=coffeeshop%20Davao%20City%20restaurants%20food&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=coffeeshop%20Davao%20City%20restaurants%20food%20branches%20locations&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=coffeeshop%20Davao%20City%20restaurants%20food%20customer%20reviews&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "Source page https:\/\/jingyan.baidu.com\/article\/a948d6514735af4b2ccd2e50.html: page.goto: Timeout 6000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/jingyan.baidu.com\/article\/a948d6514735af4b2ccd2e50.html\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "Source page https:\/\/techcommunity.microsoft.com\/blog\/microsoftteamsblog\/whats-new-in-microsoft-teams--may-2026---build-edition\/4524613: page.goto: Timeout 6000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/techcommunity.microsoft.com\/blog\/microsoftteamsblog\/whats-new-in-microsoft-teams--may-2026---build-edition\/4524613\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "Source page https:\/\/www.googleapps.com\/forms\/about\/: page.goto: Timeout 6000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/www.googleapps.com\/forms\/about\/\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "Source page https:\/\/gist.github.com\/ttwizz\/8f11b1b1b7097266263e7a0437d510bd: page.goto: Timeout 6000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/gist.github.com\/ttwizz\/8f11b1b1b7097266263e7a0437d510bd\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "Source page https:\/\/techcommunity.microsoft.com\/blog\/microsoftteamsblog\/microsoft-teams-events-a-new-unified-experience-makes-it-easier-to-discover-crea\/4488299: page.goto: Timeout 6000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/techcommunity.microsoft.com\/blog\/microsoftteamsblog\/microsoft-teams-events-a-new-unified-experience-makes-it-easier-to-discover-crea\/4488299\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "Source page https:\/\/jingyan.baidu.com\/article\/00a07f380c970f82d028dc8b.html: page.goto: Timeout 6000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/jingyan.baidu.com\/article\/00a07f380c970f82d028dc8b.html\", waiting until \"domcontentloaded\"\u001b[22m\n"
+                    ],
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 163973
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "skipped_no_playwright_evidence",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "backend": "not_run",
+                    "model": null,
+                    "requested_model": null,
+                    "model_is_deepseek_r1": false,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 200,
+            "assistant_status": "error",
+            "final_answer": "Playwright did not return usable live browser evidence; the hybrid pipeline stopped without a fallback response.",
+            "model_used": "hybrid_pipeline_incomplete",
+            "client_latency_ms": 166641,
+            "server_latency_ms": 166497,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 163973,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "not_observed",
+                "iterations": 1,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": false,
+                "status": "one_or_more_stages_failed",
+                "model": "hybrid_pipeline_incomplete"
+            }
+        },
+        {
+            "case_id": "LIVE-003",
+            "query": "coffeeshop",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "local-ollama",
+                "deepseek_backend_request_matches_observed": false,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "coffeeshop Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 0,
+                    "browser_search_errors": [],
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 33957
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "skipped_no_playwright_evidence",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "backend": "not_run",
+                    "model": null,
+                    "requested_model": null,
+                    "model_is_deepseek_r1": false,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 200,
+            "assistant_status": "error",
+            "final_answer": "Playwright did not return usable live browser evidence; the hybrid pipeline stopped without a fallback response.",
+            "model_used": "hybrid_pipeline_incomplete",
+            "client_latency_ms": 36780,
+            "server_latency_ms": 36676,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 33957,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "not_observed",
+                "iterations": 1,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": false,
+                "status": "one_or_more_stages_failed",
+                "model": "hybrid_pipeline_incomplete"
+            }
+        }
+    ]
+}

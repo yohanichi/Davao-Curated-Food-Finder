@@ -20,6 +20,22 @@ function nearbyBrandQueryTerms(array $candidates, int $limit = 3): array {
     return array_values($terms);
 }
 
+function nearbyCategoryQueryTerms(array $intent): array {
+    $cuisines = array_map(
+        fn($cuisine) => mb_strtolower(trim((string)$cuisine), 'UTF-8'),
+        $intent['cuisines'] ?? []
+    );
+    $dishes = array_map(
+        fn($dish) => mb_strtolower(trim((string)$dish), 'UTF-8'),
+        $intent['specific_dishes'] ?? []
+    );
+
+    return array_intersect(['burgers', 'chicken', 'fried chicken'], $cuisines)
+        || in_array('fries', $dishes, true)
+        ? ['fast food']
+        : [];
+}
+
 function detectExplicitRestaurantCoreQuery(array $places, string $query): ?string {
     $cleaned = trim(preg_replace(
         '/^(?:please\s+)?(?:i\s+want|show\s+(?:me\s+)?|find\s+|look\s+for\s+|search\s+for\s+|recommend(?:\s+me)?\s+)/iu',
@@ -101,6 +117,49 @@ function isValidNearbyMapPlace(array $place): bool {
         && preg_match('#^/(?:node|way|relation)/\d+$#', $path) === 1;
 }
 
+function loadLocalOsmNearbySnapshot(string $snapshotPath, array $bounds): array {
+    if (!is_file($snapshotPath) || !is_readable($snapshotPath)) {
+        throw new RuntimeException('The local OpenStreetMap nearby index is missing or unreadable. Run node scripts/update-osm-places.js to build it.');
+    }
+    $contents = file_get_contents($snapshotPath);
+    if ($contents === false) {
+        throw new RuntimeException('The local OpenStreetMap nearby index could not be read.');
+    }
+    try {
+        $snapshot = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $error) {
+        throw new RuntimeException('The local OpenStreetMap nearby index contains invalid JSON.', 0, $error);
+    }
+    if (!is_array($snapshot)
+        || ($snapshot['schema_version'] ?? null) !== 1
+        || ($snapshot['source'] ?? '') !== 'OpenStreetMap'
+        || !is_array($snapshot['places'] ?? null)
+        || trim((string)($snapshot['osm_base_timestamp'] ?? '')) === '') {
+        throw new RuntimeException('The local OpenStreetMap nearby index has an unsupported or incomplete format.');
+    }
+    foreach (['west', 'south', 'east', 'north'] as $key) {
+        if (!is_numeric($bounds[$key] ?? null) || !is_finite((float)$bounds[$key])) {
+            throw new InvalidArgumentException('Local OpenStreetMap filtering requires valid rounded search bounds.');
+        }
+    }
+
+    $places = [];
+    foreach ($snapshot['places'] as $place) {
+        if (!is_array($place) || !isValidNearbyMapPlace($place)) continue;
+        $latitude = (float)$place['latitude'];
+        $longitude = (float)$place['longitude'];
+        if ($longitude < (float)$bounds['west'] || $longitude > (float)$bounds['east']
+            || $latitude < (float)$bounds['south'] || $latitude > (float)$bounds['north']) continue;
+        $places[] = $place;
+    }
+    return [
+        'places'=>$places,
+        'place_count'=>(int)($snapshot['place_count'] ?? count($snapshot['places'])),
+        'updated_at'=>(string)($snapshot['updated_at'] ?? ''),
+        'osm_base_timestamp'=>(string)$snapshot['osm_base_timestamp'],
+    ];
+}
+
 function nearbyFeatureMatchesVenue(array $venue, array $feature, int $venueCoreCount, int $featureCoreCount): bool {
     $venueCore = nearbyPlaceCore((string)($venue['name'] ?? ''));
     if ($venueCore === '' || $venueCore !== nearbyPlaceCore((string)($feature['name'] ?? ''))) {
@@ -135,6 +194,34 @@ function nearbyDistanceKm(float $latitude, float $longitude, float $placeLatitud
     return $earthRadiusKm * 2 * asin(min(1.0, sqrt($a)));
 }
 
+function nearbySearchBounds(float $latitude, float $longitude, float $radiusKm = 5.0): array {
+    if (!is_finite($latitude) || $latitude < -90 || $latitude > 90
+        || !is_finite($longitude) || $longitude < -180 || $longitude > 180
+        || !is_finite($radiusKm) || $radiusKm <= 0) {
+        throw new InvalidArgumentException('Nearby search bounds require valid coordinates and a positive radius.');
+    }
+
+    $latitudeDelta = $radiusKm / 111.32;
+    $longitudeDelta = $radiusKm / (111.32 * max(0.01, abs(cos(deg2rad($latitude)))));
+    $precision = 100.0;
+    return [
+        'west'=>max(-180.0, floor(($longitude - $longitudeDelta) * $precision) / $precision),
+        'south'=>max(-90.0, floor(($latitude - $latitudeDelta) * $precision) / $precision),
+        'east'=>min(180.0, ceil(($longitude + $longitudeDelta) * $precision) / $precision),
+        'north'=>min(90.0, ceil(($latitude + $latitudeDelta) * $precision) / $precision),
+    ];
+}
+
+function nearbyDistanceWithinRadius(float $distanceKm, float $radiusKm, float $locationAccuracyKm = 0.0): bool {
+    return is_finite($distanceKm)
+        && is_finite($radiusKm)
+        && is_finite($locationAccuracyKm)
+        && $distanceKm >= 0
+        && $radiusKm >= 0
+        && $locationAccuracyKm >= 0
+        && $distanceKm + $locationAccuracyKm <= $radiusKm;
+}
+
 function nearbyFeatureDisplayName(array $feature, string $baseName = ''): string {
     $name = trim($baseName) ?: trim((string)($feature['name'] ?? ''));
     $district = trim((string)($feature['district'] ?? ''));
@@ -158,7 +245,8 @@ function rankNearbyCandidates(
     array $mapPlaces,
     float $latitude,
     float $longitude,
-    float $radiusKm
+    float $radiusKm,
+    float $locationAccuracyKm = 0.0
 ): array {
     $venueCoreCounts = [];
     foreach ($allPlaces as $place) {
@@ -183,7 +271,8 @@ function rankNearbyCandidates(
                 continue;
             }
             $distance = nearbyDistanceKm($latitude, $longitude, (float)$feature['latitude'], (float)$feature['longitude']);
-            if ($distance > $radiusKm || ($nearest !== null && $distance >= $nearest['distance'])) continue;
+            if (!nearbyDistanceWithinRadius($distance, $radiusKm, $locationAccuracyKm)
+                || ($nearest !== null && $distance >= $nearest['distance'])) continue;
             $nearest = ['feature'=>$feature, 'distance'=>$distance];
         }
         if ($nearest === null) continue;
@@ -207,7 +296,8 @@ function rankNearbyWebPlaces(
     array $allPlaces,
     float $latitude,
     float $longitude,
-    float $radiusKm
+    float $radiusKm,
+    float $locationAccuracyKm = 0.0
 ): array {
     $venueCoreCounts = [];
     foreach ($allPlaces as $place) {
@@ -232,7 +322,8 @@ function rankNearbyWebPlaces(
                 continue;
             }
             $distance = nearbyDistanceKm($latitude, $longitude, (float)$feature['latitude'], (float)$feature['longitude']);
-            if ($distance > $radiusKm || ($nearest !== null && $distance >= $nearest['distance'])) continue;
+            if (!nearbyDistanceWithinRadius($distance, $radiusKm, $locationAccuracyKm)
+                || ($nearest !== null && $distance >= $nearest['distance'])) continue;
             $nearest = ['feature'=>$feature, 'distance'=>$distance];
         }
         if ($nearest === null) continue;
@@ -255,16 +346,30 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
         return true;
     }
 
+    $requestedDietaryTerms = array_values(array_filter(
+        ['halal', 'vegan', 'vegetarian'],
+        fn($term) => preg_match('/(?<![\p{L}\p{N}])' . $term . '(?![\p{L}\p{N}])/iu', $query) === 1
+            || in_array($term, array_map(
+                fn($value) => mb_strtolower(trim((string)$value), 'UTF-8'),
+                array_merge($intent['cuisines'] ?? [], $intent['specific_dishes'] ?? [])
+            ), true)
+    ));
+
     $cuisineTerms = [
-        'coffee'=>['cafe','coffee','espresso','roastery'],
+        'coffee'=>['cafe','cafes','café','cafés','coffee','espresso','roastery'],
         'japanese'=>['japanese','sushi','ramen','udon','tempura','sashimi'],
         'korean'=>['korean','samgyup','samgyeopsal'],
         'chinese'=>['chinese','dim sum'],
         'filipino'=>['filipino'],
         'pizza'=>['pizza','italian'],
         'seafood'=>['seafood','fish','shrimp'],
-        'burgers'=>['burger'],
+        'burgers'=>['burger','burgers','hamburger','hamburgers','fast food'],
+        'chicken'=>['chicken','fried chicken','fast food'],
+        'fried chicken'=>['chicken','fried chicken','fast food'],
         'milk tea'=>['milk tea','bubble tea','tea'],
+    ];
+    $dishTerms = [
+        'fries'=>['fries','french fries','fast food'],
     ];
     $requestedTerms = [];
     foreach (($intent['cuisines'] ?? []) as $cuisine) {
@@ -272,15 +377,40 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
         $requestedTerms = array_merge($requestedTerms, $cuisineTerms[$key] ?? [$key]);
     }
     foreach (($intent['specific_dishes'] ?? []) as $dish) {
-        $requestedTerms[] = trim((string)$dish);
+        $dish = mb_strtolower(trim((string)$dish), 'UTF-8');
+        $requestedTerms = array_merge($requestedTerms, $dishTerms[$dish] ?? [$dish]);
     }
+
+    $requestedTerms = array_values(array_unique(array_filter($requestedTerms)));
+    if (!$requestedTerms && !$requestedDietaryTerms) return true;
 
     $featureText = mb_strtolower(implode(' ', array_filter([
         $feature['name'] ?? '',
         $feature['food_type'] ?? '',
+        $feature['cuisine'] ?? '',
+        $feature['place_search_query'] ?? '',
     ])), 'UTF-8');
-    foreach (array_filter($requestedTerms) as $term) {
-        if (mb_stripos($featureText, mb_strtolower($term, 'UTF-8'), 0, 'UTF-8') !== false) {
+    $dietaryTags = is_array($feature['dietary_tags'] ?? null) ? $feature['dietary_tags'] : [];
+    foreach ($requestedDietaryTerms as $dietaryTerm) {
+        $dietaryValue = mb_strtolower(trim((string)($dietaryTags[$dietaryTerm] ?? '')), 'UTF-8');
+        if (in_array($dietaryValue, ['no', 'none', 'false', '0'], true)) return false;
+        if ($dietaryValue !== '') $featureText .= ' ' . $dietaryTerm;
+    }
+    $featureText = str_replace('_', ' ', $featureText);
+    foreach ($requestedDietaryTerms as $term) {
+        if (preg_match(
+            '/(?<![\p{L}\p{N}])' . preg_quote($term, '/') . '(?![\p{L}\p{N}])/iu',
+            $featureText
+        ) !== 1) {
+            return false;
+        }
+    }
+    if (!$requestedTerms) return true;
+    foreach ($requestedTerms as $term) {
+        if (preg_match(
+            '/(?<![\p{L}\p{N}])' . preg_quote($term, '/') . '(?![\p{L}\p{N}])/iu',
+            $featureText
+        ) === 1) {
             return true;
         }
     }
@@ -294,7 +424,8 @@ function buildNearbyMapResults(
     float $longitude,
     float $radiusKm,
     string $query = '',
-    array $intent = []
+    array $intent = [],
+    float $locationAccuracyKm = 0.0
 ): array {
     $relevantCores = [];
     foreach ($relevantCandidates as $candidate) {
@@ -310,7 +441,7 @@ function buildNearbyMapResults(
         $core = nearbyPlaceCore((string)$feature['name']);
         if ($core === '' || (!isset($relevantCores[$core]) && !nearbyFeatureMatchesRequest($feature, $query, $intent))) continue;
         $distance = nearbyDistanceKm($latitude, $longitude, (float)$feature['latitude'], (float)$feature['longitude']);
-        if ($distance > $radiusKm) continue;
+        if (!nearbyDistanceWithinRadius($distance, $radiusKm, $locationAccuracyKm)) continue;
 
         $street = trim((string)($feature['street'] ?? ''));
         $address = trim((string)($feature['address'] ?? ''));

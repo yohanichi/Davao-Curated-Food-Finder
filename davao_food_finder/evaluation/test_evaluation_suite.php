@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 $appRoot = dirname(__DIR__);
 require_once $appRoot . '/vendor/autoload.php';
+require_once $appRoot . '/src/config.php';
 require_once $appRoot . '/src/search.php';
 require_once $appRoot . '/src/web_reasoner.php';
 require_once $appRoot . '/src/nearby.php';
@@ -116,6 +117,83 @@ assertCheck(
     && str_contains($coffeeMapResults[0]['address'], 'J.P. Laurel Avenue'),
     'Coffee map results include online-only Starbucks locations with a branch label and mapped address'
 );
+$coffeeAfterBurgerIntent = parseQueryIntent('coffeeshop', [
+    ['role'=>'user', 'content'=>'burger'],
+    ['role'=>'assistant', 'content'=>'Here are some nearby burger places.'],
+]);
+$coffeeAfterBurgerResults = buildNearbyMapResults(
+    [],
+    [
+        ['name'=>'Local Coffee House', 'city'=>'Davao City', 'food_type'=>'cafe', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/211'],
+        ['name'=>'Angel Burger', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/212'],
+    ],
+    7.105,
+    125.635,
+    5.0,
+    'coffeeshop',
+    $coffeeAfterBurgerIntent
+);
+assertCheck(
+    $coffeeAfterBurgerIntent['cuisines'] === ['Coffee']
+    && !str_contains(mb_strtolower($coffeeAfterBurgerIntent['effective_query'], 'UTF-8'), 'burger')
+    && count($coffeeAfterBurgerResults) === 1
+    && $coffeeAfterBurgerResults[0]['name'] === 'Local Coffee House',
+    'A coffeeshop query pivots away from prior burger context and excludes fast-food map results'
+);
+$fastFoodMapPlaces = [
+    ['name'=>'Quick Bites', 'city'=>'Davao City', 'food_type'=>'fast_food', 'district'=>'Poblacion', 'street'=>'Roxas Avenue', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/202'],
+];
+$burgerIntent = parseQueryIntent('burger');
+$chickenIntent = parseQueryIntent('chicken');
+$friesIntent = parseQueryIntent('fries');
+$mixedFriesBurgerIntent = parseQueryIntent('fries and burgers');
+$fastFoodResults = [];
+foreach ([
+    ['burger', $burgerIntent],
+    ['chicken', $chickenIntent],
+    ['fries', $friesIntent],
+] as [$query, $intent]) {
+    $fastFoodResults[$query] = buildNearbyMapResults([], $fastFoodMapPlaces, 7.105, 125.635, 5.0, $query, $intent);
+}
+assertCheck(
+    $friesIntent['specific_dishes'] === ['fries']
+    && nearbyCategoryQueryTerms($burgerIntent) === ['fast food']
+    && nearbyCategoryQueryTerms($chickenIntent) === ['fast food']
+    && nearbyCategoryQueryTerms($friesIntent) === ['fast food']
+    && count($fastFoodResults['burger']) === 1
+    && count($fastFoodResults['chicken']) === 1
+    && count($fastFoodResults['fries']) === 1
+    && buildNearbyMapResults([], $fastFoodMapPlaces, 7.105, 125.635, 5.0, 'salad', parseQueryIntent('salad')) === [],
+    'Near-me burger, chicken, and fries searches include nearby mapped fast-food venues without broadening unrelated food searches'
+);
+assertCheck(
+    nearbyFeatureMatchesRequest(
+        ['name'=>'Fast Fresh', 'food_type'=>'restaurant', 'place_search_query'=>'fast food Davao City'],
+        'fries',
+        $friesIntent
+    ),
+    'Nominatim restaurant results from a fast-food category lookup remain eligible for fries searches'
+);
+$friesCandidates = [
+    ['_id'=>'potato-corner', 'name'=>'Potato Corner - Maa', 'food_type'=>'Fries', 'description'=>'', 'address'=>'Davao City', 'rating'=>4.8, 'review_count'=>100],
+    ['_id'=>'fries-b4-guys', 'name'=>'Fries b4 Guys - Buhangin', 'food_type'=>'Chicken', 'description'=>'', 'address'=>'Davao City', 'rating'=>4.5, 'review_count'=>20],
+    ['_id'=>'unrelated-pizza', 'name'=>'Pizza Place', 'food_type'=>'Pizza', 'description'=>'', 'address'=>'Davao City', 'rating'=>5.0, 'review_count'=>500],
+];
+$rankedFries = shortlistPlaces($friesCandidates, 'fries', 10, $friesIntent);
+$mixedMenuPlaces = shortlistPlaces([
+    $friesCandidates[0],
+    ['_id'=>'burger-king', 'name'=>'Burger King - Davao', 'food_type'=>'Burgers', 'description'=>'', 'address'=>'Davao City', 'rating'=>4.5, 'review_count'=>100],
+    $friesCandidates[2],
+], 'fries burgers', 10, $mixedFriesBurgerIntent);
+assertCheck(
+    $friesIntent['strict_dishes'] === ['fries']
+    && array_column($rankedFries, '_id') === ['potato-corner', 'fries-b4-guys']
+    && $mixedFriesBurgerIntent['strict_dishes'] === []
+    && count($mixedMenuPlaces) === 2
+    && str_contains(expandMenuItemSearchQuery('fries Davao City', $friesIntent), '"Potato Corner"')
+    && str_contains(expandMenuItemSearchQuery('chicken Davao City', $chickenIntent), 'KFC'),
+    'Menu-item searches keep exact fries matches, preserve mixed food searches, and expand Playwright queries with relevant brands'
+);
 $coffeeWebResults = rankNearbyWebPlaces(
     [['name'=>'Starbucks', 'address'=>'Davao City']],
     $starbucksMapPlaces,
@@ -130,6 +208,89 @@ assertCheck(
     'Web-found near-me branches also receive their mapped district and street in the display name'
 );
 assertApprox(nearbyDistanceKm(0.0, 0.0, 0.0, 1.0), 111.195, 0.01, 'Haversine distance uses kilometers');
+$nearbySearchBounds = nearbySearchBounds(7.105, 125.635);
+assertCheck(
+    $nearbySearchBounds['west'] <= 125.635
+    && $nearbySearchBounds['east'] >= 125.635
+    && $nearbySearchBounds['south'] <= 7.105
+    && $nearbySearchBounds['north'] >= 7.105
+    && !isset($nearbySearchBounds['latitude'], $nearbySearchBounds['longitude']),
+    'Local OSM lookup receives rounded bounds instead of raw near-me coordinates'
+);
+$localOsmSnapshot = loadLocalOsmNearbySnapshot($appRoot . '/data/osm-nearby-places.json', $nearbySearchBounds);
+assertCheck(
+    $localOsmSnapshot['place_count'] > 0
+    && $localOsmSnapshot['osm_base_timestamp'] !== ''
+    && count($localOsmSnapshot['places']) > 0
+    && count(array_filter($localOsmSnapshot['places'], 'isValidNearbyMapPlace')) === count($localOsmSnapshot['places']),
+    'Loads Davao OpenStreetMap nearby places locally and filters them to the rounded search bounds'
+);
+$localHalalResults = buildNearbyMapResults(
+    [],
+    $localOsmSnapshot['places'],
+    7.105,
+    125.635,
+    5.0,
+    'halal dishes',
+    parseQueryIntent('halal dishes')
+);
+assertCheck(
+    count($localHalalResults) > 0
+    && count(array_filter($localHalalResults, fn($place) => !empty($place['location_source_url']))) === count($localHalalResults),
+    'Retrieves mapped halal matches from the local OSM index within the exact 5 km radius'
+);
+$localCoffeeResults = buildNearbyMapResults(
+    [],
+    $localOsmSnapshot['places'],
+    7.105,
+    125.635,
+    5.0,
+    'coffeeshop',
+    $coffeeAfterBurgerIntent
+);
+$localBurgerResults = buildNearbyMapResults(
+    [],
+    $localOsmSnapshot['places'],
+    7.105,
+    125.635,
+    5.0,
+    'burger',
+    parseQueryIntent('burger')
+);
+assertCheck(
+    count($localCoffeeResults) > 0
+    && count(array_filter($localCoffeeResults, fn($place) =>
+        preg_match('/\b(?:j&k yogopop|angel\'s burger|chicken namit fried chicken)\b/iu', (string)$place['name']) === 1
+    )) === 0
+    && count($localBurgerResults) > 0,
+    'The local OSM snapshot returns coffee venues for coffeeshop without the reported burger-query matches'
+);
+assertCheck(
+    nearbyFeatureMatchesRequest(
+        ['name'=>'Fast Fresh', 'food_type'=>'fast food'],
+        'fries',
+        ['specific_dishes'=>['fries']]
+    ),
+    'Near-me fries queries accept mapped fast-food venues'
+);
+assertCheck(
+    nearbyFeatureMatchesRequest(
+        ['name'=>'Basilio Halal Restaurant', 'food_type'=>'restaurant'],
+        'halal dishes',
+        []
+    )
+    && !nearbyFeatureMatchesRequest(
+        ['name'=>'Unlabeled Restaurant', 'food_type'=>'restaurant'],
+        'halal dishes',
+        []
+    )
+    && nearbyFeatureMatchesRequest(
+        ['name'=>'Tagged Restaurant', 'food_type'=>'restaurant', 'dietary_tags'=>['halal'=>'yes']],
+        'halal dishes',
+        []
+    ),
+    'Near-me dietary searches require a matching OSM name or dietary tag'
+);
 $brandQueries = nearbyBrandQueryTerms([
     ['name'=>"McDonald's - Davao Bajada"],
     ['name'=>"McDonald's - SPMC"],
@@ -655,6 +816,58 @@ assertCheck(
     && ($chickenDirectoryPlaces[4]['rating'] ?? null) === ''
     && str_contains($chickenDirectoryPlaces[4]['description'], 'does not verify'),
     'Directory matches remain source-linked without invented ratings or menu claims'
+);
+
+$hybridIntent = ['planner_used'=>true];
+$hybridEvidence = [
+    'success'=>true,
+    'browser_used'=>true,
+    'browser_result_count'=>2,
+    'results'=>[['url'=>'https://example.com/davao-food']],
+];
+$hybridStages = ['3_gpt4o_structurer'=>'ok', '4_deepseek_r1_reasoner'=>'ok'];
+assertCheck(
+    hybridPipelineReadyForFinalResponse($hybridIntent, $hybridEvidence, $hybridStages, true),
+    'permits GPT final response only after planner, Playwright, structurer, and DeepSeek R1 stages'
+);
+$hybridStages['4_deepseek_r1_reasoner'] = 'unavailable';
+assertCheck(
+    !hybridPipelineReadyForFinalResponse($hybridIntent, $hybridEvidence, $hybridStages, false),
+    'blocks GPT final response when DeepSeek R1 did not reason successfully'
+);
+$hybridEvidence['browser_used'] = false;
+assertCheck(
+    !hybridPipelineReadyForFinalResponse($hybridIntent, $hybridEvidence, $hybridStages, false),
+    'blocks the final response when retrieval did not run in a Playwright browser'
+);
+assertCheck(
+    shouldAllowLocalDatasetFallback('hybrid', false, 'error')
+    && !shouldAllowLocalDatasetFallback('hybrid', true, 'error')
+    && shouldAllowLocalDatasetFallback('hybrid', true, 'ready'),
+    'shows local fallback for interactive hybrid failures while preserving strict evaluation failures'
+);
+assertCheck(
+    isExpectedHybridReasonerModel('deepseek-r1:8b', 'local_ollama')
+    && !isExpectedHybridReasonerModel('deepseek-r1:1.5b', 'local_ollama')
+    && isExpectedHybridReasonerModel('deepseek-flash', 'hosted_api')
+    && !isExpectedHybridReasonerModel('deepseek-reasoner', 'hosted_api'),
+    'accepts local R1 8B or a supported paid DeepSeek model for the reasoner stage'
+);
+assertCheck(
+    defined('DEEPSEEK_NUM_CTX') && DEEPSEEK_NUM_CTX >= 4096,
+    'uses Ollama default context unless a larger value is explicitly configured'
+);
+$compactReasonerEvidence = buildHybridReasonerEvidence([[
+    'name'=>'Test Burger Place',
+    'description'=>str_repeat('Davao burger evidence ', 20),
+    'source_url'=>'https://example.com/place',
+]]);
+assertCheck(
+    count($compactReasonerEvidence) === 1
+    && strlen($compactReasonerEvidence[0]['description']) <= 180
+    && $compactReasonerEvidence[0]['source_url'] === 'https://example.com/place'
+    && $compactReasonerEvidence[0]['city'] === '',
+    'bounds local reasoner evidence fields while retaining exact source links'
 );
 
 echo "Unit & Integration Suite: {$passed} passed, {$failed} failed.\n";

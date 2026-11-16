@@ -6,3 +6,5 @@ Restaurant CSV columns recognized from the supplied file:
 StoreId, CompleteStoreName, FoodType, AverageRating, Reviewers, City
 Only records whose City contains the phrase "Davao City" are included (e.g. "davao city davao del sur").
 Other optional columns such as address, price range, and description are used when present.
+
+The app also uses osm-nearby-places.json as a locally stored Davao City OpenStreetMap snapshot for Near me searches. Refresh it manually with `node scripts/update-osm-places.js`; live searches read this snapshot and do not call Photon or Nominatim for map locations. The snapshot includes OSM attribution and its source-data timestamp. Refreshing requires internet access; the existing snapshot remains usable if an update fails.

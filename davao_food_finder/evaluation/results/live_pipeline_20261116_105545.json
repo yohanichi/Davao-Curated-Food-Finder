@@ -1,0 +1,245 @@
+{
+    "report_type": "interactive_live_provider_verification",
+    "created_at_utc": "2026-11-16T10:55:45+00:00",
+    "api_endpoint": "local_php_worker",
+    "run_configuration": {
+        "provider": "hybrid",
+        "deepseek_backend_requested": "hosted-api",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 2,
+        "request_successes": 1,
+        "provider_call_successes": 1,
+        "full_live_pipeline_successes": 1
+    },
+    "requests": [
+        {
+            "case_id": "LIVE-001",
+            "query": "fries",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": false,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "fries Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 0,
+                    "browser_search_errors": [
+                        "Bing: no result elements appeared within 1000 ms.",
+                        "Bing: no result elements appeared within 1000 ms.",
+                        "Bing: no result elements appeared within 1000 ms.",
+                        "OpenStreetMap Photon browser fallback: page.goto: Timeout 3500ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/photon.komoot.io\/api\/?q=fries%20Davao%20City%20food&limit=8&lang=en\", waiting until \"commit\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 3500ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=fries%20Davao%20City%20(fries%20OR%20%22french%20fries%22%20OR%20%22Potato%20Corner%22)%20restaurants%20food&kl=ph-en\", waiting until \"commit\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 3500ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=fries%20Davao%20City%20(fries%20OR%20%22french%20fries%22%20OR%20%22Potato%20Corner%22)%20restaurants%20food%20branches%20locations&kl=ph-en\", waiting until \"commit\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 3500ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=fries%20Davao%20City%20(fries%20OR%20%22french%20fries%22%20OR%20%22Potato%20Corner%22)%20restaurants%20food%20customer%20reviews&kl=ph-en\", waiting until \"commit\"\u001b[22m\n",
+                        "OpenStreetMap Photon: request timed out after 5000 ms."
+                    ],
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 10871
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "skipped_no_playwright_evidence",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "backend": "not_run",
+                    "model": null,
+                    "requested_model": null,
+                    "model_matches": false,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "skipped_incomplete_pipeline",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 200,
+            "assistant_status": "error",
+            "final_answer": "Playwright did not return usable live browser evidence; the hybrid pipeline stopped without a fallback response.",
+            "model_used": "hybrid_pipeline_incomplete",
+            "client_latency_ms": 13298,
+            "server_latency_ms": 13200,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 10871,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "not_observed",
+                "iterations": 1,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": false,
+                "status": "one_or_more_stages_failed",
+                "model": "hybrid_pipeline_incomplete"
+            }
+        },
+        {
+            "case_id": "LIVE-002",
+            "query": "burger",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "burger Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 8,
+                    "browser_search_errors": [
+                        "DuckDuckGo: page.goto: Timeout 3500ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants&kl=ph-en\", waiting until \"commit\"\u001b[22m\n",
+                        "OpenStreetMap Photon browser fallback: page.goto: Timeout 3500ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/photon.komoot.io\/api\/?q=burger%20Davao%20City&limit=8&lang=en\", waiting until \"commit\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 3500ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants%20branches%20locations&kl=ph-en\", waiting until \"commit\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 3500ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20(burger%20OR%20burgers%20OR%20hamburger%20OR%20%22Burger%20King%22%20OR%20%22Minute%20Burger%22)%20restaurants%20customer%20reviews&kl=ph-en\", waiting until \"commit\"\u001b[22m\n",
+                        "OpenStreetMap Photon: request timed out after 5000 ms."
+                    ],
+                    "evidence_count": 8,
+                    "source_urls": [
+                        "https:\/\/www.openstreetmap.org\/node\/13271451752",
+                        "https:\/\/www.openstreetmap.org\/node\/6035012949",
+                        "https:\/\/www.openstreetmap.org\/node\/6035020487",
+                        "https:\/\/www.openstreetmap.org\/node\/12006728984",
+                        "https:\/\/www.openstreetmap.org\/node\/13206904819",
+                        "https:\/\/www.openstreetmap.org\/node\/4608976695",
+                        "https:\/\/www.openstreetmap.org\/node\/12035175964",
+                        "https:\/\/www.openstreetmap.org\/node\/5171522406"
+                    ],
+                    "retrieval_time_ms": 5786
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "requested_model": "deepseek-flash",
+                    "model_matches": true,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": true,
+            "execution_class": "full_live_pipeline",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "Here are some great burger spots in Davao City you might want to check out:\n\n1. **Minute Burger** - A popular chain with several branches around the city. You can find them at:\n   - Mount Apo Street, Pelayo, Poblacion District\n   - J. P. Laurel Avenue, Buhangin\n   - Cabantian-Bunawan Road, Country Homes 1, Cabantian\n   - MacArthur Highway, Farland Subdivision Phase 1, Dumoy\n   - Kalye Pogi, Villa Abrille, Ma-a\n\n2. **Bulk Pack Burger Station** - Located at Prosperity Street, NHA, Buhangin, this burger station is known for its tasty offerings.\n\n3. **Dobol Burger** - A local favorite along the Davao-Agusan National Highway in Sasa.\n\n4. **Burger King** - You can find branches at J.P. Laurel and Buhangin, both highly rated for their juicy burgers.\n\n5. **Army Navy** - Located at Abreeza Mall, this spot is great for a sit-down meal or takeout.\n\n6. **Red Corner Burger Cafe** - A well-loved place in Mabini, known for its delicious burgers and even coffee.\n\n7. **Harley's Burgers and Shakes** - Situated on C.M. Recto, this spot is praised for its fresh beef burgers and shakes.\n\n8. **Jollibee** - The Davao Magsaysay branch is also a solid choice for classic burgers.\n\nIf you have a specific area in mind or a budget, let me know, and I can help narrow it down further!",
+            "model_used": "gpt-4o-mini+deepseek-flash",
+            "client_latency_ms": 45685,
+            "server_latency_ms": 45583,
+            "cache_status": "miss",
+            "evidence_count": 8,
+            "source_urls": [
+                "https:\/\/www.openstreetmap.org\/node\/13271451752",
+                "https:\/\/www.openstreetmap.org\/node\/6035012949",
+                "https:\/\/www.openstreetmap.org\/node\/6035020487",
+                "https:\/\/www.openstreetmap.org\/node\/12006728984",
+                "https:\/\/www.openstreetmap.org\/node\/13206904819",
+                "https:\/\/www.openstreetmap.org\/node\/4608976695",
+                "https:\/\/www.openstreetmap.org\/node\/12035175964",
+                "https:\/\/www.openstreetmap.org\/node\/5171522406"
+            ],
+            "retrieval_time_ms": 5786,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": true,
+                "status": "all_five_stages_ok",
+                "model": "gpt-4o-mini+deepseek-flash"
+            }
+        }
+    ]
+}

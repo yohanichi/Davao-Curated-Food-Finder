@@ -1,0 +1,431 @@
+{
+    "report_type": "live_hybrid_agentic_pipeline_verification",
+    "created_at_utc": "2026-11-16T07:38:25+00:00",
+    "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php",
+    "run_configuration": {
+        "provider": "hybrid",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true,
+        "deepseek_backend_requested": "hosted-api",
+        "local_server_started": true,
+        "requested_backend_prerequisite_met": true
+    },
+    "summary": {
+        "requests": 4,
+        "request_successes": 4,
+        "full_live_pipeline_successes": 0,
+        "controlled_violation_detected": 0,
+        "controlled_violation_repaired": 0
+    },
+    "requests": [
+        {
+            "case_id": "japanese_dining",
+            "query": "Affordable Japanese restaurants in Davao City",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "affordable Japanese restaurants Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "cache_status": "miss",
+                    "evidence_count": 12,
+                    "source_urls": [
+                        "https:\/\/www.tripadvisor.com\/Restaurants-g298459-c27-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                        "https:\/\/wanderlog.com\/list\/geoCategory\/54512\/best-japanese-food-and-restaurants-in-davao-city",
+                        "https:\/\/www.tripadvisor.com.ph\/Restaurants-g298459-c27-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                        "https:\/\/www.yelp.com\/search?cflt=japanese&find_loc=Davao+City%2C+Davao+del+Sur",
+                        "https:\/\/www.tripadvisor.com\/Restaurants-g298459-zfp16-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                        "https:\/\/www.facebook.com\/p\/RYUKO-Japanese-Kitchen-100066540802272\/",
+                        "https:\/\/www.yelp.com\/search?find_desc=japanese&find_loc=Davao+City%2C+Davao+del+Sur",
+                        "https:\/\/www.facebook.com\/Zutto.restaurant\/",
+                        "https:\/\/www.sluurpy.com\/en\/davao-city\/restaurants\/japanese",
+                        "https:\/\/restaurantguru.com\/sushi-Davao-City-c98",
+                        "https:\/\/www.hungryfoody.com\/ph\/city-davao-city\/best-japanese-restaurant-davao\/",
+                        "https:\/\/restaurantguru.com\/japanese-ramen-Davao-City-m2197"
+                    ],
+                    "retrieval_time_ms": 2665
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "model_is_deepseek_r1": false
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "partial_or_fallback",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "For affordable Japanese restaurants in Davao City, I recommend checking out RYUKO Japanese Kitchen and Zutto tomodachi Japanese cuisine — both are described as budget-friendly options. From local records, Sukidesu Modern Japanese Cuisine - Aurora stands out with a high rating and many reviews mentioning its affordability, with prices around PHP 200–410. You might also like Kitsune Japanese Restaurant - Matina for generous servings and Ginkaku Japanese Restaurant - Matina, which has good reviews for being sulit. Arhy's Kitchenette and Catering Services - Panorama and Ikigai Japanese Restaurant - Spring Valley are also worth considering, with Ikigai noted for its affordable prices around PHP 175. If you're near a mall, Marugame Udon has branches at SM Lanang and Abreeza Mall, both offering delicious Japanese dishes. Botejyu at SM Lanang Premiere is another option, though it has mixed reviews on affordability, so it's good to check their menu first.",
+            "model_used": "gpt-4o-mini+deepseek-reasoner",
+            "client_latency_ms": 51723,
+            "server_latency_ms": 51700,
+            "cache_status": "miss",
+            "evidence_count": 12,
+            "source_urls": [
+                "https:\/\/www.tripadvisor.com\/Restaurants-g298459-c27-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                "https:\/\/wanderlog.com\/list\/geoCategory\/54512\/best-japanese-food-and-restaurants-in-davao-city",
+                "https:\/\/www.tripadvisor.com.ph\/Restaurants-g298459-c27-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                "https:\/\/www.yelp.com\/search?cflt=japanese&find_loc=Davao+City%2C+Davao+del+Sur",
+                "https:\/\/www.tripadvisor.com\/Restaurants-g298459-zfp16-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                "https:\/\/www.facebook.com\/p\/RYUKO-Japanese-Kitchen-100066540802272\/",
+                "https:\/\/www.yelp.com\/search?find_desc=japanese&find_loc=Davao+City%2C+Davao+del+Sur",
+                "https:\/\/www.facebook.com\/Zutto.restaurant\/",
+                "https:\/\/www.sluurpy.com\/en\/davao-city\/restaurants\/japanese",
+                "https:\/\/restaurantguru.com\/sushi-Davao-City-c98",
+                "https:\/\/www.hungryfoody.com\/ph\/city-davao-city\/best-japanese-restaurant-davao\/",
+                "https:\/\/restaurantguru.com\/japanese-ramen-Davao-City-m2197"
+            ],
+            "retrieval_time_ms": 2665,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false
+        },
+        {
+            "case_id": "study_cafes",
+            "query": "Quiet cafes for studying in Davao City",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "quiet cafes for studying Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "cache_status": "miss",
+                    "evidence_count": 12,
+                    "source_urls": [
+                        "https:\/\/bakasyon.ph\/best-cafes-in-davao-city-wifi-work-spots\/",
+                        "https:\/\/www.facebook.com\/p\/Work-Co-Coworking-and-Study-Cafe-Davao-100088216687786\/",
+                        "https:\/\/southeastasiatoday.com\/philippines\/12-best-cafes-in-davao-city\/",
+                        "https:\/\/www.tripadvisor.com\/Restaurants-g298459-c8-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                        "https:\/\/coffeeshopdavao.com\/study-and-work-cafes-davao\/",
+                        "https:\/\/www.thehiplife.asia\/philippines\/beyond-the-desk-work-friendly-cafes-in-davao-city\/",
+                        "https:\/\/www.facebook.com\/yanashomedavao\/posts\/top-5-chill-caf%C3%A9s-to-work-or-study-in-lanang-davao-city-2025here-are-five-well-r\/122122092338879665\/",
+                        "https:\/\/www.facebook.com\/labelxbyejp\/",
+                        "https:\/\/www.facebook.com\/61568323287191\/",
+                        "https:\/\/homes.ph\/news\/focus-fuel-5-suggested-coffee-shops-in-davao-for-cramming",
+                        "https:\/\/www.yelp.com\/search?find_desc=Cafes+In+Davao&find_loc=Davao+City%2C+Davao+del+Sur",
+                        "https:\/\/homes.ph\/gensan\/restaurant\/focus-fuel-5-suggested-coffee-shops-in-davao-for-cramming"
+                    ],
+                    "retrieval_time_ms": 1671
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "model_is_deepseek_r1": false
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "partial_or_fallback",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "For quiet study cafes in Davao City, I recommend starting with **Work-Co. Coworking and Study Cafe Davao** in Matina — it's purpose-built for quiet, deep-focus work. Another great option is **Qbfy Study Cafe** along Jacinto Extension corner Arellano St., which offers complimentary brewed coffee and a conducive environment for studying. **Cafe Stay** on Maa Road also promotes a quiet corner with no distractions, perfect for uninterrupted work. \n\nFrom local records, **Tomo Kopi SPH** on C. Guzman Street has a verified mention for quiet study and boasts a 5.0 rating from 301 reviews. **Sagul Cafe** in Jacinto is another option with a quiet atmosphere, though it serves Asian cuisine. Lastly, **Outlook Coffee** has been noted for being a good spot for studying, especially for late-night drinks, but I suggest confirming the noise level first.",
+            "model_used": "gpt-4o-mini+deepseek-reasoner",
+            "client_latency_ms": 49770,
+            "server_latency_ms": 49751,
+            "cache_status": "miss",
+            "evidence_count": 12,
+            "source_urls": [
+                "https:\/\/bakasyon.ph\/best-cafes-in-davao-city-wifi-work-spots\/",
+                "https:\/\/www.facebook.com\/p\/Work-Co-Coworking-and-Study-Cafe-Davao-100088216687786\/",
+                "https:\/\/southeastasiatoday.com\/philippines\/12-best-cafes-in-davao-city\/",
+                "https:\/\/www.tripadvisor.com\/Restaurants-g298459-c8-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                "https:\/\/coffeeshopdavao.com\/study-and-work-cafes-davao\/",
+                "https:\/\/www.thehiplife.asia\/philippines\/beyond-the-desk-work-friendly-cafes-in-davao-city\/",
+                "https:\/\/www.facebook.com\/yanashomedavao\/posts\/top-5-chill-caf%C3%A9s-to-work-or-study-in-lanang-davao-city-2025here-are-five-well-r\/122122092338879665\/",
+                "https:\/\/www.facebook.com\/labelxbyejp\/",
+                "https:\/\/www.facebook.com\/61568323287191\/",
+                "https:\/\/homes.ph\/news\/focus-fuel-5-suggested-coffee-shops-in-davao-for-cramming",
+                "https:\/\/www.yelp.com\/search?find_desc=Cafes+In+Davao&find_loc=Davao+City%2C+Davao+del+Sur",
+                "https:\/\/homes.ph\/gensan\/restaurant\/focus-fuel-5-suggested-coffee-shops-in-davao-for-cramming"
+            ],
+            "retrieval_time_ms": 1671,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false
+        },
+        {
+            "case_id": "grilled_chicken",
+            "query": "Where can I get grilled chicken in Davao City?",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "grilled chicken Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "cache_status": "miss",
+                    "evidence_count": 10,
+                    "source_urls": [
+                        "https:\/\/restaurantguru.com\/grilled-chicken-Davao-City-m190",
+                        "https:\/\/restaurantguru.com\/chicken-Davao-City-m4",
+                        "https:\/\/www.yelp.com\/search?find_desc=Barbeque&find_loc=Davao+City%2C+Davao+del+Sur",
+                        "https:\/\/www.tripadvisor.com\/Restaurants-g298459-c6-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                        "https:\/\/www.facebook.com\/ConchingsNativeChicken\/",
+                        "https:\/\/www.facebook.com\/ramonasgrillandrestobar\/",
+                        "https:\/\/www.yelp.com\/search?find_desc=Bbq&find_loc=Davao+City%2C+Davao+del+Sur",
+                        "https:\/\/www.hungryfoody.com\/ph\/city-davao-city\/grill-restaurant\/",
+                        "https:\/\/www.tripadvisor.com.ph\/Restaurants-g298459-c6-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                        "https:\/\/www.hungryfoody.com\/ph\/city-davao-city\/chicken-joint\/"
+                    ],
+                    "retrieval_time_ms": 1840
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "model_is_deepseek_r1": false
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "partial_or_fallback",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "For grilled chicken in Davao City, start with **Conching's Native Chicken** for authentically grilled native chicken, and **Ramona's Grill & Restobar** for fire-grilled chicken. If you're looking for a budget-friendly chicken-inasal option, **Mang Inasal** at GMall Davao and GMall Toril are also solid local picks. I focused on places that specifically serve grilled chicken, so I left out generic BBQ listings and fried\/roasted chicken chains.",
+            "model_used": "gpt-4o-mini+deepseek-reasoner",
+            "client_latency_ms": 51095,
+            "server_latency_ms": 51077,
+            "cache_status": "miss",
+            "evidence_count": 10,
+            "source_urls": [
+                "https:\/\/restaurantguru.com\/grilled-chicken-Davao-City-m190",
+                "https:\/\/restaurantguru.com\/chicken-Davao-City-m4",
+                "https:\/\/www.yelp.com\/search?find_desc=Barbeque&find_loc=Davao+City%2C+Davao+del+Sur",
+                "https:\/\/www.tripadvisor.com\/Restaurants-g298459-c6-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                "https:\/\/www.facebook.com\/ConchingsNativeChicken\/",
+                "https:\/\/www.facebook.com\/ramonasgrillandrestobar\/",
+                "https:\/\/www.yelp.com\/search?find_desc=Bbq&find_loc=Davao+City%2C+Davao+del+Sur",
+                "https:\/\/www.hungryfoody.com\/ph\/city-davao-city\/grill-restaurant\/",
+                "https:\/\/www.tripadvisor.com.ph\/Restaurants-g298459-c6-Davao_City_Davao_del_Sur_Province_Mindanao.html",
+                "https:\/\/www.hungryfoody.com\/ph\/city-davao-city\/chicken-joint\/"
+            ],
+            "retrieval_time_ms": 1840,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 2,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": true,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false
+        },
+        {
+            "case_id": "price_ceiling_violation",
+            "query": "Find Japanese restaurants in Davao City with a full meal under ₱1 per person",
+            "controlled_violation_case": true,
+            "controlled_violation_expected": true,
+            "controlled_violation_status": "not_detected",
+            "controlled_violation_detected": false,
+            "controlled_violation_repaired": false,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "Japanese restaurants Davao City full meal under 1"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 27010
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "model_is_deepseek_r1": false
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "partial_or_fallback",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "I can’t verify any Japanese restaurant in Davao City offering a full meal for under ₱1 per person. The available Davao Japanese restaurant records show meal prices well above ₱1, and no online evidence returned a matching venue. Please confirm if you meant a higher budget such as under ₱100, ₱500, or ₱1,000, and I can recommend verified Japanese options that fit.",
+            "model_used": "gpt-4o-mini+deepseek-reasoner",
+            "client_latency_ms": 44574,
+            "server_latency_ms": 44500,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 27010,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false
+        }
+    ]
+}

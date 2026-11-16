@@ -2,17 +2,21 @@
 declare(strict_types=1);
 
 /**
- * Controlled Temporal & Counterfactual Data Volatility Experiment Runner (Objective 1).
+ * Interactive live-pipeline verification runner, with the controlled volatility benchmark available on request.
  *
- * Compares:
+ * Default mode asks for live user requests and verifies the actual hybrid pipeline.
+ * The optional controlled benchmark compares:
  *   1. STATIC-BASELINE        : Static 2025 CSV retrieval (no web reconciliation)
  *   2. STALE-CACHE-12H        : Agentic pipeline reading an outdated (>12h) pre-change cached web snapshot
  *   3. ABLATION-NO-LOOP-FRESH : Single-pass retrieval + fresh web snapshot WITHOUT Pass 2 autonomous critique/repair
  *   4. AGENTIC-LOOP-FRESH     : Full 2-pass Autonomous Iterative Critique-and-Refinement Loop + fresh web snapshot
  *
  * Usage:
- *   php evaluation/run_volatility_experiment.php --local-cli
- *   php evaluation/run_volatility_experiment.php --api-url=http://127.0.0.1:8080/api.php
+ *   php evaluation/run_volatility_experiment.php --local-cli --live-provider=hybrid
+ *   php evaluation/run_volatility_experiment.php --local-cli --live-provider=deepseek
+ *   php evaluation/run_volatility_experiment.php --local-cli --live-provider=gpt-4o-mini
+ *   DeepSeek defaults to the paid DeepSeek API (deepseek-flash); local Ollama is opt-in.
+ *   php evaluation/run_volatility_experiment.php --controlled-scenarios --local-cli
  */
 
 $appRoot = dirname(__DIR__);
@@ -20,6 +24,7 @@ require_once $appRoot . '/vendor/autoload.php';
 require_once $appRoot . '/src/search.php';
 require_once __DIR__ . '/statistics.php';
 require_once __DIR__ . '/metrics.php';
+require_once __DIR__ . '/run_live_pipeline_verification.php';
 
 function failVol(string $msg): never {
     fwrite(STDERR, "Error: {$msg}\n");
@@ -29,13 +34,18 @@ function failVol(string $msg): never {
 $apiUrl = 'http://127.0.0.1:8080/api.php';
 $localCli = false;
 $noSave = false;
+$controlledScenarios = false;
 $extraLiveProvider = '';
+$deepseekBackend = 'hosted-api';
+$deepseekBackendOptionSet = false;
 $casesPath = __DIR__ . '/volatility_cases.json';
 
 foreach (array_slice($argv, 1) as $arg) {
     if ($arg === '--local-cli') {
         $localCli = true;
         $apiUrl = 'local';
+    } elseif ($arg === '--controlled-scenarios') {
+        $controlledScenarios = true;
     } elseif ($arg === '--no-save') {
         $noSave = true;
     } elseif (str_starts_with($arg, '--api-url=')) {
@@ -46,11 +56,33 @@ foreach (array_slice($argv, 1) as $arg) {
         }
     } elseif (str_starts_with($arg, '--live-provider=')) {
         $extraLiveProvider = strtolower(trim(substr($arg, strlen('--live-provider='))));
+        if (!in_array($extraLiveProvider, ['deepseek', 'gpt-4o-mini', 'hybrid'], true)) {
+            failVol('--live-provider must be deepseek, gpt-4o-mini, or hybrid.');
+        }
+    } elseif (str_starts_with($arg, '--deepseek-backend=')) {
+        $deepseekBackend = strtolower(trim(substr($arg, strlen('--deepseek-backend='))));
+        $deepseekBackendOptionSet = true;
+        if (!in_array($deepseekBackend, ['local-ollama', 'hosted-api'], true)) {
+            failVol('--deepseek-backend must be local-ollama or hosted-api.');
+        }
     } elseif (str_starts_with($arg, '--cases=')) {
         $casesPath = substr($arg, strlen('--cases='));
     } else {
-        failVol("Unknown option {$arg}. Supported: --local-cli, --api-url=URL, --live-provider=deepseek|gpt-4o-mini|hybrid, --cases=PATH, --no-save");
+        failVol("Unknown option {$arg}. Supported: --local-cli, --api-url=URL, --controlled-scenarios, --live-provider=deepseek|gpt-4o-mini|hybrid, --deepseek-backend=local-ollama|hosted-api, --cases=PATH, --no-save");
     }
+}
+
+if (!$controlledScenarios) {
+    $liveProvider = $extraLiveProvider !== '' ? $extraLiveProvider : 'hybrid';
+    if (!in_array($liveProvider, ['deepseek', 'gpt-4o-mini', 'hybrid'], true)) {
+        failVol('--live-provider must be deepseek, gpt-4o-mini, or hybrid.');
+    }
+    runInteractiveLiveRequests($apiUrl, $liveProvider, $deepseekBackend, $noSave);
+    exit(0);
+}
+
+if ($extraLiveProvider !== '' || $deepseekBackendOptionSet) {
+    failVol('--live-provider and --deepseek-backend are for interactive live requests; do not combine them with --controlled-scenarios.');
 }
 
 if (!is_file($casesPath)) {
@@ -63,13 +95,23 @@ if (!$scenarios) {
     failVol('No volatility scenarios found in volatility_cases.json.');
 }
 
-function sendVolatilityApiRequest(string $apiUrl, string $query, string $provider, bool $agentic, ?array $evidenceOverride): array {
+function sendVolatilityApiRequest(
+    string $apiUrl,
+    string $query,
+    string $provider,
+    bool $agentic,
+    ?array $evidenceOverride,
+    string $cachePolicy = 'none',
+    string $promptStyle = 'strict_grounding',
+    string $deepseekBackend = 'auto'
+): array {
     $evalBlock = [
         'provider'=>$provider,
         'temperature'=>0.0,
-        'promptStyle'=>'strict_grounding',
+        'promptStyle'=>$promptStyle,
         'agentic'=>$agentic,
-        'cachePolicy'=>'none',
+        'iterativeLoop'=>$agentic && !in_array($provider, ['ablation-no-loop', 'baseline', 'non-agentic'], true),
+        'cachePolicy'=>$cachePolicy,
         'seed'=>42,
     ];
     if ($evidenceOverride !== null) {
@@ -86,12 +128,13 @@ function sendVolatilityApiRequest(string $apiUrl, string $query, string $provide
     if ($apiUrl === 'local') {
         $apiFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'api.php';
         $phpBin = PHP_BINARY ?: 'php';
-        $runnerCode = '$_SERVER["REQUEST_METHOD"]="POST"; $_SERVER["REMOTE_ADDR"]="127.0.0.1"; chdir(' . var_export(dirname($apiFile), true) . '); require ' . var_export($apiFile, true) . ';';
+        $runnerCode = '$_SERVER["REQUEST_METHOD"]="POST"; $_SERVER["REMOTE_ADDR"]="127.0.0.1"; $_SERVER["HTTP_X_DFF_DEEPSEEK_BACKEND"]=' . var_export($deepseekBackend, true) . '; chdir(' . var_export(dirname($apiFile), true) . '); require ' . var_export($apiFile, true) . ';';
+        $runnerCode .= 'fwrite(STDERR, "\n__HTTP_STATUS__" . (http_response_code() ?: 200));';
         $started = microtime(true);
         $pipes = [];
         $proc = proc_open([$phpBin, '-r', $runnerCode], [0=>['pipe', 'r'], 1=>['pipe', 'w'], 2=>['pipe', 'w']], $pipes);
         if (!is_resource($proc)) {
-            return ['latency'=>0.0, 'failure'=>'Could not start local PHP process', 'data'=>null];
+            return ['latency'=>0.0, 'failure'=>'Could not start local PHP process', 'http_status'=>0, 'error_category'=>'local_worker_start_failed', 'data'=>null, 'api_url'=>$apiUrl];
         }
         fwrite($pipes[0], $body);
         fclose($pipes[0]);
@@ -101,32 +144,286 @@ function sendVolatilityApiRequest(string $apiUrl, string $query, string $provide
         fclose($pipes[2]);
         $exit = proc_close($proc);
         $latency = microtime(true) - $started;
-        $decoded = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
-        if (!is_array($decoded) || $exit !== 0) {
-            return ['latency'=>$latency, 'failure'=>'Local worker error: ' . trim((string)$stderr), 'data'=>$decoded];
+        $httpStatus = 0;
+        if (preg_match('/\n__HTTP_STATUS__(\d+)\s*$/', (string)$stderr, $statusMatch)) {
+            $httpStatus = (int)$statusMatch[1];
+            $stderr = preg_replace('/\n__HTTP_STATUS__\d+\s*$/', '', (string)$stderr) ?? (string)$stderr;
         }
-        return ['latency'=>$latency, 'failure'=>null, 'data'=>$decoded];
+        $decoded = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
+        if (!is_array($decoded) || $exit !== 0 || $httpStatus < 200 || $httpStatus >= 300) {
+            $category = $httpStatus > 0 ? 'http_status_' . $httpStatus : 'local_worker_error';
+            return ['latency'=>$latency, 'failure'=>'Local worker error: ' . trim((string)$stderr), 'http_status'=>$httpStatus, 'error_category'=>$category, 'data'=>$decoded, 'api_url'=>$apiUrl];
+        }
+        return ['latency'=>$latency, 'failure'=>null, 'http_status'=>$httpStatus, 'error_category'=>null, 'data'=>$decoded, 'api_url'=>$apiUrl];
     }
 
+    if (!function_exists('curl_init')) {
+        return ['latency'=>0.0, 'failure'=>'The PHP curl extension is unavailable.', 'http_status'=>0, 'error_category'=>'curl_extension_unavailable', 'data'=>null, 'api_url'=>$apiUrl];
+    }
     $ch = curl_init($apiUrl);
+    $headers = ['Content-Type: application/json'];
+    if (in_array($deepseekBackend, ['local-ollama', 'hosted-api'], true)) {
+        $headers[] = 'X-DFF-DeepSeek-Backend: ' . $deepseekBackend;
+    }
     curl_setopt_array($ch, [
         CURLOPT_POST=>true,
-        CURLOPT_HTTPHEADER=>['Content-Type: application/json'],
+        CURLOPT_HTTPHEADER=>$headers,
         CURLOPT_POSTFIELDS=>$body,
         CURLOPT_RETURNTRANSFER=>true,
-        CURLOPT_TIMEOUT=>90,
+        CURLOPT_CONNECTTIMEOUT=>10,
+        CURLOPT_TIMEOUT=>300,
     ]);
     $started = microtime(true);
     $raw = curl_exec($ch);
     $latency = microtime(true) - $started;
     $http = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $err = curl_error($ch);
+    $curlErrno = curl_errno($ch);
     curl_close($ch);
     $decoded = is_string($raw) ? json_decode($raw, true) : null;
-    if (!is_array($decoded) || $http < 200 || $http >= 300) {
-        return ['latency'=>$latency, 'failure'=>$err !== '' ? $err : "HTTP {$http}", 'data'=>$decoded];
+    if (!is_array($decoded) || $curlErrno !== 0 || $http < 200 || $http >= 300) {
+        $category = $curlErrno !== 0 ? 'api_unreachable_or_timeout' : ($http > 0 ? 'http_status_' . $http : 'invalid_json_response');
+        return ['latency'=>$latency, 'failure'=>$err !== '' ? $err : "HTTP {$http}", 'http_status'=>$http, 'error_category'=>$category, 'data'=>$decoded, 'api_url'=>$apiUrl];
     }
-    return ['latency'=>$latency, 'failure'=>null, 'data'=>$decoded];
+    return ['latency'=>$latency, 'failure'=>null, 'http_status'=>$http, 'error_category'=>null, 'data'=>$decoded, 'api_url'=>$apiUrl];
+}
+
+function printLiveRequestResult(array $record): void {
+    echo 'Request: ' . $record['query'] . "\n";
+    foreach ($record['stages'] as $name => $stage) {
+        $status = str_starts_with((string)($stage['status'] ?? ''), 'not_run_')
+            ? 'N/A'
+            : ($stage['succeeded'] ? 'PASS' : 'FAIL');
+        $details = (string)($stage['status'] ?? 'not_reported');
+        if ($name === '2_playwright_retrieval') {
+            $details .= ', cache=' . ($stage['cache_status'] ?? 'unknown')
+                . ', browser=' . (!empty($stage['browser_used']) ? 'used' : 'not-used')
+                . ', evidence=' . (int)($stage['evidence_count'] ?? 0)
+                . ', browser-results=' . (int)($stage['browser_result_count'] ?? 0)
+                . ', sources=' . count($stage['source_urls'] ?? []);
+            if (!empty($stage['browser_search_errors'][0])) {
+                $details .= ', browser-error=' . $stage['browser_search_errors'][0];
+            }
+        } elseif ($name === '4_deepseek_r1_reasoner') {
+            $details .= ', backend=' . ($stage['backend'] ?? 'not_run')
+                . ', model=' . ($stage['model'] ?? 'unknown')
+                . ', requested_model=' . ($stage['requested_model'] ?? 'unknown')
+                . ', model_ok=' . (!empty($stage['model_matches']) ? 'yes' : 'no');
+            if (!empty($stage['error'])) {
+                $details .= ', error=' . mb_substr(str_replace(["\r", "\n"], ' ', (string)$stage['error']), 0, 240);
+            }
+        } elseif ($name === '1_gpt4o_mini_planner' && !empty($stage['planned_query'])) {
+            $details .= ', planned_query=' . $stage['planned_query'];
+        } elseif ($name === 'provider_llm_call') {
+            $details .= ', provider=' . ($stage['provider'] ?? 'unknown')
+                . ', model=' . ($stage['model'] ?? 'unknown');
+        } elseif (isset($stage['model'])) {
+            $details .= ', model=' . ($stage['model'] ?? 'unknown');
+        }
+        $displayName = $name === '4_deepseek_r1_reasoner' ? '4_deepseek_reasoner' : $name;
+        printf("  [%s] %s (%s)\n", $status, $displayName, $details);
+    }
+    echo '  Selected provider call: ' . ($record['provider_call']['succeeded'] ? 'PASS' : 'FAIL') . "\n";
+    echo '  Overall: ' . ($record['all_five_stages_succeeded_on_live_request'] ? 'FULL LIVE PIPELINE' : ($record['request_success'] ? 'NOT A FULL FIVE-STAGE RUN' : 'FAILED REQUEST')) . "\n";
+    if ($record['error_category'] !== null) {
+        echo '  Request error: ' . $record['error_category'] . "\n";
+    }
+}
+
+function buildLiveProviderRequestResult(string $provider, string $query, array $response, float $clientLatencyMs, string $deepseekBackend): array {
+    $case = ['id'=>sprintf('LIVE-%03d', 1), 'query'=>$query, 'controlled_violation'=>false];
+    if ($provider === 'hybrid') {
+        $record = livePipelineBuildResult($case, $response, $clientLatencyMs, ['deepseek_backend'=>$deepseekBackend]);
+        $record['provider'] = $provider;
+        $record['provider_call'] = [
+            'provider'=>$provider,
+            'succeeded'=>$record['all_five_stages_succeeded_on_live_request'],
+            'status'=>$record['all_five_stages_succeeded_on_live_request'] ? 'all_five_stages_ok' : 'one_or_more_stages_failed',
+            'model'=>$record['model_used'] !== '' ? $record['model_used'] : null,
+        ];
+        return $record;
+    }
+
+    $data = is_array($response['data'] ?? null) ? $response['data'] : [];
+    $metrics = is_array($data['metrics'] ?? null) ? $data['metrics'] : [];
+    $stageResults = livePipelineStageResults($data);
+    $requestSuccess = (int)($response['http_status'] ?? 0) >= 200
+        && (int)($response['http_status'] ?? 0) < 300
+        && ($data['assistantStatus'] ?? '') === 'ready'
+        && trim((string)($data['answer'] ?? '')) !== '';
+    $providerCall = liveProviderCallEvidence($provider, $metrics, $requestSuccess, $deepseekBackend);
+    if ($provider === 'deepseek') {
+        $stages = [
+            '1_gpt4o_mini_planner'=>['succeeded'=>false, 'status'=>'not_run_by_selected_provider'],
+            '2_playwright_retrieval'=>$stageResults['2_playwright_retrieval'],
+            '3_gpt4o_mini_evidence_structurer'=>['succeeded'=>false, 'status'=>'not_run_by_selected_provider'],
+            '4_deepseek_r1_reasoner'=>[
+                'succeeded'=>$providerCall['succeeded'],
+                'status'=>$providerCall['status'],
+                'backend'=>$providerCall['backend'],
+                'model'=>$providerCall['model'],
+                'model_matches'=>$providerCall['model_matches'],
+            ],
+            '5_gpt4o_mini_final_response'=>['succeeded'=>false, 'status'=>'not_run_by_selected_provider'],
+        ];
+    } else {
+        $stages = [
+            '1_gpt4o_mini_planner'=>['succeeded'=>false, 'status'=>'not_run_by_selected_provider'],
+            '2_playwright_retrieval'=>$stageResults['2_playwright_retrieval'],
+            '3_gpt4o_mini_evidence_structurer'=>['succeeded'=>false, 'status'=>'not_run_by_selected_provider'],
+            '4_deepseek_r1_reasoner'=>['succeeded'=>false, 'status'=>'not_run_by_selected_provider'],
+            '5_gpt4o_mini_final_response'=>['succeeded'=>false, 'status'=>'not_run_by_selected_provider'],
+        ];
+    }
+    $stages['provider_llm_call'] = $providerCall;
+
+    return [
+        'case_id'=>'LIVE-001',
+        'query'=>$query,
+        'provider'=>$provider,
+        'stages'=>$stages,
+        'provider_call'=>$providerCall,
+        'request_success'=>$requestSuccess,
+        'all_five_stages_succeeded_on_live_request'=>false,
+        'execution_class'=>$providerCall['succeeded']
+            ? 'live_agentic_single_provider'
+            : ($requestSuccess ? 'partial_or_fallback' : 'failed_request'),
+        'http_status'=>(int)($response['http_status'] ?? 0),
+        'error_category'=>$response['error_category'] ?? null,
+        'assistant_status'=>(string)($data['assistantStatus'] ?? 'unavailable'),
+        'final_answer'=>(string)($data['answer'] ?? ''),
+        'model_used'=>(string)($data['modelUsed'] ?? ''),
+        'client_latency_ms'=>(int)round($clientLatencyMs),
+        'server_latency_ms'=>(int)($metrics['total_latency_ms'] ?? 0),
+        'cache_status'=>(string)($metrics['playwright']['cache'] ?? 'unknown'),
+        'evidence_count'=>(int)($metrics['playwright']['result_count'] ?? 0),
+        'source_urls'=>$stageResults['2_playwright_retrieval']['source_urls'],
+    ];
+}
+
+function runInteractiveLiveRequests(string $apiUrl, string $provider, string $deepseekBackend, bool $noSave): void {
+    $records = [];
+    echo "Live {$provider} verification. Enter a request; submit an empty line to finish.\n";
+    echo "Requests use agentic refinement and a live Playwright cache bypass.\n";
+    echo 'DeepSeek backend: ' . ($deepseekBackend === 'local-ollama'
+        ? 'local Ollama (deepseek-r1:8b)'
+        : 'paid API (' . DEEPSEEK_API_MODEL . ')') . "\n";
+
+    while (true) {
+        printf("Live request #%d (blank to finish): ", count($records) + 1);
+        $line = fgets(STDIN);
+        if ($line === false) break;
+        $query = trim($line);
+        if ($query === '') break;
+        if (mb_strlen($query) > 300) {
+            fwrite(STDERR, "Request must be 300 characters or fewer; it was not sent.\n");
+            continue;
+        }
+
+        $response = sendVolatilityApiRequest($apiUrl, $query, $provider, true, null, 'bypass', 'baseline', $deepseekBackend);
+        $response['error_category'] = $response['error_category']
+            ?? ($response['failure'] !== null ? 'request_failed' : null);
+        $record = buildLiveProviderRequestResult(
+            $provider,
+            $query,
+            $response,
+            (float)$response['latency'] * 1000,
+            $deepseekBackend
+        );
+        $record['case_id'] = sprintf('LIVE-%03d', count($records) + 1);
+        $records[] = $record;
+        printLiveRequestResult($record);
+    }
+
+    if (!$records) {
+        echo "No live requests were submitted; no report was written.\n";
+        return;
+    }
+
+    $fullPipelineCount = count(array_filter(
+        $records,
+        static fn(array $record): bool => $record['all_five_stages_succeeded_on_live_request']
+    ));
+    $providerCallCount = count(array_filter(
+        $records,
+        static fn(array $record): bool => $record['provider_call']['succeeded']
+    ));
+    echo "\nSelected-provider call successes: {$providerCallCount}/" . count($records) . "\n";
+    if ($provider === 'hybrid') {
+        echo "Full five-stage pipeline successes: {$fullPipelineCount}/" . count($records) . "\n";
+    }
+    if ($noSave) {
+        echo "Report saving disabled by --no-save.\n";
+        return;
+    }
+
+    $resultsDir = __DIR__ . DIRECTORY_SEPARATOR . 'results';
+    if (!is_dir($resultsDir) && !mkdir($resultsDir, 0775, true) && !is_dir($resultsDir)) {
+        failVol('Could not create the live pipeline report directory.');
+    }
+    $stamp = gmdate('Ymd_His');
+    $basePath = $resultsDir . DIRECTORY_SEPARATOR . "live_pipeline_{$stamp}";
+    $report = [
+        'report_type'=>'interactive_live_provider_verification',
+        'created_at_utc'=>gmdate('c'),
+        'api_endpoint'=>$apiUrl === 'local' ? 'local_php_worker' : livePipelineSafeUrl($apiUrl),
+        'run_configuration'=>[
+            'provider'=>$provider,
+            'deepseek_backend_requested'=>$deepseekBackend,
+            'agentic_refinement_enabled'=>true,
+            'iterative_loop_enabled'=>true,
+            'playwright_cache_policy'=>'bypass',
+            'evidence_override_used'=>false,
+            'requests_are_direct_api_posts'=>true,
+        ],
+        'summary'=>[
+            'requests'=>count($records),
+            'request_successes'=>count(array_filter($records, static fn(array $record): bool => $record['request_success'])),
+            'provider_call_successes'=>$providerCallCount,
+            'full_live_pipeline_successes'=>$fullPipelineCount,
+        ],
+        'requests'=>$records,
+    ];
+    $json = json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    if ($json === false || file_put_contents($basePath . '.json', $json . PHP_EOL, LOCK_EX) === false) {
+        failVol('Could not write the live pipeline JSON report.');
+    }
+    $csv = fopen($basePath . '.csv', 'wb');
+    if ($csv === false) failVol('Could not write the live pipeline CSV report.');
+    fputcsv($csv, [
+        'request_id', 'query', 'provider', 'request_success', 'provider_call_success', 'all_five_stages_succeeded',
+        'stage_1_planner', 'stage_2_playwright', 'stage_3_structurer', 'stage_4_deepseek', 'stage_5_final',
+        'stage_details', 'execution_class', 'cache_status', 'deepseek_backend', 'deepseek_model',
+    ]);
+    foreach ($records as $record) {
+        $stageSuccess = [];
+        foreach ($record['stages'] as $name => $stage) {
+            $stageSuccess[$name] = str_starts_with((string)($stage['status'] ?? ''), 'not_run_')
+                ? 'not_applicable'
+                : ($stage['succeeded'] ? 'true' : 'false');
+        }
+        fputcsv($csv, [
+            $record['case_id'],
+            $record['query'],
+            $record['provider'],
+            $record['request_success'] ? 'true' : 'false',
+            $record['provider_call']['succeeded'] ? 'true' : 'false',
+            $record['all_five_stages_succeeded_on_live_request'] ? 'true' : 'false',
+            $stageSuccess['1_gpt4o_mini_planner'],
+            $stageSuccess['2_playwright_retrieval'],
+            $stageSuccess['3_gpt4o_mini_evidence_structurer'],
+            $stageSuccess['4_deepseek_r1_reasoner'],
+            $stageSuccess['5_gpt4o_mini_final_response'],
+            json_encode($record['stages'], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+            $record['execution_class'],
+            $record['cache_status'],
+            $record['stages']['4_deepseek_r1_reasoner']['backend'] ?? '',
+            $record['stages']['4_deepseek_r1_reasoner']['model'] ?? '',
+        ]);
+    }
+    fclose($csv);
+    echo 'Saved live pipeline JSON: ' . $basePath . ".json\n";
+    echo 'Saved live pipeline CSV : ' . $basePath . ".csv\n";
 }
 
 $conditions = [
@@ -159,16 +456,6 @@ $conditions = [
         'description'=>'Full 2-pass Autonomous Iterative Critique-and-Refinement Loop with fresh web evidence',
     ],
 ];
-
-if ($extraLiveProvider !== '' && in_array($extraLiveProvider, ['deepseek', 'gpt-4o-mini', 'hybrid'], true)) {
-    $conditions[] = [
-        'id'=>strtoupper($extraLiveProvider) . '-LOOP-FRESH',
-        'provider'=>$extraLiveProvider,
-        'agentic'=>true,
-        'evidence_mode'=>'fresh',
-        'description'=>"Live LLM ({$extraLiveProvider}) + 2-pass Autonomous Iterative Loop with fresh web evidence",
-    ];
-}
 
 $startedIso = gmdate('c');
 echo "====================================================================================================================\n";
@@ -418,4 +705,5 @@ if (!$noSave) {
     echo "\nSaved volatility experiment JSON: {$latestPath}\n";
     echo "Saved volatility summary CSV   : {$csvPath}\n";
 }
+
 

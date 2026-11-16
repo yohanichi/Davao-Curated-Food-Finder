@@ -647,13 +647,13 @@ function sendSingleApiRequestOnce(string $apiUrl, string $query, array $history,
                 'not_configured' => match ($provider) {
                     'gpt-4o-mini', 'hybrid' => 'OpenAI is not configured: set OPENAI_API_KEY on the PHP server.',
                     'deepseek-api' => 'DeepSeek API is not configured: set DEEPSEEK_API_KEY on the PHP server.',
-                    default => 'DeepSeek R1 is not configured: run Ollama or set DEEPSEEK_API_KEY.',
+                    default => 'DeepSeek API is not configured: set DEEPSEEK_API_KEY on the PHP server.',
                 },
                 'error' => match ($provider) {
                     'gpt-4o-mini' => 'GPT-4o mini pipeline failed; check the PHP server error log.',
                     'hybrid' => 'Hybrid pipeline failed; check the PHP server error log.',
                     'deepseek-api' => 'DeepSeek API failed; check the PHP server error log.',
-                    default => 'DeepSeek R1 failed; check Ollama or PHP server error log.',
+                    default => 'DeepSeek API failed; check the PHP server error log.',
                 },
                 default => 'The API did not report a ready response.',
             };
@@ -820,7 +820,7 @@ try {
     $allScopeCases = $validatedGt['scope_cases'];
     $sourceManifest = buildSourceTreeManifest($appRoot);
     $promptVersionHashes = buildPromptVersionHashes($sourceManifest['files']);
-    $deepSeekBackend = DEEPSEEK_API_KEY !== '' ? 'hosted' : 'ollama';
+    $deepSeekBackend = DEEPSEEK_BACKEND === 'hosted_api' ? 'hosted' : 'ollama';
     $modelPricing = [
         'deepseek_local'=>[
             'model'=>DEEPSEEK_MODEL,

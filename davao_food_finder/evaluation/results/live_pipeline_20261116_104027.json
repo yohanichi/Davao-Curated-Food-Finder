@@ -1,0 +1,139 @@
+{
+    "report_type": "interactive_live_provider_verification",
+    "created_at_utc": "2026-11-16T10:40:27+00:00",
+    "api_endpoint": "local_php_worker",
+    "run_configuration": {
+        "provider": "hybrid",
+        "deepseek_backend_requested": "hosted-api",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 1,
+        "request_successes": 1,
+        "provider_call_successes": 1,
+        "full_live_pipeline_successes": 1
+    },
+    "requests": [
+        {
+            "case_id": "LIVE-001",
+            "query": "burger",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "burger Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 7,
+                    "browser_search_errors": [
+                        "DuckDuckGo: no result elements appeared within 1000 ms.",
+                        "DuckDuckGo: no result elements appeared within 1000 ms.",
+                        "DuckDuckGo: no result elements appeared within 1000 ms.",
+                        "OpenStreetMap Photon browser fallback: page.goto: Timeout 3500ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/photon.komoot.io\/api\/?q=burger%20Davao%20City&limit=8&lang=en\", waiting until \"commit\"\u001b[22m\n",
+                        "OpenStreetMap Photon: request timed out after 5000 ms."
+                    ],
+                    "evidence_count": 7,
+                    "source_urls": [
+                        "https:\/\/www.openstreetmap.org\/node\/13271451752",
+                        "https:\/\/www.openstreetmap.org\/node\/6035012949",
+                        "https:\/\/www.openstreetmap.org\/node\/6035020487",
+                        "https:\/\/www.openstreetmap.org\/node\/12006728984",
+                        "https:\/\/www.openstreetmap.org\/node\/13206904819",
+                        "https:\/\/www.openstreetmap.org\/node\/4608976695",
+                        "https:\/\/www.openstreetmap.org\/node\/12035175964"
+                    ],
+                    "retrieval_time_ms": 6399
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "requested_model": "deepseek-flash",
+                    "model_matches": true,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": true,
+            "execution_class": "full_live_pipeline",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "Here are some great burger spots in Davao City:\n\n1. **Burger King - J.P. Laurel Davao**  \n   ⭐ 5.0 | ~12,971 reviews  \n   A favorite for juicy burgers, known for fast service.  \n   \n2. **Burger King - Buhangin Davao**  \n   ⭐ 5.0 | ~9,875 reviews  \n   Fresh and warm delivery, highly rated for quality.  \n   \n3. **Army Navy - Abreeza Mall**  \n   ⭐ 5.0 | ~3,668 reviews  \n   Popular for their burgers and casual dining experience.  \n   \n4. **Red Corner Burger Cafe - Mabini**  \n   ⭐ 5.0 | ~906 reviews  \n   A go-to place for delicious burgers and even coffee!  \n   \n5. **Jollibee - Davao Magsaysay**  \n   ⭐ 5.0 | ~1,182 reviews  \n   Fast and tasty burgers, loved by many locals.  \n   \n6. **Harley's Burgers and Shakes - C.M Recto**  \n   ⭐ 4.9 | ~510 reviews  \n   Known for fresh beef burgers and delightful shakes.  \n   \nFor quick and budget-friendly options, you can also check out:\n- **Minute Burger** branches (Poblacion, Buhangin, Cabantian, Dumoy)  \n- **Bulk Pack Burger Station** (Buhangin and Poblacion)  \n- **Dobol Burger** in Sasa  \n\nLet me know if you have a specific area or budget in mind, and I can help narrow it down further!",
+            "model_used": "gpt-4o-mini+deepseek-flash",
+            "client_latency_ms": 46180,
+            "server_latency_ms": 46037,
+            "cache_status": "miss",
+            "evidence_count": 7,
+            "source_urls": [
+                "https:\/\/www.openstreetmap.org\/node\/13271451752",
+                "https:\/\/www.openstreetmap.org\/node\/6035012949",
+                "https:\/\/www.openstreetmap.org\/node\/6035020487",
+                "https:\/\/www.openstreetmap.org\/node\/12006728984",
+                "https:\/\/www.openstreetmap.org\/node\/13206904819",
+                "https:\/\/www.openstreetmap.org\/node\/4608976695",
+                "https:\/\/www.openstreetmap.org\/node\/12035175964"
+            ],
+            "retrieval_time_ms": 6399,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": true,
+                "status": "all_five_stages_ok",
+                "model": "gpt-4o-mini+deepseek-flash"
+            }
+        }
+    ]
+}

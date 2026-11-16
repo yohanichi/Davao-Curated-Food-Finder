@@ -1,6 +1,7 @@
 /vendor/
 /data/*
 !/data/README.txt
+!/data/osm-nearby-places.json
 /src/config.local.php
 .env
 /data/.places-cache.json

@@ -1,0 +1,111 @@
+{
+    "report_type": "interactive_live_provider_verification",
+    "created_at_utc": "2026-11-16T07:51:19+00:00",
+    "api_endpoint": "local_php_worker",
+    "run_configuration": {
+        "provider": "hybrid",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 1,
+        "request_successes": 1,
+        "provider_call_successes": 0,
+        "full_live_pipeline_successes": 0
+    },
+    "requests": [
+        {
+            "case_id": "LIVE-001",
+            "query": "burger",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "auto",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "burger Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 20353
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "model_is_deepseek_r1": false
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "partial_or_fallback",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "Since you didn’t specify an area or budget, I’d start with these Davao City burger spots: Burger King – J.P. Laurel and Buhangin for reliable fast-food burgers; Harley’s Burgers and Shakes – C.M. Recto for a highly rated beef burger; Red Corner Burger Cafe – Mabini (and Gaisano Mall) for a local burger-cafe option; Army Navy – Abreeza Mall for burgers; Zark’s Burgers – SM Lanang or SM City Davao for American-style burgers; and Minute Burger – Juna Subdivision for a budget-friendly pick. If you want a specific barangay, budget, or late-night option, tell me and I’ll narrow it down.",
+            "model_used": "gpt-4o-mini+deepseek-reasoner",
+            "client_latency_ms": 122807,
+            "server_latency_ms": 122638,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 20353,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": false,
+                "status": "one_or_more_stages_failed",
+                "model": "gpt-4o-mini+deepseek-reasoner"
+            }
+        }
+    ]
+}

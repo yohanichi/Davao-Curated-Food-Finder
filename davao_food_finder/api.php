@@ -11,6 +11,12 @@ if (!headers_sent()) {
     header('X-Content-Type-Options: nosniff');
     header('Cache-Control: no-store, no-cache, must-revalidate');
 }
+$deepseekBackendHeader = strtolower(trim((string)($_SERVER['HTTP_X_DFF_DEEPSEEK_BACKEND'] ?? '')));
+$isLoopbackRequest = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true);
+if (!$isLoopbackRequest || !in_array($deepseekBackendHeader, ['local-ollama', 'hosted-api'], true)) {
+    unset($_SERVER['HTTP_X_DFF_DEEPSEEK_BACKEND']);
+    $deepseekBackendHeader = '';
+}
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/src/config.php';
 require_once __DIR__ . '/src/search.php';
@@ -21,6 +27,10 @@ try {
     $requestStartedAt = microtime(true);
     resetAiTelemetry();
     $GLOBALS['providerErrors'] = [];
+    if (DEEPSEEK_BACKEND === 'hosted_api' && DEEPSEEK_API_KEY === '') {
+        http_response_code(503);
+        throw new RuntimeException('The paid DeepSeek API is the active backend, but DEEPSEEK_API_KEY is not configured.');
+    }
 
     // Fallback: propagate API keys from incoming headers if server environment lacks them
     if (empty(getenv('DEEPSEEK_API_KEY')) && !empty($_SERVER['HTTP_X_DEEPSEEK_API_KEY'])) {
@@ -47,6 +57,9 @@ try {
     $shownNames = is_array($body['shownNames'] ?? null) ? array_slice($body['shownNames'], 0, 50) : [];
     if ($query === '' || mb_strlen($query) > 300) { http_response_code(422); throw new RuntimeException('Enter a search query up to 300 characters.'); }
     $nearbyLocation = null;
+    $nearbySearchArea = null;
+    $nearbyMapPlaces = [];
+    $nearbyMapSnapshotMetadata = null;
     $nearbyRelevantCandidates = [];
     if (array_key_exists('location', $body)) {
         $location = $body['location'];
@@ -63,12 +76,34 @@ try {
             http_response_code(422);
             throw new RuntimeException('The browser location coordinates are outside valid ranges.');
         }
-        $nearbyLocation = ['latitude'=>$latitude, 'longitude'=>$longitude];
+        $accuracyMeters = 0.0;
+        if (array_key_exists('accuracy_m', $location)) {
+            if (!is_numeric($location['accuracy_m'])) {
+                http_response_code(422);
+                throw new RuntimeException('A valid browser location accuracy is required for near-me searches.');
+            }
+            $accuracyMeters = (float)$location['accuracy_m'];
+            if (!is_finite($accuracyMeters) || $accuracyMeters < 0 || $accuracyMeters > 1000) {
+                http_response_code(422);
+                throw new RuntimeException('Your location is too imprecise to verify places within 5 km. Try again with device location enabled.');
+            }
+        }
+        $nearbyLocation = [
+            'latitude'=>$latitude,
+            'longitude'=>$longitude,
+            'accuracy_km'=>$accuracyMeters / 1000,
+        ];
+        $nearbySearchArea = nearbySearchBounds($latitude, $longitude, 5.0);
+        $nearbyMapSnapshotMetadata = loadLocalOsmNearbySnapshot(
+            __DIR__ . '/data/osm-nearby-places.json',
+            $nearbySearchArea
+        );
+        $nearbyMapPlaces = $nearbyMapSnapshotMetadata['places'];
     }
 
     $openAIOptions = ['temperature'=>0.2, 'promptStyle'=>'baseline', 'agentic'=>true, 'iterativeLoop'=>true, 'seed'=>null];
     $reasoningProvider = 'hybrid';
-    $cachePolicy = 'default';
+    $cachePolicy = 'bypass';
     $evidenceOverride = null;
 
     if (isset($body['evaluation'])) {
@@ -185,7 +220,7 @@ try {
         exit;
     }
 
-    if ($reasoningProvider === 'hybrid' && $isAgentic && $requestedRestaurantCore === null) {
+    if ($reasoningProvider === 'hybrid' && $isAgentic) {
         $intent = planSearchQueryWithGPT4oMini($query, $history, $shownNames, $intent, $openAIOptions);
     }
     if ($requestedRestaurantCore !== null) {
@@ -211,22 +246,13 @@ try {
     } else {
         $plannedPwQuery = trim((string)($intent['playwright_query'] ?? ''));
         $priceLookupQueries = [];
-        $nearbyQueries = [];
         if ($nearbyLocation !== null) {
             $mapSearchQuery = $intent['effective_query'] !== '' ? $intent['effective_query'] : $query;
-            $mapSearchCandidates = shortlistPlaces($places, $mapSearchQuery, 100, $intent, false);
+            $mapSearchCandidates = shortlistPlaces($places, $mapSearchQuery, 100, $intent);
             if ($requestedRestaurantCore !== null) {
                 $mapSearchCandidates = filterPlacesByRestaurantCore($mapSearchCandidates, $requestedRestaurantCore);
             }
             $nearbyRelevantCandidates = $mapSearchCandidates;
-            $nearbyQueries = nearbyBrandQueryTerms(
-                $mapSearchCandidates,
-                in_array('Coffee', $intent['cuisines'] ?? [], true) ? 2 : 3
-            );
-            if (in_array('Coffee', $intent['cuisines'] ?? [], true)) {
-                array_unshift($nearbyQueries, 'Starbucks');
-            }
-            $nearbyQueries = array_values(array_unique($nearbyQueries));
         }
         if ($useIterativeLoop
             && empty($intent['online_only'])
@@ -244,17 +270,22 @@ try {
             }
         }
         if ($plannedPwQuery !== '') {
-            $evidence = collectPlaywrightEvidence($plannedPwQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries, $nearbyLocation !== null, $nearbyQueries);
+            $evidence = collectPlaywrightEvidence(expandMenuItemSearchQuery($plannedPwQuery, $intent), __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries);
         } else {
             $pwQuery = $intent['effective_query'] !== '' ? $intent['effective_query'] : $query;
             $evidenceQuery = preg_match('/\bdavao(\s+city)?\b/i', $pwQuery) ? $pwQuery : ('Davao City ' . $pwQuery);
-            $evidence = collectPlaywrightEvidence($evidenceQuery, __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries, $nearbyLocation !== null, $nearbyQueries);
+            $evidence = collectPlaywrightEvidence(expandMenuItemSearchQuery($evidenceQuery, $intent), __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries);
         }
     }
+    if ($nearbyLocation !== null && !$intent['out_of_scope']) {
+        $evidence['nearby_places'] = $nearbyMapPlaces;
+    }
     if (isset($GLOBALS['aiTelemetry']['pipeline_trace'])) {
-        $GLOBALS['aiTelemetry']['pipeline_trace']['2_playwright_scraper'] = ($evidence['success'] ?? false)
+        $GLOBALS['aiTelemetry']['pipeline_trace']['2_playwright_scraper'] = (($evidence['success'] ?? false) === true
+            && ($evidence['browser_used'] ?? false) === true
+            && (int)($evidence['browser_result_count'] ?? 0) > 0)
             ? 'ok'
-            : (string)($evidence['cache'] ?? 'empty');
+            : ((string)($evidence['error'] ?? '') !== '' ? 'error' : (string)($evidence['cache'] ?? 'empty'));
     }
 
     // Reconcile static CSV places with live web evidence for Data Volatility Resilience (when iterative/volatility guard is active)
@@ -290,7 +321,7 @@ try {
     }
     $nearbySearch = ['enabled'=>false];
     if ($nearbyLocation !== null) {
-        $mapPlaces = is_array($evidence['nearby_places'] ?? null) ? $evidence['nearby_places'] : [];
+        $mapPlaces = $nearbyMapPlaces;
         if (!$nearbyRelevantCandidates) $nearbyRelevantCandidates = $candidates;
         if ($requestedRestaurantCore !== null) {
             $nearbyRelevantCandidates = filterPlacesByRestaurantCore($nearbyRelevantCandidates, $requestedRestaurantCore);
@@ -301,7 +332,8 @@ try {
             $mapPlaces,
             $nearbyLocation['latitude'],
             $nearbyLocation['longitude'],
-            5.0
+            5.0,
+            $nearbyLocation['accuracy_km']
         );
         $nearbyPlaceIds = [];
         foreach ($candidates as $candidate) {
@@ -323,6 +355,8 @@ try {
             'radius_km'=>5,
             'status'=>!$mapPlaces ? 'no_map_data' : ($candidates ? 'ok' : 'no_matching_places_within_radius'),
             'result_count'=>count($candidates),
+            'map_source'=>'OpenStreetMap local snapshot',
+            'map_snapshot_updated_at'=>$nearbyMapSnapshotMetadata['osm_base_timestamp'] ?? null,
         ];
     }
     $retrievalRankingMs = $intentParseMs + (int)round((microtime(true) - $rankStart) * 1000);
@@ -397,7 +431,7 @@ try {
     $isInteractiveLlm = !isset($body['evaluation'])
         && $assistantStatus === 'ready'
         && in_array($reasoningProvider, ['deepseek', 'deepseek-api', 'gpt-4o-mini', 'hybrid'], true);
-    if ($useIterativeLoop && !$outOfScope && ($assistantStatus === 'ready' || !in_array($reasoningProvider, ['deepseek', 'deepseek-api', 'gpt-4o-mini', 'hybrid'], true) || !isset($body['evaluation']))) {
+    if ($useIterativeLoop && !$outOfScope && $assistantStatus === 'ready') {
         [$answer, $rankedIds, $webResults, $loopTelemetry] = runAutonomousRefinementLoop(
             $query,
             $answer,
@@ -426,11 +460,12 @@ try {
         ));
         $webResults = rankNearbyWebPlaces(
             $webResults,
-            is_array($evidence['nearby_places'] ?? null) ? $evidence['nearby_places'] : [],
+            $nearbyMapPlaces,
             $places,
             $nearbyLocation['latitude'],
             $nearbyLocation['longitude'],
-            5.0
+            5.0,
+            $nearbyLocation['accuracy_km']
         );
     }
     if ($requestedRestaurantCore !== null && !$outOfScope) {
@@ -499,14 +534,24 @@ try {
         $results[] = publicPlace($byId[$id]);
     }
     $strictEmptyAllowed = (($openAIOptions['promptStyle'] ?? 'baseline') === 'strict_grounding' || !empty($intent['online_only'])) && $assistantStatus === 'ready';
-    if (!$outOfScope && !$results && !$webResults && !$strictEmptyAllowed && empty($intent['online_only'])) {
-        $fallbackCap = $isInteractiveLlm ? 5 : 10;
+    $usedLocalDatasetFallback = false;
+    if (shouldAllowLocalDatasetFallback($reasoningProvider, isset($body['evaluation']), $assistantStatus)
+        && !$outOfScope
+        && !$results
+        && !$webResults
+        && !$strictEmptyAllowed
+        && empty($intent['online_only'])) {
+        $fallbackCap = $isInteractiveLlm || (!isset($body['evaluation']) && $reasoningProvider === 'hybrid') ? 5 : 10;
         foreach (array_slice($candidates, 0, $fallbackCap) as $cand) {
             $normName = mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', (string)$cand['name']) ?? '', 'UTF-8');
             if ($normName !== '' && isset($seenResultNames[$normName])) continue;
             if ($normName !== '') $seenResultNames[$normName] = true;
             $results[] = publicPlace($cand);
         }
+        $usedLocalDatasetFallback = count($results) > 0;
+    }
+    if ($usedLocalDatasetFallback && $assistantStatus === 'error' && $reasoningProvider === 'hybrid') {
+        $answer = 'Live web verification is currently unavailable. These are ranked matches from the local Davao City dataset, not live-verified recommendations.';
     }
     if (!empty($intent['online_only'])) {
         $results = [];
@@ -520,7 +565,7 @@ try {
         }
         if (!$nearbyItems) {
             $answer = ($nearbySearch['status'] ?? '') === 'no_map_data'
-                ? 'I could not retrieve verified OpenStreetMap restaurant locations for this search, so I cannot confirm places within 5 km. Please try again or choose a Davao City area instead.'
+                ? 'The local OpenStreetMap snapshot contains no mapped food places near you, so no locations can be verified within 5 km. Try another area or refresh the OSM snapshot.'
                 : 'I could not verify any restaurants matching your request within 5 km. I have not included distant or unverified places.';
         } else {
             $summaryItems = [];
@@ -586,6 +631,10 @@ try {
         $dedupedResults[] = $lr;
     }
     $results = $dedupedResults;
+    if ($nearbyLocation !== null) {
+        usort($results, fn($a, $b) => ((float)($a['distance_km'] ?? PHP_FLOAT_MAX))
+            <=> ((float)($b['distance_km'] ?? PHP_FLOAT_MAX)));
+    }
 
     if ($webResults) {
         $localCoreCounts = [];
@@ -697,7 +746,7 @@ try {
     }
 
     if ($nearbyLocation !== null && !$outOfScope) {
-        $mapPlaces = is_array($evidence['nearby_places'] ?? null) ? $evidence['nearby_places'] : [];
+        $mapPlaces = $nearbyMapPlaces;
         $mapResults = buildNearbyMapResults(
             $nearbyRelevantCandidates,
             $mapPlaces,
@@ -705,7 +754,8 @@ try {
             $nearbyLocation['longitude'],
             5.0,
             (string)($intent['effective_query'] !== '' ? $intent['effective_query'] : $query),
-            $intent
+            $intent,
+            $nearbyLocation['accuracy_km']
         );
         $seenMapUrls = [];
         foreach (array_merge($results, $webResults) as $existingPlace) {
@@ -727,7 +777,7 @@ try {
         $nearbySearch['result_count'] = count($nearbyItems);
         if (!$nearbyItems) {
             $answer = $nearbySearch['status'] === 'no_map_data'
-                ? 'I could not retrieve verified OpenStreetMap restaurant locations for this search, so I cannot confirm places within 5 km. Please try again or choose a Davao City area instead.'
+                ? 'The local OpenStreetMap snapshot contains no mapped food places near you, so no locations can be verified within 5 km. Try another area or refresh the OSM snapshot.'
                 : 'I could not verify any restaurants matching your request within 5 km. I have not included distant or unverified places.';
         } else {
             $summaryItems = [];
@@ -759,7 +809,9 @@ try {
     }
 
     ob_clean();
-    $playwrightSuccess = ($evidence['success'] ?? false) === true;
+    $playwrightSuccess = ($evidence['success'] ?? false) === true
+        && ($evidence['browser_used'] ?? false) === true
+        && (int)($evidence['browser_result_count'] ?? 0) > 0;
     $totalLatencyMs = (int)round((microtime(true) - $requestStartedAt) * 1000);
     $playwrightMs = (int)($evidence['latency_ms'] ?? 0);
 
@@ -816,6 +868,11 @@ try {
         ],
         'playwright'=>[
             'success'=>$playwrightSuccess,
+            'browser_used'=>($evidence['browser_used'] ?? false) === true,
+            'browser_result_count'=>(int)($evidence['browser_result_count'] ?? 0),
+            'browser_search_count'=>(int)($evidence['browser_search_count'] ?? 0),
+            'browser_search_errors'=>is_array($evidence['browser_search_errors'] ?? null) ? $evidence['browser_search_errors'] : [],
+            'error'=>$evidence['error'] ?? null,
             'cache'=>$evidence['cache'] ?? 'unknown',
             'cache_age_seconds'=>$evidence['cache_age_seconds'] ?? null,
             'result_count'=>count($evidence['results'] ?? []),
@@ -824,10 +881,16 @@ try {
         ],
         'pipeline'=>[
             'stages'=>$telemetry['pipeline_trace'] ?? [],
+            'stage_models'=>$telemetry['stage_models'] ?? [],
+            'planner_used'=>($intent['planner_used'] ?? false) === true,
             'planned_query'=>$intent['playwright_query'] ?? null,
+            'deepseek_reasoner'=>$telemetry['hybrid_reasoner'] ?? ['backend'=>'not_run', 'model'=>null],
+            'deepseek_reasoner_attempt'=>$telemetry['hybrid_reasoner_attempt'] ?? ['backend'=>'not_run', 'requested_model'=>null],
         ],
         'deepseek'=>[
-            'configured'=>DEEPSEEK_API_KEY !== '' || DEEPSEEK_BASE_URL !== '',
+            'configured'=>DEEPSEEK_BACKEND === 'hosted_api'
+                ? DEEPSEEK_API_KEY !== ''
+                : DEEPSEEK_BASE_URL !== '',
             'success'=>$assistantStatus === 'ready' && ($reasoningProvider === 'deepseek' || str_contains((string)$modelUsed, DEEPSEEK_MODEL)),
             'model'=>str_contains((string)$modelUsed, DEEPSEEK_MODEL) ? DEEPSEEK_MODEL : '',
             'error'=>$GLOBALS['providerErrors']['deepseek'] ?? (!empty($GLOBALS['last_deepseek_error']) ? ['http'=>0, 'message'=>$GLOBALS['last_deepseek_error']] : null),
@@ -835,9 +898,9 @@ try {
             'done_reason'=>$GLOBALS['aiTelemetry']['deepseek_done_reason'] ?? 'unknown',
         ],
         'deepseek_api'=>[
-            'configured'=>getenv('DEEPSEEK_API_KEY') !== false && trim((string)getenv('DEEPSEEK_API_KEY')) !== '',
+            'configured'=>DEEPSEEK_API_KEY !== '',
             'success'=>$assistantStatus === 'ready' && $reasoningProvider === 'deepseek-api',
-            'model'=>$reasoningProvider === 'deepseek-api' ? (string)($modelUsed ?: 'deepseek-reasoner') : '',
+            'model'=>$reasoningProvider === 'deepseek-api' ? (string)($modelUsed ?: DEEPSEEK_API_MODEL) : '',
             'error'=>$GLOBALS['providerErrors']['deepseek_api'] ?? $GLOBALS['providerErrors']['deepseek-api'] ?? null,
         ],
         'gpt4o'=>[

@@ -1,0 +1,334 @@
+{
+    "report_type": "live_hybrid_agentic_pipeline_verification",
+    "created_at_utc": "2026-11-16T03:16:55+00:00",
+    "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php",
+    "run_configuration": {
+        "provider": "hybrid",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 4,
+        "request_successes": 0,
+        "full_live_pipeline_successes": 0,
+        "controlled_violation_detected": 0,
+        "controlled_violation_repaired": 0
+    },
+    "requests": [
+        {
+            "case_id": "japanese_dining",
+            "query": "Affordable Japanese restaurants in Davao City",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "evidence_override_used": false,
+                "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "cache_status": "unknown",
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 0
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "backend": "not_run",
+                    "model": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 0,
+            "assistant_status": "unavailable",
+            "final_answer": "",
+            "model_used": "",
+            "client_latency_ms": 2021,
+            "server_latency_ms": 0,
+            "cache_status": "unknown",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 0,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": false,
+                "status": "not_observed",
+                "iterations": 0,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": "api_unreachable_or_timeout",
+            "fixture_used": false
+        },
+        {
+            "case_id": "study_cafes",
+            "query": "Quiet cafes for studying in Davao City",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "evidence_override_used": false,
+                "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "cache_status": "unknown",
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 0
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "backend": "not_run",
+                    "model": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 0,
+            "assistant_status": "unavailable",
+            "final_answer": "",
+            "model_used": "",
+            "client_latency_ms": 2025,
+            "server_latency_ms": 0,
+            "cache_status": "unknown",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 0,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": false,
+                "status": "not_observed",
+                "iterations": 0,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": "api_unreachable_or_timeout",
+            "fixture_used": false
+        },
+        {
+            "case_id": "grilled_chicken",
+            "query": "Where can I get grilled chicken in Davao City?",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "evidence_override_used": false,
+                "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "cache_status": "unknown",
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 0
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "backend": "not_run",
+                    "model": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 0,
+            "assistant_status": "unavailable",
+            "final_answer": "",
+            "model_used": "",
+            "client_latency_ms": 2030,
+            "server_latency_ms": 0,
+            "cache_status": "unknown",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 0,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": false,
+                "status": "not_observed",
+                "iterations": 0,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": "api_unreachable_or_timeout",
+            "fixture_used": false
+        },
+        {
+            "case_id": "price_ceiling_violation",
+            "query": "Find Japanese restaurants in Davao City with a full meal under ₱1 per person",
+            "controlled_violation_case": true,
+            "controlled_violation_expected": true,
+            "controlled_violation_status": "not_observed",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "evidence_override_used": false,
+                "api_endpoint": "http:\/\/127.0.0.1:8080\/api.php"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "cache_status": "unknown",
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 0
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "backend": "not_run",
+                    "model": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": false,
+                    "status": "not_reported",
+                    "model": null
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "failed_request",
+            "request_success": false,
+            "http_status": 0,
+            "assistant_status": "unavailable",
+            "final_answer": "",
+            "model_used": "",
+            "client_latency_ms": 2029,
+            "server_latency_ms": 0,
+            "cache_status": "unknown",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 0,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": false,
+                "status": "not_observed",
+                "iterations": 0,
+                "initial_compliance_rate": null,
+                "final_compliance_rate": null,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "not_observed"
+            },
+            "error_category": "api_unreachable_or_timeout",
+            "fixture_used": false
+        }
+    ]
+}

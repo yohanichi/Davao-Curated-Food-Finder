@@ -2,15 +2,16 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/src/config.php';
+require_once __DIR__ . '/evaluation/run_live_pipeline_verification.php';
 
 echo "================================================================\n";
-echo "   DAVAO FOOD FINDER - 5-STAGE HYBRID PIPELINE DIAGNOSTIC       \n";
+echo "   DAVAO FOOD FINDER - PIPELINE COMPONENT DIAGNOSTIC            \n";
 echo "================================================================\n";
-echo "Target Flow:\n";
+echo "Independent provider/retrieval probes (not one end-to-end request):\n";
 echo "  User Input -> (1) GPT-4o mini Query Planner\n";
 echo "             -> (2) Playwright Active Web Scraping\n";
 echo "             -> (3) GPT-4o mini Raw Evidence Structurer\n";
-echo "             -> (4) DeepSeek R1 Reasoner & Curator\n";
+echo "             -> (4) DeepSeek Flash Reasoner & Curator\n";
 echo "             -> (5) GPT-4o mini Final User Responder\n";
 echo "================================================================\n\n";
 
@@ -23,12 +24,13 @@ $deepSeekModel = DEEPSEEK_MODEL;
 $openAiOk = false;
 $playwrightOk = false;
 $deepSeekOk = false;
+$playwrightProbe = null;
 
 echo "[1] ENVIRONMENT & CONFIGURATION\n";
 echo "-------------------------------\n";
-echo "  OPENAI_API_KEY    : " . ($openAiKey !== '' ? substr($openAiKey, 0, 7) . '...' . substr($openAiKey, -4) : '(NOT SET - required for Stages 1, 3, and 5)') . "\n";
+echo "  OPENAI_API_KEY    : " . ($openAiKey !== '' ? 'set' : '(not set - required for GPT-4o mini)') . "\n";
 echo "  OPENAI_MODEL      : {$openAiModel}\n";
-echo "  DEEPSEEK_API_KEY  : " . ($deepSeekKey !== '' ? substr($deepSeekKey, 0, 7) . '...' . substr($deepSeekKey, -4) : '(not set - using local Ollama)') . "\n";
+echo "  DEEPSEEK_API_KEY  : " . ($deepSeekKey !== '' ? 'set' : '(not set - required for the paid API)') . "\n";
 echo "  DEEPSEEK_BASE_URL : {$deepSeekBase}\n";
 echo "  DEEPSEEK_MODEL    : {$deepSeekModel}\n\n";
 
@@ -62,16 +64,21 @@ if ($openAiKey === '') {
     $curlErr = curl_error($ch);
     curl_close($ch);
     $lat = round((microtime(true) - $t0) * 1000);
+    $openAiData = is_string($res) ? json_decode($res, true) : null;
+    $openAiReturnedModel = is_array($openAiData) ? trim((string)($openAiData['model'] ?? '')) : '';
+    $openAiContent = $openAiData['choices'][0]['message']['content'] ?? null;
+    $openAiParsedContent = is_string($openAiContent) ? json_decode($openAiContent, true) : null;
+    $openAiUsable = is_array($openAiParsedContent) && ($openAiParsedContent['ok'] ?? false) === true;
+    $openAiModelMatches = str_starts_with(strtolower($openAiReturnedModel), 'gpt-4o-mini');
 
-    if ($httpCode === 200) {
+    if ($httpCode >= 200 && $httpCode < 300 && $openAiModelMatches && $openAiUsable) {
         $openAiOk = true;
-        echo "  [OK] GPT-4o mini ({$openAiModel}) responded in {$lat} ms!\n\n";
+        echo "  [OK] GPT-4o mini ({$openAiReturnedModel}) returned usable JSON in {$lat} ms!\n\n";
     } else {
-        echo "  [FAIL] OpenAI returned HTTP {$httpCode} ({$lat} ms)\n";
+        echo "  [FAIL] GPT probe did not verify expected model and usable output (HTTP {$httpCode}, returned model: " . ($openAiReturnedModel ?: 'not reported') . ", {$lat} ms)\n";
         if ($curlErr !== '') echo "         cURL error: {$curlErr}\n";
         if ($res !== false && $res !== '') {
-            $errData = json_decode((string)$res, true);
-            $msg = $errData['error']['message'] ?? substr((string)$res, 0, 300);
+            $msg = $openAiData['error']['message'] ?? substr((string)$res, 0, 300);
             echo "         Details: {$msg}\n";
         }
         echo "\n";
@@ -119,15 +126,18 @@ if (!is_file($script)) {
         $exitCode = proc_close($proc);
         $elapsed = round((microtime(true) - $start) * 1000);
 
-        $json = json_decode(trim($stdout), true);
-        if (is_array($json) && !empty($json['results'])) {
+        $playwrightProbe = json_decode(trim($stdout), true);
+        if (is_array($playwrightProbe) && !empty($playwrightProbe['results'])) {
             $playwrightOk = true;
-            $cnt = count($json['results']);
-            echo "  [OK] Playwright found {$cnt} live Davao City source(s) in {$elapsed} ms!\n";
-            echo "       Sample source: " . ($json['results'][0]['title'] ?? 'Untitled') . " (" . ($json['results'][0]['url'] ?? '') . ")\n\n";
+            $cnt = count($playwrightProbe['results']);
+            echo "  [OK] Playwright probe found {$cnt} source(s) for '{$testQuery}' in {$elapsed} ms!\n";
+            echo "       Sample source: " . ($playwrightProbe['results'][0]['title'] ?? 'Untitled') . " (" . ($playwrightProbe['results'][0]['url'] ?? '') . ")\n\n";
         } else {
             echo "  [FAIL/WARN] Exit code: {$exitCode} ({$elapsed} ms)\n";
             if ($stderr !== '') echo "       Error: " . trim($stderr) . "\n";
+            if (is_array($playwrightProbe) && !empty($playwrightProbe['browser_used'])) {
+                echo "       Chromium launched successfully, but retrieval returned no sources; investigate search-engine/network access.\n";
+            }
             if (trim($stdout) !== '') echo "       Output: " . substr(trim($stdout), 0, 500) . "\n";
             echo "\n";
         }
@@ -135,15 +145,21 @@ if (!is_file($script)) {
 }
 
 // ----------------------------------------------------
-// Test DeepSeek R1 / Ollama (Stage 4)
+// Test hosted DeepSeek Flash (Stage 4)
 // ----------------------------------------------------
-echo "[4] TESTING DEEPSEEK R1 REASONER (Stage 4)\n";
+echo "[4] TESTING DEEPSEEK FLASH API (Stage 4)\n";
 echo "------------------------------------------\n";
 if ($deepSeekKey !== '') {
-    $base = rtrim($deepSeekBase !== '' && $deepSeekBase !== 'http://127.0.0.1:11434' ? $deepSeekBase : 'https://api.deepseek.com', '/');
-    $testModel = ($deepSeekModel !== '' && $deepSeekModel !== 'deepseek-r1:8b') ? $deepSeekModel : 'deepseek-reasoner';
+    $base = rtrim($deepSeekBase, '/');
+    $testModel = $deepSeekModel;
     $ch = curl_init($base . '/chat/completions');
-    $payload = json_encode(['model' => $testModel, 'messages' => [['role' => 'user', 'content' => 'Say OK']]]);
+    $payload = json_encode([
+        'model'=>$testModel,
+        'messages'=>[['role'=>'user', 'content'=>'Return JSON: {"reasoning":"probe","status":"ready"}']],
+        'max_tokens'=>80,
+        'thinking'=>['type'=>'disabled'],
+        'response_format'=>['type'=>'json_object'],
+    ]);
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . $deepSeekKey],
@@ -154,11 +170,17 @@ if ($deepSeekKey !== '') {
     $res = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    if ($code === 200) {
+    $deepSeekData = is_string($res) ? json_decode($res, true) : null;
+    $deepSeekReturnedModel = is_array($deepSeekData) ? trim((string)($deepSeekData['model'] ?? '')) : '';
+    $deepSeekContent = $deepSeekData['choices'][0]['message']['content'] ?? null;
+    $deepSeekParsedContent = is_string($deepSeekContent) ? json_decode($deepSeekContent, true) : null;
+    $deepSeekUsable = is_array($deepSeekParsedContent) && ($deepSeekParsedContent['status'] ?? '') === 'ready';
+    $deepSeekModelMatches = livePipelineIsSupportedDeepSeekModel($deepSeekReturnedModel);
+    if ($code >= 200 && $code < 300 && $deepSeekModelMatches && $deepSeekUsable) {
         $deepSeekOk = true;
-        echo "  [OK] Hosted DeepSeek R1 ({$testModel}) responded!\n\n";
+        echo "  [OK] Paid DeepSeek ({$deepSeekReturnedModel}) returned usable JSON!\n\n";
     } else {
-        echo "  [FAIL] Hosted DeepSeek API returned HTTP {$code}.\n";
+        echo "  [FAIL] Paid DeepSeek probe did not verify the supported model and usable JSON (HTTP {$code}, returned model: " . ($deepSeekReturnedModel ?: 'not reported') . ").\n";
         if ($res !== false && $res !== '') {
             $errData = json_decode((string)$res, true);
             $msg = $errData['error']['message'] ?? substr((string)$res, 0, 300);
@@ -167,80 +189,26 @@ if ($deepSeekKey !== '') {
         echo "\n";
     }
 } else {
-    $ch = curl_init(rtrim($deepSeekBase, '/') . '/api/tags');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CONNECTTIMEOUT => 3,
-        CURLOPT_TIMEOUT => 5,
-        CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
-    ]);
-    $tagsRaw = curl_exec($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr = curl_error($ch);
-    curl_close($ch);
-
-    if ($tagsRaw === false || $httpCode < 200 || $httpCode >= 300) {
-        echo "  [FAIL] Local Ollama is unreachable at {$deepSeekBase}\n";
-        if ($curlErr !== '') echo "         cURL error: {$curlErr}\n";
-        echo "         Start Ollama (`ollama serve` or launch Ollama from Start Menu).\n\n";
-    } else {
-        $tagsData = json_decode((string)$tagsRaw, true);
-        $models = [];
-        foreach (($tagsData['models'] ?? []) as $m) {
-            if (isset($m['name'])) $models[] = $m['name'];
-        }
-        echo "  [OK] Ollama service is running. Installed models: " . ($models ? implode(', ', $models) : '(none)') . "\n";
-        $hasModel = false;
-        foreach ($models as $m) {
-            if ($m === $deepSeekModel || str_starts_with($m, $deepSeekModel . ':')) {
-                $hasModel = true;
-                break;
-            }
-        }
-        if (!$hasModel) {
-            echo "  [FAIL] Model '{$deepSeekModel}' is NOT installed. Run: ollama pull {$deepSeekModel}\n\n";
-        } else {
-            $ch = curl_init(rtrim($deepSeekBase, '/') . '/api/chat');
-            $testBody = json_encode([
-                'model' => $deepSeekModel,
-                'messages' => [['role' => 'user', 'content' => 'Return JSON: {"reasoning":"ok","status":"ready"}']],
-                'stream' => false,
-                'format' => 'json',
-                'options' => ['num_predict' => 40],
-            ]);
-            curl_setopt_array($ch, [
-                CURLOPT_POST => true,
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                CURLOPT_POSTFIELDS => $testBody,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_CONNECTTIMEOUT => 5,
-                CURLOPT_TIMEOUT => 60,
-            ]);
-            $t2 = microtime(true);
-            $chatRaw = curl_exec($ch);
-            $chatCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $chatErr = curl_error($ch);
-            curl_close($ch);
-            $chatLat = round((microtime(true) - $t2) * 1000);
-            if ($chatCode === 200) {
-                $deepSeekOk = true;
-                echo "  [OK] DeepSeek R1 ({$deepSeekModel}) reasoned & replied in {$chatLat} ms!\n\n";
-            } else {
-                echo "  [FAIL] Ollama /api/chat returned HTTP {$chatCode}: {$chatErr}\n\n";
-            }
-        }
-    }
+    echo "  [FAIL] DEEPSEEK_API_KEY is not set; the paid API is required and Ollama is not used as a fallback.\n\n";
 }
 
 echo "================================================================\n";
-echo "   PIPELINE READINESS VERDICT\n";
+echo "   COMPONENT PROBE VERDICT\n";
 echo "================================================================\n";
 if ($openAiOk && $playwrightOk && $deepSeekOk) {
-    echo "  [READY] ALL 5 STAGES ARE ACTIVE AND VERIFIED!\n";
+    echo "  [READY] GPT-4o mini, Playwright, and paid DeepSeek probes passed independently.\n";
+    echo "  This does not prove that all five stages succeeded in the same request.\n";
 } else {
-    echo "  To run the full 5-stage flow, ensure all 3 checks above are [OK]:\n";
+    echo "  One or more independent component probes failed; see details above.\n";
     if (!$openAiOk) echo "    1. Set OPENAI_API_KEY in the same PowerShell window where you start PHP.\n";
-    if (!$playwrightOk) echo "    2. Ensure internet access & Chromium (`npx playwright install chromium`).\n";
-    if (!$deepSeekOk) echo "    3. Keep Ollama running with `{$deepSeekModel}` pulled (`ollama pull {$deepSeekModel}`).\n";
+    if (!$playwrightOk) {
+        if (is_array($playwrightProbe) && !empty($playwrightProbe['browser_used'])) {
+            echo "    2. Chromium is available; check outbound HTTPS/proxy access to search engines and Photon.\n";
+        } else {
+            echo "    2. Ensure internet access & Chromium (`npx playwright install chromium`).\n";
+        }
+    }
+    if (!$deepSeekOk) echo "    3. Set DEEPSEEK_API_KEY and confirm DEEPSEEK_API_MODEL is supported (default: deepseek-flash).\n";
 }
+echo "  For request-level five-stage verification, run evaluation/run_volatility_experiment.php --live-provider=hybrid.\n";
 echo "================================================================\n";

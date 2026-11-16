@@ -1,0 +1,137 @@
+{
+    "report_type": "interactive_live_provider_verification",
+    "created_at_utc": "2026-11-16T09:18:26+00:00",
+    "api_endpoint": "local_php_worker",
+    "run_configuration": {
+        "provider": "hybrid",
+        "deepseek_backend_requested": "hosted-api",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 1,
+        "request_successes": 1,
+        "provider_call_successes": 1,
+        "full_live_pipeline_successes": 1
+    },
+    "requests": [
+        {
+            "case_id": "LIVE-001",
+            "query": "burger",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "hosted-api",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "burger Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "cache_status": "miss",
+                    "browser_used": true,
+                    "browser_result_count": 7,
+                    "browser_search_errors": [
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20restaurants&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20restaurants%20branches%20locations&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n",
+                        "DuckDuckGo: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https:\/\/html.duckduckgo.com\/html\/?q=burger%20Davao%20City%20restaurants%20customer%20reviews&kl=ph-en\", waiting until \"domcontentloaded\"\u001b[22m\n"
+                    ],
+                    "evidence_count": 7,
+                    "source_urls": [
+                        "https:\/\/www.openstreetmap.org\/node\/12031595994",
+                        "https:\/\/www.openstreetmap.org\/node\/13236071230",
+                        "https:\/\/www.openstreetmap.org\/node\/975856700",
+                        "https:\/\/www.openstreetmap.org\/node\/9787131688",
+                        "https:\/\/www.openstreetmap.org\/node\/13206904819",
+                        "https:\/\/www.openstreetmap.org\/node\/5171522406",
+                        "https:\/\/www.openstreetmap.org\/node\/12411894866"
+                    ],
+                    "retrieval_time_ms": 30534
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "requested_model": "deepseek-flash",
+                    "model_matches": true,
+                    "error": null
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": true,
+            "execution_class": "full_live_pipeline",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "Here are some great burger spots in Davao City you should check out:\n\n1. **Burger King - J.P. Laurel Davao**  \n   - **Rating:** 5 (12,971 reviews)  \n   - **Description:** A well-loved chain known for juicy burgers.  \n   - **Address:** J.P. Laurel Ave.  \n   - **Source:** [Burger King - J.P. Laurel](https:\/\/www.openstreetmap.org\/node\/12031595994)\n\n2. **Burger King - Buhangin Davao**  \n   - **Rating:** 5 (9,875 reviews)  \n   - **Description:** Another popular branch with fresh ingredients.  \n   - **Address:** Buhangin  \n   - **Source:** [Burger King - Buhangin](https:\/\/www.openstreetmap.org\/node\/13236071230)\n\n3. **Army Navy - Abreeza Mall**  \n   - **Rating:** 5 (3,668 reviews)  \n   - **Description:** Known for hearty burgers in a mall setting.  \n   - **Address:** Abreeza Mall  \n   - **Source:** [Army Navy - Abreeza Mall](https:\/\/www.openstreetmap.org\/node\/975856700)\n\n4. **Red Corner Burger Cafe - Mabini**  \n   - **Rating:** 5 (906 reviews)  \n   - **Description:** A local favorite for delicious burgers.  \n   - **Address:** Mabini  \n   - **Source:** [Red Corner Burger Cafe - Mabini](https:\/\/www.openstreetmap.org\/node\/13206904819)\n\n5. **Jollibee - Davao Magsaysay**  \n   - **Rating:** 5 (1,182 reviews)  \n   - **Description:** Budget-friendly burgers from a beloved fast-food chain.  \n   - **Address:** Magsaysay  \n   - **Source:** [Jollibee - Davao Magsaysay](https:\/\/www.openstreetmap.org\/node\/12411894866)\n\n6. **Harley's Burgers and Shakes - C.M Recto**  \n   - **Rating:** 4.9 (510 reviews)  \n   - **Description:** Known for fresh beef burgers and shakes.  \n   - **Address:** C.M Recto  \n   - **Source:** [Harley's Burgers and Shakes](https:\/\/www.openstreetmap.org\/node\/5171522406)\n\nFor quick bites, you can also find **Minute Burger** branches scattered around the city, including locations in Tibungco, Panacan, Santo Niño, Ma-a, and Poblacion, as well as **Burger Machine** in Calinan and **Dobol Burger** in Sasa.\n\nLet me know if you have a specific craving for a type of burger or if you're looking for something within a certain budget!",
+            "model_used": "gpt-4o-mini+deepseek-flash",
+            "client_latency_ms": 83507,
+            "server_latency_ms": 83398,
+            "cache_status": "miss",
+            "evidence_count": 7,
+            "source_urls": [
+                "https:\/\/www.openstreetmap.org\/node\/12031595994",
+                "https:\/\/www.openstreetmap.org\/node\/13236071230",
+                "https:\/\/www.openstreetmap.org\/node\/975856700",
+                "https:\/\/www.openstreetmap.org\/node\/9787131688",
+                "https:\/\/www.openstreetmap.org\/node\/13206904819",
+                "https:\/\/www.openstreetmap.org\/node\/5171522406",
+                "https:\/\/www.openstreetmap.org\/node\/12411894866"
+            ],
+            "retrieval_time_ms": 30534,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false,
+            "provider": "hybrid",
+            "provider_call": {
+                "provider": "hybrid",
+                "succeeded": true,
+                "status": "all_five_stages_ok",
+                "model": "gpt-4o-mini+deepseek-flash"
+            }
+        }
+    ]
+}

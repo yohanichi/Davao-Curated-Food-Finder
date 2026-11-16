@@ -1,0 +1,113 @@
+{
+    "report_type": "interactive_live_hybrid_pipeline_verification",
+    "created_at_utc": "2026-11-16T07:39:41+00:00",
+    "api_endpoint": "local_php_worker",
+    "run_configuration": {
+        "provider": "hybrid",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 1,
+        "request_successes": 1,
+        "full_live_pipeline_successes": 0
+    },
+    "requests": [
+        {
+            "case_id": "LIVE-001",
+            "query": "Find Japanese restaurants in Davao City",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "auto",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "Japanese restaurants Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "cache_status": "miss",
+                    "evidence_count": 4,
+                    "source_urls": [
+                        "https:\/\/www.openstreetmap.org\/node\/12066485169",
+                        "https:\/\/www.openstreetmap.org\/way\/164780242",
+                        "https:\/\/www.openstreetmap.org\/node\/12369740668",
+                        "https:\/\/www.openstreetmap.org\/node\/13282363379"
+                    ],
+                    "retrieval_time_ms": 2510
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "model_is_deepseek_r1": false
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "partial_or_fallback",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "Here are some great Japanese restaurants in Davao City that you might enjoy:\n\n1. **Sukidesu Modern Japanese Cuisine** - Located on Aurora Quezon Street in Poblacion, this place has a fantastic reputation with over 6,600 reviews and a rating of 5. They offer a variety of Japanese dishes and are known for their affordable bento meals.\n\n2. **Ryuko Japanese Kitchen** - Found on Juan dela Cruz Street in Poblacion, this restaurant is well-loved for its authentic Japanese comfort food.\n\n3. **Backstage Cafe Japanese Comfort Food** - Situated on P. Sobrecarey Street in Poblacion, it’s a cozy spot for enjoying classic Japanese dishes.\n\n4. **Japanese Tunnel** - Located on Beverly Hills Street in Matina Crossing, this restaurant offers a unique dining experience with a variety of Japanese options.\n\nIn addition to these, here are some other local favorites:\n- **Sukidesu Japanese Street Dining** in Lanang, rated 5 with 1,356 reviews.\n- **Tokyo Tokyo** at SM Lanang and SM Davao Ecoland, both rated 5.\n- **Katsu Country** at Junction Building, also rated 5.\n- **Makoto Ya Japanese Restaurant**, rated 4.9, is another great choice.\n- **Tori Yamu** at SM Lanang, rated 5, is popular for its ramen.\n- **Ginkaku Japanese Restaurant** in Matina, rated 5, is known for its delicious dishes.\n- **Kitsune Japanese Restaurant** in Matina, rated 4.6, offers generous servings.\n\nThese spots should satisfy your cravings for Japanese cuisine! Make sure to check their current menus and hours before heading out.",
+            "model_used": "gpt-4o-mini+deepseek-reasoner",
+            "client_latency_ms": 55965,
+            "server_latency_ms": 55768,
+            "cache_status": "miss",
+            "evidence_count": 4,
+            "source_urls": [
+                "https:\/\/www.openstreetmap.org\/node\/12066485169",
+                "https:\/\/www.openstreetmap.org\/way\/164780242",
+                "https:\/\/www.openstreetmap.org\/node\/12369740668",
+                "https:\/\/www.openstreetmap.org\/node\/13282363379"
+            ],
+            "retrieval_time_ms": 2510,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false
+        }
+    ]
+}

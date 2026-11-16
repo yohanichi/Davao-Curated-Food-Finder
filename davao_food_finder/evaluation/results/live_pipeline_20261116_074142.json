@@ -1,0 +1,103 @@
+{
+    "report_type": "interactive_live_hybrid_pipeline_verification",
+    "created_at_utc": "2026-11-16T07:41:42+00:00",
+    "api_endpoint": "local_php_worker",
+    "run_configuration": {
+        "provider": "hybrid",
+        "agentic_refinement_enabled": true,
+        "iterative_loop_enabled": true,
+        "playwright_cache_policy": "bypass",
+        "evidence_override_used": false,
+        "requests_are_direct_api_posts": true
+    },
+    "summary": {
+        "requests": 1,
+        "request_successes": 1,
+        "full_live_pipeline_successes": 0
+    },
+    "requests": [
+        {
+            "case_id": "LIVE-001",
+            "query": "burger",
+            "controlled_violation_case": false,
+            "controlled_violation_expected": false,
+            "controlled_violation_status": "not_applicable",
+            "controlled_violation_detected": null,
+            "controlled_violation_repaired": null,
+            "configuration": {
+                "provider": "hybrid",
+                "agentic_refinement_enabled": true,
+                "iterative_loop_enabled": true,
+                "cache_policy": "bypass",
+                "temperature": 0.2,
+                "prompt_style": "baseline",
+                "seed": 42,
+                "deepseek_backend_requested": "auto",
+                "deepseek_backend_request_matches_observed": true,
+                "requested_backend_prerequisite_met": true,
+                "evidence_override_used": false,
+                "api_endpoint": "local_php_worker"
+            },
+            "stages": {
+                "1_gpt4o_mini_planner": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18",
+                    "planned_query": "burger Davao City"
+                },
+                "2_playwright_retrieval": {
+                    "succeeded": false,
+                    "status": "miss",
+                    "cache_status": "miss",
+                    "evidence_count": 0,
+                    "source_urls": [],
+                    "retrieval_time_ms": 25078
+                },
+                "3_gpt4o_mini_evidence_structurer": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                },
+                "4_deepseek_r1_reasoner": {
+                    "succeeded": false,
+                    "status": "ok",
+                    "backend": "hosted_api",
+                    "model": "deepseek-flash",
+                    "model_is_deepseek_r1": false
+                },
+                "5_gpt4o_mini_final_response": {
+                    "succeeded": true,
+                    "status": "ok",
+                    "model": "gpt-4o-mini-2024-07-18"
+                }
+            },
+            "all_five_stages_succeeded_on_live_request": false,
+            "execution_class": "partial_or_fallback",
+            "request_success": true,
+            "http_status": 200,
+            "assistant_status": "ready",
+            "final_answer": "Since you did not specify an area or budget, here are solid Davao City burger picks: \n\n1. **Burger King - J.P. Laurel Davao** - A popular fast-food chain known for its classic burgers. Rating: 5, Reviews: 12,971. \n2. **Burger King - Buhangin Davao** - Another branch of the beloved Burger King, offering the same great taste. Rating: 5, Reviews: 9,875. \n3. **Army Navy - Abreeza Mall** - A great spot for burgers with a bit of a twist. Rating: 5, Reviews: 3,668. \n4. **Red Corner Burger Cafe - Mabini** - A cozy burger cafe with delicious options. Rating: 5, Reviews: 906. \n5. **Jollibee - Davao Magsaysay** - The local favorite for fast-food burgers. Rating: 5, Reviews: 1,182. \n6. **Harley's Burgers and Shakes - C.M Recto** - Known for fresh beef burgers and shakes. Rating: 4.9, Reviews: 510. \n7. **The Crazy Bite Co Sky Cafe - T Monteverde St** - A cafe that serves burgers among other dishes. Rating: 5, Reviews: 393. \n8. **Scarlette's Burger Station - Mintal** - A local gem for burger lovers. Rating: 4.9, Reviews: 63. \n9. **Durian Dub Snack Shack x Burger Shack Joint - Quimpo Boulevard** - A unique spot combining local flavors with burgers. Rating: 4.8, Reviews: 60. \n10. **Chelsy's Burger - San Antonio Matina** - A favorite for its tasty burgers. Rating: 4.9, Reviews: 39. \n11. **Okinooki - L. Ma. Guerrero Street** - Known for affordable and delicious burgers. Rating: 5, Reviews: 40. \n12. **Red Corner Burger Cafe - Gaisano Mall Davao** - Another branch of Red Corner, delivering great burgers. Rating: 5, Reviews: 26. \n13. **Burger Express - Obrero** - A great spot for quick and tasty burgers. Rating: 5, Reviews: 16. \n14. **Minute Burger - Times Beach** - A reliable choice for affordable burgers. Rating: 4.8, Reviews: 17. \n15. **Burger Station - Artiaga** - A local favorite with good reviews. Rating: 4.3, Reviews: 26. \n16. **Zark's Burgers - SM Lanang** - A well-known burger chain with indulgent options. Rating: 5, Reviews: 224. \n17. **Zark's Burgers - SM City Davao** - Another branch of Zark's, great for burger cravings. Rating: 4.9, Reviews: 220. \n\nI excluded **Enzo's Pizza - Crocodile Park** because it reads more like a pizzeria with no clear burger-specific evidence. \n\nLet me know if you have a specific area in mind or if you're looking for something particular like a spicy burger or a vegetarian option!",
+            "model_used": "gpt-4o-mini+deepseek-reasoner",
+            "client_latency_ms": 131655,
+            "server_latency_ms": 131480,
+            "cache_status": "miss",
+            "evidence_count": 0,
+            "source_urls": [],
+            "retrieval_time_ms": 25078,
+            "loop": {
+                "requested_enabled": true,
+                "enabled": true,
+                "status": "ran",
+                "iterations": 1,
+                "initial_compliance_rate": 1,
+                "final_compliance_rate": 1,
+                "violations_detected": [],
+                "violations_repaired": 0,
+                "re_retrieved": false,
+                "measured_outcome": "no_violation_detected"
+            },
+            "error_category": null,
+            "fixture_used": false
+        }
+    ]
+}

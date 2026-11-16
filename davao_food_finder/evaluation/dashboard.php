@@ -366,7 +366,7 @@ select,input[type=number]{padding:7px 10px;border:1px solid #ccd5c9;border-radiu
     <label><input type="checkbox" name="providers[]" value="ablation-no-loop" checked> Single-Pass Ablation (No Loop)</label>
     <label><input type="checkbox" name="providers[]" value="agentic-local" checked> Agentic Iterative Loop (Local Grounded)</label>
     <label><input type="checkbox" name="providers[]" value="non-agentic"> Non-Agentic LLM</label>
-    <label><input type="checkbox" name="providers[]" value="deepseek"> DeepSeek R1</label>
+    <label><input type="checkbox" name="providers[]" value="deepseek"> DeepSeek Flash (API)</label>
     <label><input type="checkbox" name="providers[]" value="gpt-4o-mini"> GPT-4o mini</label>
     <label><input type="checkbox" name="providers[]" value="hybrid"> Hybrid Agentic Pipeline</label>
   </div>

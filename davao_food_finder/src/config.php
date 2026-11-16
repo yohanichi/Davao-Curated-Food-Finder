@@ -34,21 +34,18 @@
 $deepSeekApiBase = getenv('DEEPSEEK_API_BASE_URL');
 $deepSeekApiModel = getenv('DEEPSEEK_API_MODEL');
 define('DEEPSEEK_API_BASE_URL', $deepSeekApiBase !== false && trim($deepSeekApiBase) !== '' ? rtrim(trim($deepSeekApiBase), '/') : 'https://api.deepseek.com');
-define('DEEPSEEK_API_MODEL', $deepSeekApiModel !== false && trim($deepSeekApiModel) !== '' ? trim($deepSeekApiModel) : 'deepseek-reasoner');
+define('DEEPSEEK_API_MODEL', $deepSeekApiModel !== false && trim($deepSeekApiModel) !== '' ? trim($deepSeekApiModel) : 'deepseek-flash');
+$deepSeekNumCtx = getenv('DEEPSEEK_NUM_CTX');
+define('DEEPSEEK_NUM_CTX', $deepSeekNumCtx !== false && is_numeric($deepSeekNumCtx) && (int)$deepSeekNumCtx > 0 ? (int)$deepSeekNumCtx : 4096);
 
-// DeepSeek configuration stays on the server. Ollama is the free local default;
-// set DEEPSEEK_API_KEY to use the hosted DeepSeek-compatible API instead.
+// The paid DeepSeek API is the default; local Ollama requires an explicit request header.
 $apiKey = getenv('DEEPSEEK_API_KEY');
-$baseUrl = getenv('DEEPSEEK_BASE_URL');
-$model = getenv('DEEPSEEK_MODEL');
-
-$hasApiKey = $apiKey !== false && trim($apiKey) !== '';
-$defaultBaseUrl = $hasApiKey ? DEEPSEEK_API_BASE_URL : 'http://127.0.0.1:11434';
-$defaultModel = $hasApiKey ? DEEPSEEK_API_MODEL : 'deepseek-r1:8b';
-
-define('DEEPSEEK_API_KEY', $apiKey !== false ? trim($apiKey) : '');
-define('DEEPSEEK_BASE_URL', $baseUrl !== false && trim($baseUrl) !== '' ? trim($baseUrl) : $defaultBaseUrl);
-define('DEEPSEEK_MODEL', $model !== false && trim($model) !== '' ? trim($model) : $defaultModel);
+$requestedDeepseekBackend = strtolower(trim((string)($_SERVER['HTTP_X_DFF_DEEPSEEK_BACKEND'] ?? '')));
+$forceHostedDeepseek = $requestedDeepseekBackend !== 'local-ollama';
+define('DEEPSEEK_BACKEND', $forceHostedDeepseek ? 'hosted_api' : 'local_ollama');
+define('DEEPSEEK_API_KEY', $forceHostedDeepseek && $apiKey !== false ? trim($apiKey) : '');
+define('DEEPSEEK_BASE_URL', $forceHostedDeepseek ? DEEPSEEK_API_BASE_URL : 'http://127.0.0.1:11434');
+define('DEEPSEEK_MODEL', $forceHostedDeepseek ? DEEPSEEK_API_MODEL : 'deepseek-r1:8b');
 
 $openAIKey = getenv('OPENAI_API_KEY');
 $openAIModel = getenv('OPENAI_MODEL');
@@ -61,6 +58,7 @@ $curlConnect = getenv('CURL_CONNECT_TIMEOUT');
 $curlTimeout = getenv('CURL_TIMEOUT');
 $llmTimeout = getenv('LLM_TIMEOUT');
 $ollamaConnect = getenv('OLLAMA_CONNECT_TIMEOUT');
+$ollamaInferenceTimeout = getenv('OLLAMA_INFERENCE_TIMEOUT');
 $pwProcTimeout = getenv('PLAYWRIGHT_PROC_TIMEOUT');
 $pwStepTimeout = getenv('PLAYWRIGHT_STEP_TIMEOUT');
 
@@ -69,7 +67,8 @@ define('TIMEOUT_CURL_CONNECT', $curlConnect !== false && is_numeric($curlConnect
 define('TIMEOUT_CURL', $curlTimeout !== false && is_numeric($curlTimeout) ? (int)$curlTimeout : 180);
 define('TIMEOUT_LLM', max(120, $llmTimeout !== false && is_numeric($llmTimeout) ? (int)$llmTimeout : 120));
 define('TIMEOUT_OLLAMA_CONNECT', $ollamaConnect !== false && is_numeric($ollamaConnect) ? (int)$ollamaConnect : 5);
-define('TIMEOUT_PLAYWRIGHT_PROC', $pwProcTimeout !== false && is_numeric($pwProcTimeout) ? (int)$pwProcTimeout : 30);
+define('TIMEOUT_OLLAMA_INFERENCE', max(120, $ollamaInferenceTimeout !== false && is_numeric($ollamaInferenceTimeout) ? (int)$ollamaInferenceTimeout : 240));
+define('TIMEOUT_PLAYWRIGHT_PROC', $pwProcTimeout !== false && is_numeric($pwProcTimeout) ? (int)$pwProcTimeout : 60);
 define('TIMEOUT_PLAYWRIGHT_STEP', $pwStepTimeout !== false && is_numeric($pwStepTimeout) ? (int)$pwStepTimeout : 10000);
 
 function getTimeoutConfig(): array {
@@ -79,6 +78,7 @@ function getTimeoutConfig(): array {
         'curl_timeout' => TIMEOUT_CURL,
         'llm_timeout' => TIMEOUT_LLM,
         'ollama_connect_timeout' => TIMEOUT_OLLAMA_CONNECT,
+        'ollama_inference_timeout' => TIMEOUT_OLLAMA_INFERENCE,
         'playwright_proc_timeout' => TIMEOUT_PLAYWRIGHT_PROC,
         'playwright_step_timeout' => TIMEOUT_PLAYWRIGHT_STEP,
         'php_max_execution' => TIMEOUT_PHP_MAX_EXECUTION,

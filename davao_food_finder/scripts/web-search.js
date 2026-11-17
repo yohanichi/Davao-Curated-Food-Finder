@@ -733,9 +733,9 @@ function buildReviewSearchQuery(searchQuery) {
     : `${searchQuery} customer reviews`;
 }
 
-function shouldFetchSourcePage(link, { browserActive, hasPriceCandidates, fetchedPricePages }) {
+function shouldFetchSourcePage(link, { browserActive, fetchedPricePages }) {
   if (link.placeLookup) return false;
-  if (hasPriceCandidates) return Boolean(link.priceLookup) && fetchedPricePages < 3;
+  if (link.priceLookup) return fetchedPricePages < 3;
   if (!browserActive) return false;
   const hasLocalBrowserSnippet = link.playwright_search_result === true
     && Boolean(link.snippet)
@@ -947,12 +947,20 @@ async function run() {
     ? Promise.resolve([])
     : collectPhotonSearch(searchQuery, 8, true);
   const collectSearchResults = async (query, useBraveBrowser = false) => {
-    browserSearchCount += 1 + (!braveApiConfigured && useBraveBrowser ? 1 : 0);
-    const braveResultsPromise = braveApiConfigured
-      ? queueBraveApiSearch(query)
-      : useBraveBrowser
-        ? collectBraveBrowser(browserContext, query, playwrightErrors)
-        : Promise.resolve([]);
+    browserSearchCount += 1;
+    let braveResultsPromise;
+    if (braveApiConfigured) {
+      braveResultsPromise = queueBraveApiSearch(query).then(async results => {
+        if (results.length > 0 || !useBraveBrowser || braveApiRateLimited) return results;
+        browserSearchCount += 1;
+        return collectBraveBrowser(browserContext, query, playwrightErrors);
+      });
+    } else if (useBraveBrowser) {
+      browserSearchCount += 1;
+      braveResultsPromise = collectBraveBrowser(browserContext, query, playwrightErrors);
+    } else {
+      braveResultsPromise = Promise.resolve([]);
+    }
     const [braveResults, bingBrowser, duckDuckGoHttp, bingHttp] = await Promise.all([
       braveResultsPromise,
       collectBingBrowser(browserContext, query, playwrightErrors),
@@ -1042,7 +1050,6 @@ async function run() {
     const shouldFetchPricePage = link.priceLookup && fetchedPricePages < 3;
     const shouldFetchPage = (!hasEnoughNominatimResults || link.priceLookup) && shouldFetchSourcePage(link, {
       browserActive: Boolean(browser),
-      hasPriceCandidates: priceCandidates.length > 0,
       fetchedPricePages
     });
     if (isSocialOrReview || !shouldFetchPage || (!shouldFetchPricePage && fetchedSourcePages >= 3)) continue;

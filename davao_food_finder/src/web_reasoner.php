@@ -324,9 +324,10 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
     ];
 }
 
-function buildCompactCandidates(array $candidates, int $limit = 20, bool $includeSignals = true, array $requestedAreas = []): array {
+function buildCompactCandidates(array $candidates, int $limit = 20, bool $includeSignals = true, array $requestedAreas = [], array $intent = []): array {
     $compact = [];
     foreach (array_slice($candidates, 0, $limit) as $p) {
+        $menuItemPriceScope = ($intent['price_scope'] ?? '') === 'menu_item';
         $entry = [
             'id'=>$p['_id'],
             'name'=>$p['name'],
@@ -334,7 +335,7 @@ function buildCompactCandidates(array $candidates, int $limit = 20, bool $includ
             'description'=>mb_substr((string)($p['description'] ?? ''), 0, 120),
             'address'=>mb_substr((string)($p['address'] ?? ''), 0, 120),
             'city'=>$p['city'] ?? '',
-            'price_range'=>mb_substr((string)($p['price_range'] ?? ''), 0, 40),
+            'price_range'=>$menuItemPriceScope ? '' : mb_substr((string)($p['price_range'] ?? ''), 0, 40),
             'rating'=>$p['rating'],
             'review_count'=>$p['review_count'],
             'source'=>'2025_local_dataset',
@@ -360,9 +361,9 @@ function buildCompactCandidates(array $candidates, int $limit = 20, bool $includ
                     array_slice($p['_review_snippets'], 0, 2)
                 );
             }
-            $vp = getVerifiedPlacePricePhp($p);
+            $vp = getPriceEvidenceForIntent($p, $intent);
             if ($vp !== null) {
-                $entry['verified_price_php'] = $vp;
+                $entry[$menuItemPriceScope ? 'verified_menu_item_price_php' : 'verified_price_php'] = $vp;
             }
             if (!empty($p['_live_volatility_note'])) {
                 $entry['live_web_update'] = $p['_live_volatility_note'];
@@ -653,15 +654,54 @@ function answerWithBaseline(string $query, array $candidates, array $intent = []
     return [$answer, $ids, 'ready', [], [], false, 'deterministic-local-baseline'];
 }
 
+function attachMenuItemPriceEvidenceToPlaces(array $places, array $evidence, array $intent): array {
+    if (($intent['price_scope'] ?? '') !== 'menu_item') return $places;
+    $dish = trim((string)($intent['specific_dishes'][0] ?? ''));
+    if ($dish === '') return $places;
+    $items = is_array($evidence['results'] ?? null) ? $evidence['results'] : [];
+
+    foreach ($places as &$place) {
+        $name = mb_strtolower(trim((string)($place['name'] ?? '')), 'UTF-8');
+        if ($name === '') continue;
+        $baseName = mb_strtolower(trim((string)(preg_replace('/\s+-\s+[^-]+$/u', '', (string)$place['name']) ?? '')), 'UTF-8');
+
+        foreach ($items as $item) {
+            if (!is_array($item) || empty($item['price_lookup'])) continue;
+            $blob = trim((string)($item['title'] ?? '') . ' ' . (string)($item['text'] ?? $item['snippet'] ?? ''));
+            $blobLower = mb_strtolower($blob, 'UTF-8');
+            $mentionsPlace = mb_strpos($blobLower, $name) !== false
+                || (mb_strlen($baseName, 'UTF-8') >= 5 && mb_strpos($blobLower, $baseName) !== false);
+            if (!$mentionsPlace) continue;
+
+            $price = extractMenuItemPriceFromText($blob, $dish);
+            if ($price === null) continue;
+            $sourceUrl = filter_var($item['url'] ?? '', FILTER_VALIDATE_URL) ? (string)$item['url'] : '';
+            if ($sourceUrl === '') continue;
+            $place['menu_item_price_evidence'] = [
+                'item'=>$dish,
+                'observed_min_php'=>$price['min'],
+                'observed_median_php'=>$price['median'],
+                'observed_max_php'=>$price['max'],
+                'source'=>'live_menu_item_evidence',
+                'source_url'=>$sourceUrl,
+            ];
+            break;
+        }
+    }
+    unset($place);
+    return $places;
+}
+
 /**
  * Reconcile static 2025 CSV records against live Playwright / updated web evidence for Data Volatility Resilience.
  * Detects permanent/temporary closures, menu price drift, operating hours updates, and rating shifts.
  */
-function reconcileVolatilityWithEvidence(array $places, array $evidence): array {
+function reconcileVolatilityWithEvidence(array $places, array $evidence, array $intent = []): array {
     $report = [
         'evidence_items_scanned'=>0,
         'closed_places'=>[],
         'price_updates'=>[],
+        'menu_item_price_updates'=>[],
         'hours_updates'=>[],
         'rating_updates'=>[],
     ];
@@ -679,7 +719,12 @@ function reconcileVolatilityWithEvidence(array $places, array $evidence): array 
         $blobLower = mb_strtolower($blob, 'UTF-8');
 
         $isClosed = preg_match('/\b(permanently\s+closed|closed\s+permanently|temporarily\s+closed|closed\s+for\s+renovation|closed\s+for\s+relocation|closed\s+down|shut\s+down|ceased\s+operations|no\s+longer\s+operating|has\s+closed\s+its\s+doors)\b/iu', $blobLower) === 1;
-        $prices = extractPesoAmountsFromText($blob);
+        $isMenuItemPriceLookup = ($intent['price_scope'] ?? '') === 'menu_item' && !empty($item['price_lookup']);
+        $dish = trim((string)($intent['specific_dishes'][0] ?? ''));
+        $menuItemPrice = $isMenuItemPriceLookup && $dish !== '' ? extractMenuItemPriceFromText($blob, $dish) : null;
+        $sourceUrl = filter_var($item['url'] ?? '', FILTER_VALIDATE_URL) ? (string)$item['url'] : '';
+        if ($sourceUrl === '') $menuItemPrice = null;
+        $prices = $isMenuItemPriceLookup ? [] : extractPesoAmountsFromText($blob);
         $hasPriceContext = preg_match('/\b(menu|price|prices|cost|per\s+(?:person|head|serving)|php|pesos?)\b|₱/iu', $blob) === 1;
         if (!$hasPriceContext) {
             $prices = [];
@@ -695,12 +740,14 @@ function reconcileVolatilityWithEvidence(array $places, array $evidence): array 
             $liveRating = (float)$rm[1];
         }
 
-        if ($isClosed || $prices || $hoursLate !== null || $liveRating !== null) {
+        if ($isClosed || $prices || $menuItemPrice !== null || $hoursLate !== null || $liveRating !== null) {
             $parsedNotices[] = [
                 'blob_lower'=>$blobLower,
                 'is_closed'=>$isClosed,
                 'prices'=>$prices,
-                'source_url'=>filter_var($item['url'] ?? '', FILTER_VALIDATE_URL) ? (string)$item['url'] : '',
+                'menu_item_price'=>$menuItemPrice,
+                'menu_item'=>$dish,
+                'source_url'=>$sourceUrl,
                 'hours_late'=>$hoursLate,
                 'live_rating'=>$liveRating,
             ];
@@ -727,6 +774,21 @@ function reconcileVolatilityWithEvidence(array $places, array $evidence): array 
             if (!$exactMatch && !$branchMatch) continue;
 
             $notes = [];
+            if ($notice['menu_item_price'] !== null) {
+                $place['_menu_item_price_php'] = $notice['menu_item_price']['median'];
+                $place['_menu_item_price_min_php'] = $notice['menu_item_price']['min'];
+                $place['_menu_item_price_max_php'] = $notice['menu_item_price']['max'];
+                $place['_menu_item_price_source_url'] = $notice['source_url'];
+                $place['_menu_item_price_item'] = $notice['menu_item'];
+                $report['menu_item_price_updates'][] = [
+                    'name'=>$place['name'],
+                    'item'=>$notice['menu_item'],
+                    'median_php'=>$notice['menu_item_price']['median'],
+                    'max_php'=>$notice['menu_item_price']['max'],
+                    'source_url'=>$notice['source_url'],
+                ];
+                $notes[] = 'verified ' . $notice['menu_item'] . ' menu price';
+            }
             if ($notice['is_closed']) {
                 $place['_live_status'] = 'permanently_closed';
                 $report['closed_places'][] = $place['name'];
@@ -781,7 +843,7 @@ function answerWithAgenticLocal(string $query, array $candidates, array $evidenc
         ];
     }
 
-    $webPlaces = sanitizeWebPlaces(evidencePlacesFallback($evidence), $evidence);
+    $webPlaces = attachMenuItemPriceEvidenceToPlaces(sanitizeWebPlaces(evidencePlacesFallback($evidence), $evidence), $evidence, $intent);
     // Filter webPlaces against closures and numeric price ceilings
     $closedLookup = array_fill_keys(array_map(fn($n) => mb_strtolower(trim((string)$n), 'UTF-8'), $volatilityReport['closed_places'] ?? []), true);
     $webPlaces = array_values(array_filter($webPlaces, function ($wp) use ($closedLookup, $intent) {
@@ -790,9 +852,12 @@ function answerWithAgenticLocal(string $query, array $candidates, array $evidenc
         if (preg_match('/\b(permanently\s+closed|closed\s+down|shut\s+down)\b/iu', (string)($wp['description'] ?? ''))) return false;
         $maxP = isset($intent['max_price_php']) && is_numeric($intent['max_price_php']) ? (float)$intent['max_price_php'] : null;
         if ($maxP !== null) {
-            $vp = getVerifiedPlacePricePhp($wp);
-            if ($vp !== null && $vp['median'] > $maxP) return false;
-            $descPrices = extractPesoAmountsFromText((string)($wp['description'] ?? ''));
+            $vp = getPriceEvidenceForIntent($wp, $intent);
+            $ceilingPrice = $vp === null ? null : ((($intent['price_scope'] ?? '') === 'menu_item') ? $vp['max'] : $vp['median']);
+            if ($ceilingPrice !== null && $ceilingPrice > $maxP) return false;
+            $descPrices = ($intent['price_scope'] ?? '') === 'menu_item'
+                ? []
+                : extractPesoAmountsFromText((string)($wp['description'] ?? ''));
             if ($descPrices) {
                 sort($descPrices);
                 if ($descPrices[intdiv(count($descPrices), 2)] > $maxP) return false;
@@ -806,9 +871,10 @@ function answerWithAgenticLocal(string $query, array $candidates, array $evidenc
     foreach (array_slice($candidates, 0, 4) as $p) {
         $label = trim((string)($p['name'] ?? ''));
         if ($label === '') continue;
-        $vp = getVerifiedPlacePricePhp($p);
+        $vp = getPriceEvidenceForIntent($p, $intent);
         if ($vp !== null && isset($intent['max_price_php'])) {
-            $label .= ' (~₱' . (int)round($vp['median']) . ')';
+            $label .= (($intent['price_scope'] ?? '') === 'menu_item' ? ' (' . ($vp['item'] ?: 'menu item') . ' ~₱' : ' (~₱')
+                . (int)round(($intent['price_scope'] ?? '') === 'menu_item' ? $vp['max'] : $vp['median']) . ')';
         }
         $highlights[] = $label;
     }
@@ -817,7 +883,9 @@ function answerWithAgenticLocal(string $query, array $candidates, array $evidenc
     if (!empty($intent['cuisines'])) $prefixParts[] = implode(' / ', $intent['cuisines']);
     if (!empty($intent['areas'])) $prefixParts[] = 'in ' . implode(' / ', $intent['areas']);
     if (isset($intent['max_price_php']) && is_numeric($intent['max_price_php'])) {
-        $prefixParts[] = 'within ₱' . (int)$intent['max_price_php'];
+        $prefixParts[] = ($intent['price_scope'] ?? '') === 'menu_item'
+            ? trim((string)($intent['specific_dishes'][0] ?? 'menu item')) . ' at or below ₱' . (int)$intent['max_price_php']
+            : 'within ₱' . (int)$intent['max_price_php'] . ' per person';
     } elseif (($intent['budget'] ?? null) === 'affordable') {
         $prefixParts[] = 'budget-friendly';
     }
@@ -868,12 +936,15 @@ function critiqueSinglePlace(
     $maxPrice = isset($intent['max_price_php']) && is_numeric($intent['max_price_php']) ? (float)$intent['max_price_php'] : null;
     $minPrice = isset($intent['min_price_php']) && is_numeric($intent['min_price_php']) ? (float)$intent['min_price_php'] : null;
     if ($maxPrice !== null || $minPrice !== null) {
-        $vp = getVerifiedPlacePricePhp($place);
+        $vp = getPriceEvidenceForIntent($place, $intent);
         $signals = $place['_review_signals'] ?? [];
         if ($vp !== null) {
-            if ($maxPrice !== null && $vp['median'] > $maxPrice) $violations[] = 'price_ceiling_exceeded';
+            $ceilingPrice = ($intent['price_scope'] ?? '') === 'menu_item' ? $vp['max'] : $vp['median'];
+            if ($maxPrice !== null && $ceilingPrice > $maxPrice) $violations[] = 'price_ceiling_exceeded';
             if ($minPrice !== null && $vp['max'] < $minPrice) $violations[] = 'below_min_price';
-        } elseif ($maxPrice !== null && $maxPrice <= 250 && (int)($signals['expensive'] ?? 0) >= 2 && (int)($signals['affordable'] ?? 0) === 0) {
+        } elseif (($intent['price_scope'] ?? '') === 'menu_item') {
+            $violations[] = 'menu_item_price_unverified';
+        } elseif (($intent['price_scope'] ?? '') !== 'menu_item' && $maxPrice !== null && $maxPrice <= 250 && (int)($signals['expensive'] ?? 0) >= 2 && (int)($signals['affordable'] ?? 0) === 0) {
             $violations[] = 'unverified_price_flagged_expensive';
         }
     }
@@ -1052,9 +1123,12 @@ function runAutonomousRefinementLoop(
             $violationsDetected[] = 'closed_web_venue:' . ($wName ?: 'unknown');
         }
         if (isset($intent['max_price_php']) && is_numeric($intent['max_price_php'])) {
-            $vp = getVerifiedPlacePricePhp($wp);
-            if ($vp !== null && $vp['median'] > (float)$intent['max_price_php']) {
+            $vp = getPriceEvidenceForIntent($wp, $intent);
+            $ceilingPrice = $vp === null ? null : ((($intent['price_scope'] ?? '') === 'menu_item') ? $vp['max'] : $vp['median']);
+            if ($ceilingPrice !== null && $ceilingPrice > (float)$intent['max_price_php']) {
                 $violationsDetected[] = 'web_price_ceiling_exceeded:' . ($wName ?: 'unknown');
+            } elseif (($intent['price_scope'] ?? '') === 'menu_item' && $vp === null) {
+                $violationsDetected[] = 'web_menu_item_price_unverified:' . ($wName ?: 'unknown');
             }
         }
     }
@@ -1075,6 +1149,7 @@ function runAutonomousRefinementLoop(
                 'final_compliance_rate'=>$initialCompliance,
                 'violations_detected'=>[],
                 'violations_repaired'=>0,
+                'unverified_menu_item_prices'=>0,
                 're_retrieved'=>false,
             ],
         ];
@@ -1118,8 +1193,9 @@ function runAutonomousRefinementLoop(
         if (detectOutOfScopeLocation($rawName . ' ' . ($wp['address'] ?? '') . ' ' . ($wp['city'] ?? ''))['out_of_scope']) return false;
         if (preg_match('/\b(permanently\s+closed|closed\s+down|shut\s+down)\b/iu', (string)($wp['description'] ?? ''))) return false;
         if (isset($intent['max_price_php']) && is_numeric($intent['max_price_php'])) {
-            $vp = getVerifiedPlacePricePhp($wp);
-            if ($vp !== null && $vp['median'] > (float)$intent['max_price_php']) return false;
+            $vp = getPriceEvidenceForIntent($wp, $intent);
+            $ceilingPrice = $vp === null ? null : ((($intent['price_scope'] ?? '') === 'menu_item') ? $vp['max'] : $vp['median']);
+            if ($ceilingPrice !== null && $ceilingPrice > (float)$intent['max_price_php']) return false;
         }
         return true;
     }));
@@ -1202,9 +1278,10 @@ function runAutonomousRefinementLoop(
         foreach (array_slice($repairedIds, 0, 4) as $rid) {
             if (!isset($byId[$rid])) continue;
             $lbl = $byId[$rid]['name'];
-            $vp = getVerifiedPlacePricePhp($byId[$rid]);
+            $vp = getPriceEvidenceForIntent($byId[$rid], $intent);
             if ($vp !== null && isset($intent['max_price_php'])) {
-                $lbl .= ' (~₱' . (int)round($vp['median']) . ')';
+                $lbl .= (($intent['price_scope'] ?? '') === 'menu_item' ? ' (' . ($vp['item'] ?: 'menu item') . ' ~₱' : ' (~₱')
+                    . (int)round(($intent['price_scope'] ?? '') === 'menu_item' ? $vp['max'] : $vp['median']) . ')';
             }
             $topLabels[] = $lbl;
         }
@@ -1231,6 +1308,10 @@ function runAutonomousRefinementLoop(
             'final_compliance_rate'=>$finalCompliance,
             'violations_detected'=>$violationsDetected,
             'violations_repaired'=>$repairedCount,
+            'unverified_menu_item_prices'=>count(array_filter(
+                $violationsDetected,
+                fn($violation) => str_contains((string)$violation, 'menu_item_price_unverified')
+            )),
             're_retrieved'=>$reRetrieved,
         ],
     ];
@@ -1403,7 +1484,7 @@ function answerWithDeepSeekPipelineFallback(string $query, array $history, array
         return $localAnswer();
     }
     $reqAreas = isset($options['intent']['areas']) && is_array($options['intent']['areas']) ? $options['intent']['areas'] : [];
-    $compact = buildCompactCandidates($candidates, 6, false, $reqAreas);
+    $compact = buildCompactCandidates($candidates, 6, false, $reqAreas, $options['intent'] ?? []);
 
     // STATIC PREFIX-CACHED SYSTEM INSTRUCTIONS (identical across queries for maximum llama.cpp KV reuse)
     $systemContent = <<<'SYS'
@@ -1450,7 +1531,11 @@ SYS;
     if (!empty($int['cuisines'])) $constraintHints[] = 'Target Cuisine: ' . implode(', ', (array)$int['cuisines']);
     if (!empty($int['specific_dishes'])) $constraintHints[] = 'Target Dish: ' . implode(', ', (array)$int['specific_dishes']);
     if (!empty($int['areas'])) $constraintHints[] = 'Target Area: ' . implode(', ', (array)$int['areas']);
-    if (!empty($int['max_price_php'])) $constraintHints[] = 'Max Budget: ₱' . (int)$int['max_price_php'];
+    if (!empty($int['max_price_php'])) {
+        $constraintHints[] = ($int['price_scope'] ?? '') === 'menu_item'
+            ? 'Maximum price for ' . (string)($int['specific_dishes'][0] ?? 'the requested menu item') . ': ₱' . (int)$int['max_price_php']
+            : 'Maximum budget per person: ₱' . (int)$int['max_price_php'];
+    }
     if (!empty($int['dietary'])) $constraintHints[] = 'Dietary: ' . implode(', ', (array)$int['dietary']);
     if (!empty($int['exclude_names'])) $constraintHints[] = 'Exclude: ' . implode(', ', array_slice((array)$int['exclude_names'], 0, 5));
     $intentSummary = $constraintHints ? "\nActive Constraints: " . implode('; ', $constraintHints) : '';
@@ -1778,6 +1863,10 @@ function planSearchQueryWithGPT4oMini(string $query, array $history, array $show
         $v = (float)$plan['min_price_php'];
         if ($v >= 30 && $v <= 5000) $merged['min_price_php'] = $v;
     }
+    if (($merged['max_price_php'] !== null || $merged['min_price_php'] !== null) && $merged['price_scope'] === null) {
+        $explicitPerPerson = preg_match('/\b(per\s+(?:person|head|serving)|each|overall|total\s+(?:meal|bill)|meal\s+budget|budget)\b/iu', $query) === 1;
+        $merged['price_scope'] = !empty($merged['specific_dishes']) && !$explicitPerPerson ? 'menu_item' : 'per_person';
+    }
     if ($merged['min_rating'] === null && isset($plan['min_rating']) && is_numeric($plan['min_rating'])) {
         $v = (float)$plan['min_rating'];
         if ($v >= 1.0 && $v <= 5.0) $merged['min_rating'] = $v;
@@ -1941,10 +2030,10 @@ function answerWithHybridPipeline(string $query, array $history, array $candidat
     $isOnlineOnlyRequested = !empty($options['intent']['online_only']);
     $localJson = $isOnlineOnlyRequested
         ? '[Excluded by user request - Online search only; do NOT suggest local dataset places]'
-        : json_encode(buildCompactCandidates($candidates, 20, true, $reqAreas), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        : json_encode(buildCompactCandidates($candidates, 20, true, $reqAreas, $options['intent'] ?? []), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
     $reasonerLocalJson = $isOnlineOnlyRequested
         ? $localJson
-        : json_encode(buildCompactCandidates($candidates, 6, true, $reqAreas), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        : json_encode(buildCompactCandidates($candidates, 6, true, $reqAreas, $options['intent'] ?? []), JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 
     // Stage 3: GPT-4o mini cleans and structures raw unstructured Playwright web-scraping output.
     $cleanerMessages = [
@@ -2346,7 +2435,7 @@ function answerWithGPT4oMini(string $query, array $history, array $candidates, a
 
     $includeSignals = ($options['agentic'] ?? true) === true;
     $reqAreas = ($includeSignals && isset($options['intent']['areas']) && is_array($options['intent']['areas'])) ? $options['intent']['areas'] : [];
-    $compact = buildCompactCandidates($candidates, 20, $includeSignals, $reqAreas);
+    $compact = buildCompactCandidates($candidates, 20, $includeSignals, $reqAreas, $options['intent'] ?? []);
     $styleExtra = promptStyleInstruction($options);
     $intentSummary = ($includeSignals && isset($options['intent']) && is_array($options['intent']))
         ? "\nParsed layered intent constraints: " . json_encode($options['intent'], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)
@@ -2488,7 +2577,7 @@ function answerWithDeepSeekApi(string $query, array $history, array $candidates,
     }
 
     $reqAreas = isset($options['intent']['areas']) && is_array($options['intent']['areas']) ? $options['intent']['areas'] : [];
-    $compact = buildCompactCandidates($candidates, 6, false, $reqAreas);
+    $compact = buildCompactCandidates($candidates, 6, false, $reqAreas, $options['intent'] ?? []);
     $conversationalExtra = ($options['promptStyle'] ?? 'baseline') === 'strict_grounding'
         ? ''
         : ' Be warm and concise across all prior turns. Clarify honestly when the closest match is on an adjacent street.';
@@ -2518,7 +2607,11 @@ function answerWithDeepSeekApi(string $query, array $history, array $candidates,
     if (!empty($int['cuisines'])) $constraintHints[] = 'Target Cuisine: ' . implode(', ', (array)$int['cuisines']);
     if (!empty($int['specific_dishes'])) $constraintHints[] = 'Target Dish: ' . implode(', ', (array)$int['specific_dishes']);
     if (!empty($int['areas'])) $constraintHints[] = 'Target Area: ' . implode(', ', (array)$int['areas']);
-    if (!empty($int['max_price_php'])) $constraintHints[] = 'Max Budget: ₱' . (int)$int['max_price_php'];
+    if (!empty($int['max_price_php'])) {
+        $constraintHints[] = ($int['price_scope'] ?? '') === 'menu_item'
+            ? 'Maximum price for ' . (string)($int['specific_dishes'][0] ?? 'the requested menu item') . ': ₱' . (int)$int['max_price_php']
+            : 'Maximum budget per person: ₱' . (int)$int['max_price_php'];
+    }
     if (!empty($int['dietary'])) $constraintHints[] = 'Dietary: ' . implode(', ', (array)$int['dietary']);
     if (!empty($int['exclude_names'])) $constraintHints[] = 'Exclude: ' . implode(', ', array_slice((array)$int['exclude_names'], 0, 5));
     $intentSummary = $constraintHints ? "\nActive Constraints: " . implode('; ', $constraintHints) : '';

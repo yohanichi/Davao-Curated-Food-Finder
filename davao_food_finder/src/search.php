@@ -97,6 +97,38 @@ function extractPesoAmountsFromText(string $text): array {
     return array_values($prices);
 }
 
+function extractMenuItemPriceFromText(string $text, string $dish): ?array {
+    $tokens = preg_split('/[^\pL\pN]+/u', mb_strtolower(trim($dish), 'UTF-8'), -1, PREG_SPLIT_NO_EMPTY);
+    if (!$tokens) return null;
+    $dishPattern = implode('[\s\pP]+', array_map(fn($token) => preg_quote($token, '/'), $tokens));
+    $pricePattern = '(?:(?:₱|php\s*|p\s*)(\d{2,4})(?:\.\d{1,2})?|\b(\d{2,4})\s*(?:pesos?|php)\b)(?:\s*(?:-|–|to)\s*(?:₱|php\s*|p\s*)?(\d{2,4})(?:\.\d{1,2})?)?';
+    $nearbyText = '[^\r\n.!?;|]{0,60}';
+    $patterns = [
+        '/\b' . $dishPattern . '\b' . $nearbyText . $pricePattern . '/iu',
+        '/' . $pricePattern . $nearbyText . '\b' . $dishPattern . '\b/iu',
+    ];
+
+    foreach ($patterns as $pattern) {
+        if (!preg_match($pattern, $text, $match)) continue;
+        $prices = [];
+        foreach ([$match[1] ?? '', $match[2] ?? '', $match[3] ?? ''] as $rawPrice) {
+            if ($rawPrice === '') continue;
+            $price = (int)$rawPrice;
+            if ($price >= 35 && $price <= 3500 && ($price < 2018 || $price > 2028)) {
+                $prices[] = $price;
+            }
+        }
+        if (!$prices) continue;
+        sort($prices);
+        return [
+            'min'=>(float)$prices[0],
+            'median'=>(float)$prices[intdiv(count($prices), 2)],
+            'max'=>(float)$prices[count($prices) - 1],
+        ];
+    }
+    return null;
+}
+
 /**
  * Normalize Davao Bisaya/Cebuano, Taglish, Filipino -an/-han food-venue forms, and common culinary misspellings/transliterations.
  */
@@ -180,6 +212,11 @@ function extractSpecificDishes(string $rawText): array {
 }
 
 function expandMenuItemSearchQuery(string $query, array $intent): string {
+    if ((isset($intent['max_price_php']) && is_numeric($intent['max_price_php']))
+        || (isset($intent['min_price_php']) && is_numeric($intent['min_price_php']))) {
+        return trim($query);
+    }
+
     $alternatives = [];
     $dishes = array_map(fn($dish) => mb_strtolower(trim((string)$dish), 'UTF-8'), $intent['specific_dishes'] ?? []);
     $cuisines = array_map(fn($cuisine) => mb_strtolower(trim((string)$cuisine), 'UTF-8'), $intent['cuisines'] ?? []);
@@ -680,6 +717,15 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             if ($amount >= 35 && $amount <= 5000) $maxPricePhp = $amount;
         }
 
+        $priceScope = null;
+        if ($maxPricePhp !== null || $minPricePhp !== null) {
+            if (preg_match('/\b(per\s+(?:person|head|serving)|each|overall|total\s+(?:meal|bill)|meal\s+budget|budget)\b/iu', $rawLower) === 1) {
+                $priceScope = 'per_person';
+            } elseif (!empty($specificDishes)) {
+                $priceScope = 'menu_item';
+            }
+        }
+
         $budget = (preg_match('/\b(affordable|cheap|cheaper|budget|budget[- ]friendly|sulit|mura|inexpensive|low[- ]cost|student[- ]friendly|tipid|not\s+(?:too\s+)?expensive|not\s+pricey)\b/iu', $t) === 1
             || ($maxPricePhp !== null && $maxPricePhp <= 280))
             ? 'affordable'
@@ -719,6 +765,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'min_rating'=>$minRating,
             'min_price_php'=>$minPricePhp,
             'max_price_php'=>$maxPricePhp,
+            'price_scope'=>$priceScope,
             'budget'=>$budget,
             'price_preference'=>$pricePreference,
             'dietary'=>$dietary,
@@ -763,6 +810,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'min_rating'=>null,
             'min_price_php'=>null,
             'max_price_php'=>null,
+            'price_scope'=>null,
             'budget'=>null,
             'price_preference'=>null,
             'dietary'=>[],
@@ -793,6 +841,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
                 $state['min_rating'] = null;
                 $state['min_price_php'] = null;
                 $state['max_price_php'] = null;
+                $state['price_scope'] = null;
                 $state['budget'] = null;
                 $state['price_preference'] = null;
                 $state['dietary'] = [];
@@ -811,6 +860,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
                     && preg_match('/\b(still|same\s+budget|under|below|cheap|affordable)\b/iu', $tLower) !== 1) {
                     $state['max_price_php'] = null;
                     $state['min_price_php'] = null;
+                    $state['price_scope'] = null;
                     $state['budget'] = null;
                     $state['price_preference'] = null;
                     $state['ambiance'] = [];
@@ -835,6 +885,9 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             if ($extracted['max_price_php'] !== null) {
                 $state['max_price_php'] = $extracted['max_price_php'];
                 $state['min_price_php'] = $extracted['min_price_php'];
+                if ($extracted['price_scope'] !== null) {
+                    $state['price_scope'] = $extracted['price_scope'];
+                }
             } elseif ($state['max_price_php'] !== null && preg_match('/\b(even\s+cheaper|lower\s+budget|tighter\s+budget)\b/iu', $tLower) === 1) {
                 $state['max_price_php'] = round($state['max_price_php'] * 0.8, 0);
             }
@@ -867,6 +920,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
                 'active_cuisines' => $state['cuisines'],
                 'active_areas' => $state['areas'],
                 'max_price_php' => $state['max_price_php'],
+                'price_scope' => $state['price_scope'],
             ];
         }
 
@@ -874,8 +928,14 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             $state['areas'] = [];
         }
         $current = $state;
+        if (($current['max_price_php'] !== null || $current['min_price_php'] !== null) && $current['price_scope'] === null) {
+            $current['price_scope'] = 'per_person';
+        }
     } else {
         $current = $currentOnly;
+        if (($current['max_price_php'] !== null || $current['min_price_php'] !== null) && $current['price_scope'] === null) {
+            $current['price_scope'] = 'per_person';
+        }
         $conversationLayers[] = [
             'turn' => 1,
             'user_input' => mb_substr($trimmed, 0, 200),
@@ -883,6 +943,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'active_cuisines' => $current['cuisines'],
             'active_areas' => $current['areas'],
             'max_price_php' => $current['max_price_php'],
+            'price_scope' => $current['price_scope'],
         ];
     }
 
@@ -957,6 +1018,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         'min_rating'=>$current['min_rating'],
         'min_price_php'=>$current['min_price_php'],
         'max_price_php'=>$current['max_price_php'],
+        'price_scope'=>$current['price_scope'] ?? (($current['max_price_php'] !== null || $current['min_price_php'] !== null) ? 'per_person' : null),
         'budget'=>$current['budget'],
         'price_preference'=>$current['price_preference'],
         'dietary'=>$current['dietary'],
@@ -1146,11 +1208,80 @@ function getVerifiedPlacePricePhp(array $place): ?array {
     return null;
 }
 
+function getVerifiedMenuItemPricePhp(array $place): ?array {
+    if (isset($place['_menu_item_price_php']) && is_numeric($place['_menu_item_price_php'])) {
+        $median = (float)$place['_menu_item_price_php'];
+        return [
+            'min'=>(float)($place['_menu_item_price_min_php'] ?? $median),
+            'median'=>$median,
+            'max'=>(float)($place['_menu_item_price_max_php'] ?? $median),
+            'source'=>'live_menu_item_evidence',
+            'source_url'=>(string)($place['_menu_item_price_source_url'] ?? ''),
+            'item'=>(string)($place['_menu_item_price_item'] ?? ''),
+        ];
+    }
+    $evidence = $place['menu_item_price_evidence'] ?? null;
+    if (is_array($evidence) && isset($evidence['observed_median_php']) && is_numeric($evidence['observed_median_php'])) {
+        $median = (float)$evidence['observed_median_php'];
+        return [
+            'min'=>(float)($evidence['observed_min_php'] ?? $median),
+            'median'=>$median,
+            'max'=>(float)($evidence['observed_max_php'] ?? $median),
+            'source'=>(string)($evidence['source'] ?? 'live_menu_item_evidence'),
+            'source_url'=>(string)($evidence['source_url'] ?? ''),
+            'item'=>(string)($evidence['item'] ?? ''),
+        ];
+    }
+    return null;
+}
+
+function getPriceEvidenceForIntent(array $place, array $intent): ?array {
+    return ($intent['price_scope'] ?? 'per_person') === 'menu_item'
+        ? getVerifiedMenuItemPricePhp($place)
+        : getVerifiedPlacePricePhp($place);
+}
+
+function buildPriceLookupQueries(array $places, array $intent, bool $onlineOnly = false, string $fallbackQuery = ''): array {
+    if (!isset($intent['max_price_php']) || !is_numeric($intent['max_price_php'])) return [];
+
+    $queries = [];
+    if (($intent['price_scope'] ?? '') === 'menu_item') {
+        $dish = trim((string)($intent['specific_dishes'][0] ?? ''));
+        if ($dish === '') return [];
+        $safeDish = str_replace('"', '', $dish);
+        $queries[] = '"' . $safeDish . '" menu price PHP Davao City';
+        if (!$onlineOnly) {
+            $query = trim((string)($intent['effective_query'] ?? ''));
+            if ($query === '') $query = $fallbackQuery !== '' ? $fallbackQuery : $dish;
+            foreach (shortlistPlaces($places, $query, 12, $intent, false) as $candidate) {
+                if (getVerifiedMenuItemPricePhp($candidate) !== null) continue;
+                $name = trim((string)($candidate['name'] ?? ''));
+                if ($name === '') continue;
+                $queries[] = '"' . str_replace('"', '', $name) . '" "' . $safeDish . '" menu price PHP Davao City';
+                if (count($queries) >= 3) break;
+            }
+        }
+        return array_values(array_unique(array_slice($queries, 0, 3)));
+    }
+
+    if ($onlineOnly) return [];
+    $query = trim((string)($intent['effective_query'] ?? ''));
+    if ($query === '') $query = $fallbackQuery;
+    foreach (shortlistPlaces($places, $query, 12, $intent, false) as $candidate) {
+        if (getVerifiedPlacePricePhp($candidate) !== null) continue;
+        $name = trim((string)($candidate['name'] ?? ''));
+        if ($name === '') continue;
+        $queries[] = '"' . $name . '" menu prices PHP Davao City';
+        if (count($queries) >= 3) break;
+    }
+    return array_values(array_unique($queries));
+}
+
 /**
  * Hard numeric price-ceiling filter across local or web recommendations.
  * Strictly removes any place whose verified price exceeds maxPricePhp, or that has repeated 'expensive' complaints under tight ceilings.
  */
-function enforceNumericPriceCeiling(array $items, ?float $maxPricePhp, ?float $minPricePhp = null, bool $prioritizeVerified = true): array {
+function enforceNumericPriceCeiling(array $items, ?float $maxPricePhp, ?float $minPricePhp = null, bool $prioritizeVerified = true, string $priceScope = 'per_person'): array {
     if ($maxPricePhp === null && $minPricePhp === null) {
         return $items;
     }
@@ -1158,14 +1289,15 @@ function enforceNumericPriceCeiling(array $items, ?float $maxPricePhp, ?float $m
     $unverifiedBudgetPlausible = [];
 
     foreach ($items as $item) {
-        $vp = getVerifiedPlacePricePhp($item);
+        $vp = $priceScope === 'menu_item' ? getVerifiedMenuItemPricePhp($item) : getVerifiedPlacePricePhp($item);
         $signals = $item['_review_signals'] ?? [];
         $expCount = (int)($signals['expensive'] ?? 0);
         $affCount = (int)($signals['affordable'] ?? 0);
 
         if ($vp !== null) {
             // Hard ceiling check against verified median/min price
-            if ($maxPricePhp !== null && $vp['median'] > $maxPricePhp) {
+            $ceilingPrice = $priceScope === 'menu_item' ? $vp['max'] : $vp['median'];
+            if ($maxPricePhp !== null && $ceilingPrice > $maxPricePhp) {
                 continue;
             }
             if ($minPricePhp !== null && $vp['max'] < $minPricePhp) {
@@ -1176,7 +1308,7 @@ function enforceNumericPriceCeiling(array $items, ?float $maxPricePhp, ?float $m
         }
 
         // Unverified price: under tight numeric ceilings, reject places flagged as expensive without countervailing affordability reviews
-        if ($maxPricePhp !== null && $maxPricePhp <= 250 && $expCount >= 2 && $affCount === 0) {
+        if ($priceScope !== 'menu_item' && $maxPricePhp !== null && $maxPricePhp <= 250 && $expCount >= 2 && $affCount === 0) {
             continue;
         }
         $unverifiedBudgetPlausible[] = $item;
@@ -1233,6 +1365,7 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
     $minRating = isset($intent['min_rating']) && is_numeric($intent['min_rating']) ? (float)$intent['min_rating'] : null;
     $maxPricePhp = isset($intent['max_price_php']) && is_numeric($intent['max_price_php']) ? (float)$intent['max_price_php'] : null;
     $minPricePhp = isset($intent['min_price_php']) && is_numeric($intent['min_price_php']) ? (float)$intent['min_price_php'] : null;
+    $priceScope = (string)($intent['price_scope'] ?? 'per_person');
     $budget = $intent['budget'] ?? null;
     $pricePreference = $intent['price_preference'] ?? null;
     $dietary = $intent['dietary'] ?? [];
@@ -1287,15 +1420,16 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
         $signals = $p['_review_signals'] ?? [];
 
         // Hard numeric price ceiling check during scoring
-        $verifiedPrice = getVerifiedPlacePricePhp($p);
+        $verifiedPrice = getPriceEvidenceForIntent($p, $intent);
         if ($applyHardCritiqueMasks) {
-            if ($maxPricePhp !== null && $verifiedPrice !== null && $verifiedPrice['median'] > $maxPricePhp) {
+            $ceilingPrice = $verifiedPrice === null ? null : ($priceScope === 'menu_item' ? $verifiedPrice['max'] : $verifiedPrice['median']);
+            if ($maxPricePhp !== null && $ceilingPrice !== null && $ceilingPrice > $maxPricePhp) {
                 continue;
             }
             if ($minPricePhp !== null && $verifiedPrice !== null && $verifiedPrice['max'] < $minPricePhp) {
                 continue;
             }
-            if ($maxPricePhp !== null && $maxPricePhp <= 250 && $verifiedPrice === null && (int)($signals['expensive'] ?? 0) >= 2 && (int)($signals['affordable'] ?? 0) === 0) {
+            if ($priceScope !== 'menu_item' && $maxPricePhp !== null && $maxPricePhp <= 250 && $verifiedPrice === null && (int)($signals['expensive'] ?? 0) >= 2 && (int)($signals['affordable'] ?? 0) === 0) {
                 continue;
             }
         }
@@ -1545,14 +1679,14 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
                 }
             }
             if ($applyHardCritiqueMasks && ($maxPricePhp !== null || $minPricePhp !== null)) {
-                $inAreaRanked = enforceNumericPriceCeiling($inAreaRanked, $maxPricePhp, $minPricePhp, true);
-                $outsideAreaRanked = enforceNumericPriceCeiling($outsideAreaRanked, $maxPricePhp, $minPricePhp, true);
+                $inAreaRanked = enforceNumericPriceCeiling($inAreaRanked, $maxPricePhp, $minPricePhp, true, $priceScope);
+                $outsideAreaRanked = enforceNumericPriceCeiling($outsideAreaRanked, $maxPricePhp, $minPricePhp, true, $priceScope);
             }
             $ranked = ($applyHardCritiqueMasks && count($inAreaRanked) >= 2)
                 ? $inAreaRanked
                 : array_merge($inAreaRanked, $outsideAreaRanked);
         } elseif ($applyHardCritiqueMasks && ($maxPricePhp !== null || $minPricePhp !== null)) {
-            $ranked = enforceNumericPriceCeiling($ranked, $maxPricePhp, $minPricePhp, true);
+            $ranked = enforceNumericPriceCeiling($ranked, $maxPricePhp, $minPricePhp, true, $priceScope);
         }
         return array_slice($ranked, 0, $limit);
     }
@@ -1568,7 +1702,7 @@ function shortlistPlaces(array $places, string $query, int $limit, array $intent
         ?: (($b['rating'] ?? 0) <=> ($a['rating'] ?? 0))
         ?: (($b['review_count'] ?? 0) <=> ($a['review_count'] ?? 0)));
     if ($applyHardCritiqueMasks && ($maxPricePhp !== null || $minPricePhp !== null)) {
-        $rated = enforceNumericPriceCeiling($rated, $maxPricePhp, $minPricePhp, true);
+        $rated = enforceNumericPriceCeiling($rated, $maxPricePhp, $minPricePhp, true, $priceScope);
     }
     return array_slice($rated ?: $places, 0, $limit);
 }
@@ -1756,6 +1890,17 @@ function publicPlace(array $p): array {
             $p['price_evidence']['source_url'] = $vp['source_url'];
         }
     }
+    $itemPrice = getVerifiedMenuItemPricePhp($p);
+    if ($itemPrice !== null) {
+        $p['menu_item_price_evidence'] = [
+            'item'=>$itemPrice['item'],
+            'observed_min_php'=>$itemPrice['min'],
+            'observed_median_php'=>$itemPrice['median'],
+            'observed_max_php'=>$itemPrice['max'],
+            'source'=>$itemPrice['source'],
+            'source_url'=>$itemPrice['source_url'],
+        ];
+    }
     if (isset($p['_live_volatility_note']) && is_string($p['_live_volatility_note']) && $p['_live_volatility_note'] !== '') {
         $p['volatility_note'] = $p['_live_volatility_note'];
     }
@@ -1776,6 +1921,11 @@ function publicPlace(array $p): array {
         $p['_live_price_php'],
         $p['_live_price_max_php'],
         $p['_live_price_source_url'],
+        $p['_menu_item_price_php'],
+        $p['_menu_item_price_min_php'],
+        $p['_menu_item_price_max_php'],
+        $p['_menu_item_price_source_url'],
+        $p['_menu_item_price_item'],
         $p['_live_hours_late'],
         $p['_live_rating'],
         $p['_live_volatility_note'],

@@ -98,6 +98,35 @@ function nearbyBranchTokens(array $place): array {
     )));
 }
 
+function nearbyFeatureAddress(array $feature): string {
+    $street = trim((string)($feature['street'] ?? ''));
+    $branch = trim((string)($feature['branch'] ?? ''));
+    $area = trim((string)($feature['district'] ?? '')) ?: trim((string)($feature['locality'] ?? ''));
+    $address = trim((string)($feature['address'] ?? ''));
+    $cityOnly = mb_strtolower($address, 'UTF-8') === 'davao city';
+
+    if ($address !== '' && !$cityOnly) {
+        if ($street === '' && $branch !== ''
+            && mb_stripos($address, $branch, 0, 'UTF-8') === false) {
+            return $branch . ', ' . $address;
+        }
+        return $address;
+    }
+
+    return implode(', ', array_filter([
+        $street ?: $branch ?: $area,
+        ($street || $branch) ? $area : '',
+        'Davao City',
+    ]));
+}
+
+function nearbyFeatureInferredStreet(array $feature): string {
+    if (trim((string)($feature['street'] ?? '')) !== '') {
+        return '';
+    }
+    return trim((string)($feature['nearby_street'] ?? ''));
+}
+
 function isValidNearbyMapPlace(array $place): bool {
     if (trim((string)($place['name'] ?? '')) === '' || !isDavaoCityName((string)($place['city'] ?? ''))) {
         return false;
@@ -177,6 +206,7 @@ function nearbyFeatureMatchesVenue(array $venue, array $feature, int $venueCoreC
 
     $featureText = mb_strtolower(implode(' ', array_filter([
         $feature['address'] ?? '',
+        $feature['branch'] ?? '',
         $feature['district'] ?? '',
         $feature['street'] ?? '',
         $feature['locality'] ?? '',
@@ -228,10 +258,11 @@ function nearbyDistanceWithinRadius(float $distanceKm, float $radiusKm, float $l
 
 function nearbyFeatureDisplayName(array $feature, string $baseName = ''): string {
     $name = trim($baseName) ?: trim((string)($feature['name'] ?? ''));
+    $branch = trim((string)($feature['branch'] ?? ''));
     $district = trim((string)($feature['district'] ?? ''));
     $locality = trim((string)($feature['locality'] ?? ''));
-    $street = trim((string)($feature['street'] ?? ''));
-    $branchArea = $district ?: $locality;
+    $street = trim((string)($feature['street'] ?? '')) ?: nearbyFeatureInferredStreet($feature);
+    $branchArea = $branch ?: $district ?: $locality;
     $nameHasArea = $branchArea !== '' && mb_stripos($name, $branchArea, 0, 'UTF-8') !== false;
     $nameHasStreet = $street !== '' && mb_stripos($name, $street, 0, 'UTF-8') !== false;
     $streetAddsDetail = $branchArea === '' || mb_strtolower($street, 'UTF-8') !== mb_strtolower($branchArea, 'UTF-8');
@@ -283,8 +314,10 @@ function rankNearbyCandidates(
 
         $candidate['_nearby_distance_km'] = $nearest['distance'];
         $candidate['_nearby_source_url'] = (string)$nearest['feature']['url'];
+        $candidate['name'] = nearbyFeatureDisplayName($nearest['feature'], (string)($candidate['name'] ?? ''));
         if (trim((string)($candidate['address'] ?? '')) === '' || mb_strtolower(trim((string)$candidate['address']), 'UTF-8') === 'davao city') {
-            $candidate['address'] = trim((string)($nearest['feature']['address'] ?? '')) ?: 'Davao City';
+            $candidate['address'] = nearbyFeatureAddress($nearest['feature']);
+            $candidate['nearby_street'] = nearbyFeatureInferredStreet($nearest['feature']);
         }
         $nearby[] = $candidate;
     }
@@ -336,7 +369,8 @@ function rankNearbyWebPlaces(
         $webPlace['distance_km'] = round($nearest['distance'], 2);
         $webPlace['location_source_url'] = (string)$nearest['feature']['url'];
         if (trim((string)($webPlace['address'] ?? '')) === '' || mb_strtolower(trim((string)$webPlace['address']), 'UTF-8') === 'davao city') {
-            $webPlace['address'] = trim((string)($nearest['feature']['address'] ?? '')) ?: 'Davao City';
+            $webPlace['address'] = nearbyFeatureAddress($nearest['feature']);
+            $webPlace['nearby_street'] = nearbyFeatureInferredStreet($nearest['feature']);
         }
         $ranked[] = $webPlace;
     }
@@ -478,7 +512,7 @@ function buildMapFindResults(
         if ($requestedRestaurantCore !== null && !restaurantNameMatchesCore($name, $requestedRestaurantCore)) {
             continue;
         }
-        $address = trim((string)($feature['address'] ?? ''));
+        $address = nearbyFeatureAddress($feature);
         if ($requestedAreas
             && evaluateDavaoAreaProximity(['name'=>$name, 'address'=>$address], $requestedAreas) !== 'exact') {
             continue;
@@ -490,19 +524,14 @@ function buildMapFindResults(
         $foodType = trim((string)($feature['food_type'] ?? 'Restaurant')) ?: 'Restaurant';
         $cuisine = trim(str_replace(';', ', ', (string)($feature['cuisine'] ?? '')));
         $category = $cuisine !== '' ? $foodType . ' (' . $cuisine . ')' : $foodType;
-        if ($address === '') {
-            $address = implode(', ', array_filter([
-                trim((string)($feature['street'] ?? '')),
-                trim((string)($feature['district'] ?? '')) ?: trim((string)($feature['locality'] ?? '')),
-                'Davao City',
-            ]));
-        }
-
+        $nearbyStreet = nearbyFeatureInferredStreet($feature);
+        $locationDescription = $nearbyStreet !== '' ? "near {$nearbyStreet}" : "at {$address}";
         $results[] = [
             'name'=>$name,
             'food_type'=>$category,
-            'description'=>"OpenStreetMap lists this {$category} at {$address}. Menu, prices, reviews, hours, and current business status are not verified.",
+            'description'=>"OpenStreetMap lists this {$category} {$locationDescription}. Menu, prices, reviews, hours, and current business status are not verified.",
             'address'=>$address,
+            'nearby_street'=>$nearbyStreet,
             'city'=>'Davao City',
             'rating'=>null,
             'review_count'=>null,
@@ -563,22 +592,18 @@ function buildNearbyMapResults(
         if (!nearbyDistanceWithinRadius($distance, $radiusKm, $locationAccuracyKm)) continue;
 
         $street = trim((string)($feature['street'] ?? ''));
-        $address = trim((string)($feature['address'] ?? ''));
-        if ($address === '') {
-            $address = implode(', ', array_filter([
-                $street,
-                trim((string)($feature['district'] ?? '')) ?: trim((string)($feature['locality'] ?? '')),
-                'Davao City',
-            ]));
-        }
+        $address = nearbyFeatureAddress($feature);
         $name = nearbyFeatureDisplayName($feature);
         $url = (string)$feature['url'];
         $foodType = trim((string)($feature['food_type'] ?? 'Restaurant')) ?: 'Restaurant';
+        $nearbyStreet = nearbyFeatureInferredStreet($feature);
+        $locationDescription = $nearbyStreet !== '' ? "near {$nearbyStreet}" : "at {$address}";
         $results[] = [
             'name'=>$name,
             'food_type'=>$foodType,
-            'description'=>"OpenStreetMap lists this {$foodType} at {$address}. Current hours and business status are not verified.",
+            'description'=>"OpenStreetMap lists this {$foodType} {$locationDescription}. Current hours and business status are not verified.",
             'address'=>$address,
+            'nearby_street'=>$nearbyStreet,
             'city'=>'Davao City',
             'rating'=>null,
             'review_count'=>null,

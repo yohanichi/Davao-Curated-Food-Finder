@@ -107,6 +107,97 @@ assertCheck(count($nearbyMapResults) === 2
     && $nearbyMapResults[0]['longitude'] === 125.635
     && $nearbyMapResults[0]['rating'] === null,
     'Near-me results identify distinct chain branches by their OSM street and district without borrowing ratings');
+$branchOnlyMapResult = buildNearbyMapResults(
+    [],
+    [[
+        'name'=>'KFC',
+        'branch'=>'SM Lanang Premier',
+        'city'=>'Davao City',
+        'district'=>'Lanang',
+        'address'=>'Lanang, Davao City',
+        'latitude'=>7.105,
+        'longitude'=>125.635,
+        'url'=>'https://www.openstreetmap.org/node/104',
+    ]],
+    7.105,
+    125.635,
+    5.0
+);
+assertCheck(
+    count($branchOnlyMapResult) === 1
+    && $branchOnlyMapResult[0]['name'] === 'KFC - SM Lanang Premier'
+    && str_contains($branchOnlyMapResult[0]['address'], 'SM Lanang Premier'),
+    'Near-me results use the OSM branch name when no street is available'
+);
+$branchOnlyLocalResult = rankNearbyCandidates(
+    [['name'=>'KFC - SM Lanang Premier', 'address'=>'Davao City', 'rating'=>4.4]],
+    [['name'=>'KFC - SM Lanang Premier', 'address'=>'Davao City', 'rating'=>4.4]],
+    [[
+        'name'=>'KFC',
+        'branch'=>'SM Lanang Premier',
+        'city'=>'Davao City',
+        'address'=>'Davao City',
+        'nearby_street'=>'Damosa Road',
+        'latitude'=>7.105,
+        'longitude'=>125.635,
+        'url'=>'https://www.openstreetmap.org/node/105',
+    ]],
+    7.105,
+    125.635,
+    5.0
+);
+assertCheck(
+    count($branchOnlyLocalResult) === 1
+    && $branchOnlyLocalResult[0]['name'] === 'KFC - SM Lanang Premier (Damosa Road)'
+    && str_contains($branchOnlyLocalResult[0]['address'], 'SM Lanang Premier')
+    && $branchOnlyLocalResult[0]['nearby_street'] === 'Damosa Road',
+    'Near-me local results retain the OSM branch and append the inferred street'
+);
+$nearbyStreetMapResult = buildNearbyMapResults(
+    [],
+    [[
+        'name'=>'Jollibee',
+        'city'=>'Davao City',
+        'address'=>'Davao City',
+        'nearby_street'=>'Carlos P. Garcia Highway',
+        'latitude'=>7.1151129,
+        'longitude'=>125.6242913,
+        'url'=>'https://www.openstreetmap.org/way/958361470',
+    ]],
+    7.1151129,
+    125.6242913,
+    5.0,
+    'Jollibee'
+);
+assertCheck(
+    count($nearbyStreetMapResult) === 1
+    && $nearbyStreetMapResult[0]['name'] === 'Jollibee - (Carlos P. Garcia Highway)'
+    && $nearbyStreetMapResult[0]['nearby_street'] === 'Carlos P. Garcia Highway'
+    && str_contains($nearbyStreetMapResult[0]['description'], 'near Carlos P. Garcia Highway'),
+    'Near-me results append the nearest named OSM road when no street or branch is listed'
+);
+$branchAndStreetMapResult = buildNearbyMapResults(
+    [],
+    [[
+        'name'=>'KFC',
+        'branch'=>'SM Lanang Premier',
+        'city'=>'Davao City',
+        'address'=>'SM Lanang Premier, Davao City',
+        'nearby_street'=>'Damosa Road',
+        'latitude'=>7.105,
+        'longitude'=>125.635,
+        'url'=>'https://www.openstreetmap.org/node/106',
+    ]],
+    7.105,
+    125.635,
+    5.0,
+    'KFC'
+);
+assertCheck(
+    count($branchAndStreetMapResult) === 1
+    && $branchAndStreetMapResult[0]['name'] === 'KFC - SM Lanang Premier (Damosa Road)',
+    'Near-me names retain the OSM branch and append its nearby street'
+);
 $manyNearbyMapPlaces = [];
 for ($i = 1; $i <= 25; $i++) {
     $manyNearbyMapPlaces[] = [
@@ -559,6 +650,26 @@ assertCheck($pesos === [145, 420], 'Extracts genuine PHP prices while ignoring c
 
 $priceIntent = parseQueryIntent('Burgers under ₱200 in Davao City');
 assertApprox((float)$priceIntent['max_price_php'], 200.0, 1e-6, 'Extracts hard max_price_php = 200');
+$menuItemPriceIntent = parseQueryIntent('sisig under ₱300');
+assertCheck(($menuItemPriceIntent['price_scope'] ?? null) === 'menu_item', 'Treats a dish-specific ceiling as a menu-item price');
+$burgerCeilingIntent = parseQueryIntent('burger under ₱300 per person');
+assertCheck(
+    expandMenuItemSearchQuery('burger under 300 Davao City', $burgerCeilingIntent) === 'burger under 300 Davao City',
+    'Preserves a price-constrained search query instead of adding a broad OR clause'
+);
+$perPersonPriceIntent = parseQueryIntent('sisig under ₱300 per person');
+assertCheck(($perPersonPriceIntent['price_scope'] ?? null) === 'per_person', 'Keeps an explicit per-person ceiling restaurant-scoped');
+$menuItemPriceFollowup = parseQueryIntent('actually under ₱250', [
+    ['role'=>'user', 'content'=>'sisig under ₱300'],
+    ['role'=>'assistant', 'content'=>'Here are sisig places.'],
+]);
+assertCheck(($menuItemPriceFollowup['price_scope'] ?? null) === 'menu_item'
+    && (float)$menuItemPriceFollowup['max_price_php'] === 250.0,
+    'Preserves menu-item price scope when a follow-up tightens the ceiling');
+assertApprox((float)(extractMenuItemPriceFromText('Sisig - ₱240; halo-halo - ₱120', 'sisig')['median'] ?? 0), 240.0, 1e-6, 'Extracts a price adjacent to the requested menu item');
+assertCheck(extractMenuItemPriceFromText('Sisig available; halo-halo - ₱120', 'sisig') === null, 'Does not attribute an adjacent unrelated dish price to the requested menu item');
+$menuPriceQueries = buildPriceLookupQueries([], $menuItemPriceIntent, true);
+assertCheck($menuPriceQueries === ['"sisig" menu price PHP Davao City'], 'Builds a dish-specific online price query without relying on dataset venues');
 $plainFoodIntent = parseQueryIntent('Japanese restaurants in Davao City');
 assertCheck(!shouldAskPriceClarification('Japanese restaurants in Davao City', $plainFoodIntent), 'Does not ask about price unless the user raises it');
 $unspecifiedPriceIntent = parseQueryIntent('What price range do Japanese restaurants have in Davao City?');
@@ -580,6 +691,24 @@ assertCheck($priceFollowupIntent['price_preference'] === 'upscale' && in_array('
 $expensiveBurger = ['name'=>'Harleys Burgers', 'food_type'=>'Burgers', '_observed_prices_php'=>['min'=>270, 'median'=>330, 'max'=>377, 'mentions'=>3]];
 $budgetBurger = ['name'=>'Jollibee Magsaysay', 'food_type'=>'Burgers', '_observed_prices_php'=>['min'=>95, 'median'=>135, 'max'=>175, 'mentions'=>3]];
 assertCheck(enforceNumericPriceCeiling([$expensiveBurger, $budgetBurger], 200.0) === [$budgetBurger], 'Enforces hard numeric peso price ceiling');
+$cheapRestaurantExpensiveSisig = [
+    'name'=>'Sisig House',
+    '_observed_prices_php'=>['min'=>100, 'median'=>150, 'max'=>200, 'mentions'=>3],
+    '_menu_item_price_php'=>350,
+    '_menu_item_price_max_php'=>350,
+    '_menu_item_price_item'=>'sisig',
+];
+$expensiveRestaurantCheapSisig = [
+    'name'=>'Upscale Sisig',
+    '_observed_prices_php'=>['min'=>600, 'median'=>800, 'max'=>1000, 'mentions'=>3],
+    '_menu_item_price_php'=>250,
+    '_menu_item_price_max_php'=>270,
+    '_menu_item_price_item'=>'sisig',
+];
+assertCheck(
+    enforceNumericPriceCeiling([$cheapRestaurantExpensiveSisig, $expensiveRestaurantCheapSisig], 300.0, null, true, 'menu_item') === [$expensiveRestaurantCheapSisig],
+    'Applies a menu-item ceiling to the requested item price, not venue-wide spending'
+);
 
 // 8. Test Objective 1 & 4B — Live Volatility Reconciliation & Autonomous Iterative Critique-and-Refinement Loop
 $mockPlaces = [
@@ -599,6 +728,64 @@ assertCheck(($reconciled['places'][1]['_live_price_source_url'] ?? '') === 'http
 assertCheck((publicPlace($reconciled['places'][1])['price_evidence']['source_url'] ?? '') === 'https://example.com/resto-hiked-menu', 'Public result exposes the price source for details');
 assertCheck(enforceNumericPriceCeiling([$reconciled['places'][1]], 500.0) === [$reconciled['places'][1]], 'Web-derived price under the ceiling remains eligible');
 assertCheck(enforceNumericPriceCeiling([$reconciled['places'][1]], 400.0) === [], 'Web-derived price above the ceiling is excluded');
+
+$menuPricePlace = [
+    '_id'=>'sisig-house-matina',
+    'name'=>'Sisig House - Matina',
+    'food_type'=>'Filipino',
+    'city'=>'Davao City',
+    '_branch_area'=>'Matina',
+    '_review_signals'=>[],
+];
+$menuPriceEvidence = [
+    'results'=>[[
+        'title'=>'Sisig House - Matina menu prices',
+        'url'=>'https://example.com/sisig-house-menu',
+        'text'=>'Sisig House - Matina menu: sisig ₱250 per serving.',
+        'price_lookup'=>true,
+    ]],
+];
+$reconciledMenuPrice = reconcileVolatilityWithEvidence([$menuPricePlace], $menuPriceEvidence, $menuItemPriceIntent);
+assertApprox((float)($reconciledMenuPrice['places'][0]['_menu_item_price_php'] ?? 0), 250.0, 1e-6, 'Reconciles exact menu-item price evidence to the matching restaurant');
+assertCheck(!isset($reconciledMenuPrice['places'][0]['_live_price_php']), 'Does not mistake a dish price for venue-wide price evidence');
+assertCheck(
+    (publicPlace($reconciledMenuPrice['places'][0])['menu_item_price_evidence']['source_url'] ?? '') === 'https://example.com/sisig-house-menu',
+    'Exposes source-backed menu-item price evidence to the results UI'
+);
+$attachedWebMenuPrice = attachMenuItemPriceEvidenceToPlaces(
+    [['name'=>'Sisig House - Matina', 'city'=>'Davao City']],
+    $menuPriceEvidence,
+    $menuItemPriceIntent
+);
+assertApprox(
+    (float)($attachedWebMenuPrice[0]['menu_item_price_evidence']['observed_median_php'] ?? 0),
+    250.0,
+    1e-6,
+    'Attaches exact menu-item price evidence to online results'
+);
+$unverifiedMenuPlace = [
+    '_id'=>'sisig-unknown',
+    'name'=>'Sisig House - Downtown',
+    'food_type'=>'Filipino',
+    'city'=>'Davao City',
+    '_review_signals'=>[],
+];
+assertCheck(
+    in_array('menu_item_price_unverified', critiqueSinglePlace($unverifiedMenuPlace, $menuItemPriceIntent), true),
+    'Does not count an unverified menu-item price as ceiling compliant'
+);
+[, , , $unverifiedMenuPriceStats] = runAutonomousRefinementLoop(
+    'sisig under ₱300',
+    'Sisig House - Downtown may be relevant.',
+    [],
+    [['name'=>'Sisig House - Downtown', 'city'=>'Davao City']],
+    [],
+    $menuItemPriceIntent
+);
+assertCheck(
+    ($unverifiedMenuPriceStats['unverified_menu_item_prices'] ?? 0) === 1,
+    'Tracks online results without verified menu-item prices separately'
+);
 
 $loopIntent = parseQueryIntent('Japanese restaurants in Davao City under ₱200');
 [, $repairedIds, , $loopStats] = runAutonomousRefinementLoop(

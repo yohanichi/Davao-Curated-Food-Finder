@@ -303,20 +303,13 @@ try {
             }
             $nearbyRelevantCandidates = $mapSearchCandidates;
         }
-        if ($useIterativeLoop
-            && empty($intent['online_only'])
+        $usesItemPriceCeiling = ($intent['price_scope'] ?? '') === 'menu_item';
+        if ($isAgentic
             && !isset($body['evaluation'])
             && isset($intent['max_price_php'])
-            && is_numeric($intent['max_price_php'])) {
-            $priceSearchQuery = $intent['effective_query'] !== '' ? $intent['effective_query'] : $query;
-            $priceCandidates = shortlistPlaces($places, $priceSearchQuery, 12, $intent, false);
-            foreach ($priceCandidates as $priceCandidate) {
-                if (getVerifiedPlacePricePhp($priceCandidate) !== null) continue;
-                $placeName = trim((string)($priceCandidate['name'] ?? ''));
-                if ($placeName === '') continue;
-                $priceLookupQueries[] = '"' . $placeName . '" menu prices PHP Davao City';
-                if (count($priceLookupQueries) >= 3) break;
-            }
+            && is_numeric($intent['max_price_php'])
+            && ($usesItemPriceCeiling || ($useIterativeLoop && empty($intent['online_only'])))) {
+            $priceLookupQueries = buildPriceLookupQueries($places, $intent, !empty($intent['online_only']), $query);
         }
         if ($plannedPwQuery !== '') {
             $evidence = collectPlaywrightEvidence(expandMenuItemSearchQuery($plannedPwQuery, $intent), __DIR__ . '/data/.web-cache', 43200, $cachePolicy, $priceLookupQueries);
@@ -340,8 +333,8 @@ try {
     // Reconcile static CSV places with live web evidence for Data Volatility Resilience (when iterative/volatility guard is active)
     $rankStart = microtime(true);
     $volatilityReport = ['evidence_items_scanned'=>0, 'closed_places'=>[], 'price_updates'=>[], 'hours_updates'=>[], 'rating_updates'=>[]];
-    if ($isAgentic && $useIterativeLoop && !empty($evidence['results'])) {
-        $reconciled = reconcileVolatilityWithEvidence($places, $evidence);
+    if ($isAgentic && !empty($evidence['results']) && ($useIterativeLoop || ($intent['price_scope'] ?? '') === 'menu_item')) {
+        $reconciled = reconcileVolatilityWithEvidence($places, $evidence, $intent);
         $places = $reconciled['places'];
         $volatilityReport = $reconciled['report'];
     }
@@ -465,12 +458,18 @@ try {
                 $knownOnlineNames[$key] = true;
             }
         }
+        if (!$outOfScope && ($intent['price_scope'] ?? '') === 'menu_item') {
+            $webResults = attachMenuItemPriceEvidenceToPlaces($webResults, $evidence, $intent);
+        }
     }
 
     // Autonomous Iterative Critique-and-Refinement Loop (Pass 2 Verification & Self-Correction)
     $loopTelemetry = [
-        'enabled'=>$useIterativeLoop,
-        'iterations'=>1,
+        'enabled'=>false,
+        'iterations'=>0,
+        'skipped_reason'=>$assistantStatus !== 'ready'
+            ? 'recommendation_failed'
+            : (!$useIterativeLoop ? 'disabled' : 'out_of_scope'),
         'initial_compliance_rate'=>null,
         'final_compliance_rate'=>null,
         'violations_detected'=>[],
@@ -592,6 +591,15 @@ try {
         && empty($intent['online_only'])) {
         $fallbackCap = $isInteractiveLlm || (!isset($body['evaluation']) && $reasoningProvider === 'hybrid') ? 5 : 10;
         foreach (array_slice($candidates, 0, $fallbackCap) as $cand) {
+            if (($intent['price_scope'] ?? '') === 'menu_item'
+                && (isset($intent['max_price_php']) || isset($intent['min_price_php']))) {
+                $itemPrice = getVerifiedMenuItemPricePhp($cand);
+                if ($itemPrice === null
+                    || (isset($intent['max_price_php']) && $itemPrice['max'] > (float)$intent['max_price_php'])
+                    || (isset($intent['min_price_php']) && $itemPrice['max'] < (float)$intent['min_price_php'])) {
+                    continue;
+                }
+            }
             $normName = mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', (string)$cand['name']) ?? '', 'UTF-8');
             if ($normName !== '' && isset($seenResultNames[$normName])) continue;
             if ($normName !== '') $seenResultNames[$normName] = true;
@@ -600,7 +608,7 @@ try {
         $usedLocalDatasetFallback = count($results) > 0;
     }
     if ($usedLocalDatasetFallback && $assistantStatus === 'error' && $reasoningProvider === 'hybrid') {
-        $answer = 'Live web verification is currently unavailable. These are ranked matches from the local Davao City dataset, not live-verified recommendations.';
+        $answer = 'Recommendation processing could not complete. These are ranked matches from the local Davao City dataset, not live-verified recommendations.';
     }
     if (!empty($intent['online_only'])) {
         $results = [];
@@ -980,6 +988,7 @@ try {
         'parsed_intent'=>[
             'disambiguation_type'=>$intent['disambiguation_type'] ?? 'none',
             'max_price_php'=>$intent['max_price_php'] ?? null,
+            'price_scope'=>$intent['price_scope'] ?? null,
             'min_price_php'=>$intent['min_price_php'] ?? null,
             'price_preference'=>$intent['price_preference'] ?? null,
             'specific_dishes'=>$intent['specific_dishes'] ?? [],

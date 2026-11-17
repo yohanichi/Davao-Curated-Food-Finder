@@ -1148,7 +1148,12 @@ async function run() {
     const bodyText = fetchedPage.bodyText || '';
     const browserFetchedPage = fetchedPage.browserFetchedPage || false;
 
-    const cleanedBody = String(bodyText || '').replace(/\s+/g, ' ').trim().slice(0, 4500);
+    const cleanedBody = String(bodyText || '')
+      .replace(/\r\n?/g, '\n')
+      .replace(/[^\S\r\n]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+      .slice(0, 4500);
     const combinedText = [
       link.snippet ? `Search snippet: ${link.snippet}` : '',
       cleanedBody

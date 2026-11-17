@@ -241,7 +241,7 @@ function nearbyBroadSearchSuggestions(array $intent): array {
     return $suggestions;
 }
 
-function detectExplicitRestaurantCoreQuery(array $places, string $query): ?string {
+function restaurantQueryCore(string $query): string {
     $cleaned = trim(preg_replace(
         '/^(?:please\s+)?(?:i\s+want|show\s+(?:me\s+)?|find\s+|look\s+for\s+|search\s+for\s+|recommend(?:\s+me)?\s+)/iu',
         '',
@@ -253,14 +253,115 @@ function detectExplicitRestaurantCoreQuery(array $places, string $query): ?strin
         $cleaned
     ) ?? $cleaned;
     $cleaned = preg_replace('/\b(?:restaurants?|branches?|locations?|stores?)\b/iu', ' ', $cleaned) ?? $cleaned;
-    $queryCore = nearbyPlaceCore(trim(preg_replace('/\s+/u', ' ', $cleaned) ?? $cleaned));
-    if ($queryCore === '') return null;
+    return nearbyPlaceCore(trim(preg_replace('/\s+/u', ' ', $cleaned) ?? $cleaned));
+}
+
+function detectExplicitRestaurantCoreQuery(array $places, string $query): ?string {
+    $queryCore = restaurantQueryCore($query);
+    if ($queryCore !== '') {
+        foreach ($places as $place) {
+            $core = nearbyPlaceCore((string)($place['name'] ?? ''));
+            if ($core !== '' && $core === $queryCore) return $core;
+        }
+    }
+
+    $queryTokens = preg_split(
+        '/[^\p{L}\p{N}]+/u',
+        mb_strtolower($query, 'UTF-8'),
+        -1,
+        PREG_SPLIT_NO_EMPTY
+    ) ?: [];
+    $genericTokens = array_fill_keys([
+        'and', 'barbecue', 'bbq', 'burger', 'burgers', 'cafe', 'cafes', 'chicken',
+        'coffee', 'dessert', 'desserts', 'dining', 'food', 'fried', 'restaurant',
+        'restaurants', 'seafood', 'sushi', 'tea',
+    ], true);
+    $matches = [];
 
     foreach ($places as $place) {
-        $core = nearbyPlaceCore((string)($place['name'] ?? ''));
-        if ($core !== '' && $core === $queryCore) return $core;
+        $name = trim((string)($place['name'] ?? ''));
+        if ($name === '') continue;
+        $baseName = preg_replace('/\s*(?:[-–|]\s*[^-–|]+|\([^)]*\))\s*$/u', '', $name) ?? $name;
+        $core = nearbyPlaceCore($baseName);
+        $nameTokens = preg_split(
+            '/[^\p{L}\p{N}]+/u',
+            mb_strtolower($baseName, 'UTF-8'),
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        ) ?: [];
+        if ($core === '' || !$nameTokens) continue;
+
+        $matched = false;
+        $minimumLength = count($nameTokens) > 1 ? 2 : 1;
+        for ($length = count($nameTokens); $length >= $minimumLength && !$matched; $length--) {
+            for ($start = 0; $start + $length <= count($queryTokens); $start++) {
+                if (array_slice($queryTokens, $start, $length) === array_slice($nameTokens, 0, $length)) {
+                    $matched = true;
+                    break;
+                }
+            }
+        }
+        if (!$matched && count($nameTokens) === 1) {
+            $token = $nameTokens[0];
+            if (mb_strlen($token, 'UTF-8') >= 6
+                && !isset($genericTokens[$token])
+                && in_array($token, $queryTokens, true)) {
+                $matched = true;
+            }
+        }
+        if ($matched) $matches[$core] = true;
     }
-    return null;
+
+    return count($matches) === 1 ? (string)array_key_first($matches) : null;
+}
+
+function correctModelOutOfScopeForRecognizedDavaoArea(bool $modelOutOfScope, array $intent): bool {
+    if ($modelOutOfScope && empty($intent['out_of_scope']) && !empty($intent['areas'])) {
+        return false;
+    }
+    return $modelOutOfScope;
+}
+
+function detectApproximateRestaurantCoreQuery(array $places, string $query): ?string {
+    $queryCore = restaurantQueryCore($query);
+    $queryLength = strlen($queryCore);
+    $genericFoodQueries = [
+        'burger','burgers','chicken','coffee','dessert','desserts','fastfood','filipino',
+        'fries','icecream','japanese','korean','milktea','pasta','pizza','ramen',
+        'restaurant','restaurants','sandwich','seafood','sushi','tea','wings',
+    ];
+    if ($queryLength < 7
+        || preg_match('/^[a-z0-9]+$/D', $queryCore) !== 1
+        || in_array($queryCore, $genericFoodQueries, true)) {
+        return null;
+    }
+
+    $cores = [];
+    foreach ($places as $place) {
+        $core = nearbyPlaceCore((string)($place['name'] ?? ''));
+        if (strlen($core) >= 7 && preg_match('/^[a-z0-9]+$/D', $core) === 1) {
+            $cores[$core] = true;
+        }
+    }
+
+    $bestCore = null;
+    $bestDistance = PHP_INT_MAX;
+    $bestIsAmbiguous = false;
+    foreach (array_keys($cores) as $core) {
+        $distance = levenshtein($queryCore, $core);
+        $maxDistance = max(1, intdiv(min($queryLength, strlen($core)), 5));
+        if ($distance > $maxDistance) continue;
+
+        if ($distance < $bestDistance) {
+            $bestCore = $core;
+            $bestDistance = $distance;
+            $bestIsAmbiguous = false;
+        } elseif ($distance === $bestDistance && $core !== $bestCore) {
+            $bestIsAmbiguous = true;
+        }
+    }
+
+    return $bestIsAmbiguous ? null : $bestCore;
 }
 
 function filterPlacesByRestaurantCore(array $places, string $core): array {
@@ -287,6 +388,29 @@ function restaurantCoreDisplayName(array $places, string $core): string {
         return $name;
     }
     return mb_convert_case($core, MB_CASE_TITLE, 'UTF-8');
+}
+
+function nearbyRestaurantCoreSummary(array $places, string $core): string {
+    $matchingPlaces = filterPlacesByRestaurantCore($places, $core);
+    $summaryItems = [];
+    foreach ($matchingPlaces as $place) {
+        $name = trim((string)($place['name'] ?? ''));
+        if ($name === '') continue;
+        if (isset($place['distance_km']) && is_numeric($place['distance_km'])) {
+            $name .= ' (' . number_format((float)$place['distance_km'], 1) . ' km)';
+        }
+        $summaryItems[] = $name;
+    }
+
+    $brandName = restaurantCoreDisplayName($matchingPlaces, $core);
+    if (!$summaryItems) {
+        return 'I could not verify a ' . $brandName
+            . ' location within 3 km. Nearby places from other chains were excluded.';
+    }
+
+    return 'Verified ' . $brandName . ' locations within 3 km: '
+        . implode(', ', array_slice($summaryItems, 0, 6))
+        . '. Distances are approximate straight-line estimates; map coverage may be incomplete.';
 }
 
 function nearbyBranchTokens(array $place): array {
@@ -584,6 +708,9 @@ function rankNearbyWebPlaces(
         $webPlace['name'] = nearbyFeatureDisplayName($nearest['feature'], (string)($webPlace['name'] ?? ''));
         $webPlace['distance_km'] = round($nearest['distance'], 2);
         $webPlace['location_source_url'] = (string)$nearest['feature']['url'];
+        $webPlace['location_label'] = nearbyFeatureAddress($nearest['feature']);
+        $webPlace['location_verified'] = true;
+        $webPlace['location_source'] = 'OpenStreetMap';
         $webPlace['_nearby_relevance_order'] = $relevanceOrder;
         if (trim((string)($webPlace['address'] ?? '')) === '' || mb_strtolower(trim((string)$webPlace['address']), 'UTF-8') === 'davao city') {
             $webPlace['address'] = nearbyFeatureAddress($nearest['feature']);
@@ -610,7 +737,7 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
     if (!nearbyPlaceHasIntentEvidence($feature, $intent)) return false;
 
     $hasDietaryConstraint = !empty($intent['dietary'])
-        || preg_match('/\b(halal|vegan|vegetarian|muslim[- ]friendly|no\s+pork|pork[- ]free)\b/iu', $query) === 1;
+        || preg_match('/\b(halal|vegan|vegetarian|muslim[- ]friendly|no\s+pork|pork[- ]free|lactose[- ]intoleran\w*|lactose[- ]free|dairy[- ]free|milk[- ]free|no\s+dairy|without\s+dairy|(?:milk|dairy)\s+allerg\w*|allerg\w*\s+to\s+(?:milk|dairy))\b/iu', $query) === 1;
     if (!$hasDietaryConstraint && detectExplicitRestaurantCoreQuery([$feature], $query) !== null) {
         return true;
     }
@@ -620,7 +747,7 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
         array_merge($intent['cuisines'] ?? [], $intent['specific_dishes'] ?? [], $intent['dietary'] ?? [])
     );
     $requestedDietaryTerms = array_values(array_filter(
-        ['halal', 'vegan', 'vegetarian'],
+        ['halal', 'vegan', 'vegetarian', 'dairy_free'],
         fn($term) => preg_match('/(?<![\p{L}\p{N}])' . $term . '(?![\p{L}\p{N}])/iu', $query) === 1
             || in_array($term, $intentTerms, true)
     ));

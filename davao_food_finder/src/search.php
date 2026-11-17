@@ -800,6 +800,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         $dietary = [];
         if (preg_match('/\b(halal|muslim[- ]friendly|no\s+pork|pork[- ]free)\b/iu', $t)) $dietary[] = 'halal';
         if (preg_match('/(\b(vegan|vegetarian|veggie|plant[- ]based|healthy|salads?|diet|low[- ]carb)\b|\bgreen\s+(salads?|bowls?|food|veggies?)\b)/iu', $t)) $dietary[] = 'healthy_veg';
+        if (preg_match('/\b(lactose[- ]intoleran\w*|lactose[- ]free|dairy[- ]free|milk[- ]free|no\s+dairy|without\s+dairy|(?:milk|dairy)\s+allerg\w*|allerg\w*\s+to\s+(?:milk|dairy))\b/iu', $t)) $dietary[] = 'dairy_free';
 
         $ambiance = [];
         if (preg_match('/\b(quiet|study|studying|work|working|remote\s+work|cozy|chill|peaceful|reading|wifi|wi-fi|socket|outlet|laptop)\b/iu', $t)) $ambiance[] = 'quiet_study';

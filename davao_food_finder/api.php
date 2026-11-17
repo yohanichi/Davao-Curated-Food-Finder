@@ -268,7 +268,10 @@ try {
     if (!$places) throw new RuntimeException('No Davao City records found. Confirm that your CSV files are in data/ and that their city field contains Davao City.');
 
     $requestedRestaurantCore = detectExplicitRestaurantCoreQuery($places, $query);
-    if ($requestedRestaurantCore !== null) {
+    $localRestaurantCore = $requestedRestaurantCore
+        ?? detectApproximateRestaurantCoreQuery($places, $query);
+    $approximateRestaurantQuery = $requestedRestaurantCore === null && $localRestaurantCore !== null;
+    if ($localRestaurantCore !== null) {
         $history = [];
         $shownNames = [];
     }
@@ -324,6 +327,7 @@ try {
     $nearbyAlternativePlan = $nearbyLocation !== null
         ? nearbyExperienceAlternativePlan($query, $intent)
         : null;
+    if ($approximateRestaurantQuery) $nearbyAlternativePlan = null;
     $openAIOptions['intent'] = $intent;
 
     // Component Timing 3 / Stage 2: Playwright active web scraping (or local volatility test snapshot override)
@@ -349,10 +353,9 @@ try {
         $priceLookupQueries = [];
         if ($nearbyLocation !== null) {
             $mapSearchQuery = $intent['effective_query'] !== '' ? $intent['effective_query'] : $query;
-            $mapSearchCandidates = shortlistPlaces($places, $mapSearchQuery, 100, $intent);
-            if ($requestedRestaurantCore !== null) {
-                $mapSearchCandidates = filterPlacesByRestaurantCore($mapSearchCandidates, $requestedRestaurantCore);
-            }
+            $mapSearchCandidates = $localRestaurantCore !== null
+                ? filterPlacesByRestaurantCore($places, $localRestaurantCore)
+                : shortlistPlaces($places, $mapSearchQuery, 100, $intent);
             $nearbyRelevantCandidates = $mapSearchCandidates;
         }
         $usesItemPriceCeiling = ($intent['price_scope'] ?? '') === 'menu_item';
@@ -423,8 +426,8 @@ try {
             }));
         }
     }
-    if ($requestedRestaurantCore !== null) {
-        $candidates = filterPlacesByRestaurantCore($candidates, $requestedRestaurantCore);
+    if ($localRestaurantCore !== null) {
+        $candidates = filterPlacesByRestaurantCore($places, $localRestaurantCore);
     }
     $nearbyAlternativeCandidates = [];
     if ($nearbyAlternativePlan !== null) {
@@ -442,14 +445,14 @@ try {
             100,
             $nearbyAlternativePlan['intent']
         );
-        if ($requestedRestaurantCore !== null) {
+        if ($localRestaurantCore !== null) {
             $nearbyAlternativeCandidates = filterPlacesByRestaurantCore(
                 $nearbyAlternativeCandidates,
-                $requestedRestaurantCore
+                $localRestaurantCore
             );
         }
     }
-    if ($fastFoodItems) {
+    if ($fastFoodItems && !$approximateRestaurantQuery) {
         $candidates = array_values(array_filter($candidates, $matchesFastFoodIntent));
         $nearbyRelevantCandidates = array_values(array_filter($nearbyRelevantCandidates, $matchesFastFoodIntent));
     }
@@ -467,8 +470,8 @@ try {
     if ($nearbyLocation !== null) {
         $mapPlaces = $nearbyMapPlaces;
         if (!$nearbyRelevantCandidates) $nearbyRelevantCandidates = $candidates;
-        if ($requestedRestaurantCore !== null) {
-            $nearbyRelevantCandidates = filterPlacesByRestaurantCore($nearbyRelevantCandidates, $requestedRestaurantCore);
+        if ($localRestaurantCore !== null) {
+            $nearbyRelevantCandidates = filterPlacesByRestaurantCore($places, $localRestaurantCore);
         }
         $candidates = rankNearbyCandidates(
             $candidates,
@@ -534,6 +537,20 @@ try {
     } else {
         // 'hybrid' (default production & agentic hybrid benchmark pipeline)
         [$answer, $rankedIds, $assistantStatus, $sources, $webResults, $outOfScope, $modelUsed] = answerWithHybridPipeline($query, $contextHistory, $candidates, $evidence, $openAIOptions);
+    }
+
+    $modelOutOfScope = $outOfScope;
+    $outOfScope = correctModelOutOfScopeForRecognizedDavaoArea($outOfScope, $intent);
+    if ($modelOutOfScope && !$outOfScope) {
+        $rankedIds = array_values(array_map(
+            fn($candidate) => (string)($candidate['_id'] ?? ''),
+            array_slice($candidates, 0, 20)
+        ));
+        $rankedIds = array_values(array_filter($rankedIds, fn($id) => $id !== ''));
+        $areaLabel = implode(', ', array_map('strval', $intent['areas']));
+        $answer = $rankedIds
+            ? 'I treated ' . $areaLabel . ' as a Davao City area and searched for matching places there.'
+            : 'I treated ' . $areaLabel . ' as a Davao City area, but could not find matching places in the available results.';
     }
 
     // Agentic scope safety net: if deterministic parser found an unambiguous outside city and AI errored or missed it in strict/agentic mode
@@ -643,6 +660,19 @@ try {
         $nearbyRelevantCandidates = filterPlacesByRestaurantCore($nearbyRelevantCandidates, $requestedRestaurantCore);
         $webResults = filterPlacesByRestaurantCore($webResults, $requestedRestaurantCore);
         $sources = [];
+    } elseif ($approximateRestaurantQuery && !$outOfScope) {
+        $allowedIds = [];
+        foreach ($places as $place) {
+            if (restaurantNameMatchesCore((string)($place['name'] ?? ''), (string)$localRestaurantCore)) {
+                $allowedIds[(string)($place['_id'] ?? '')] = true;
+            }
+        }
+        $rankedIds = array_values(array_filter(
+            $rankedIds,
+            fn($id) => isset($allowedIds[(string)$id])
+        ));
+        $candidates = filterPlacesByRestaurantCore($candidates, (string)$localRestaurantCore);
+        $nearbyRelevantCandidates = filterPlacesByRestaurantCore($nearbyRelevantCandidates, (string)$localRestaurantCore);
     }
     if (!$outOfScope && !isset($body['evaluation']) && !empty($intent['strict_dishes'])) {
         $strictDishes = $intent['strict_dishes'];
@@ -839,6 +869,23 @@ try {
         // Enrich blank metadata on online cards when they correspond to a verified Davao local record
         foreach ($webResults as &$wp) {
             foreach ($places as $lp) {
+                if (!sameVerifiedVenueBranch($wp, $lp, true, false)) continue;
+
+                $locationCandidates = [
+                    trim((string)($lp['address'] ?? '')),
+                    trim((string)($lp['nearby_street'] ?? '')),
+                    trim(extractBranchArea((string)($lp['name'] ?? ''))),
+                ];
+                foreach ($locationCandidates as $locationCandidate) {
+                    if (normalizedVenueLocationKey($locationCandidate) === '') continue;
+                    $wp['location_label'] = $locationCandidate;
+                    $wp['location_verified'] = true;
+                    $wp['location_source'] = '2025 local dataset';
+                    break;
+                }
+                break;
+            }
+            foreach ($places as $lp) {
                 $ck = $normCoreName((string)($lp['name'] ?? ''));
                 if ($venuesMatch($wp, $lp, $allCoreCounts[$ck] ?? 1)) {
                     $pubLocal = publicPlace($lp);
@@ -851,7 +898,9 @@ try {
                     if (trim((string)($wp['price_range'] ?? '')) === '' && !empty($pubLocal['price_range'])) {
                         $wp['price_range'] = $pubLocal['price_range'];
                     }
-                    if ((trim((string)($wp['address'] ?? '')) === '' || mb_strtolower(trim((string)($wp['address'] ?? '')), 'UTF-8') === 'davao city') && !empty($pubLocal['address'])) {
+                    if (sameVerifiedVenueBranch($wp, $lp, true, false)
+                        && (trim((string)($wp['address'] ?? '')) === '' || mb_strtolower(trim((string)($wp['address'] ?? '')), 'UTF-8') === 'davao city')
+                        && !empty($pubLocal['address'])) {
                         $wp['address'] = $pubLocal['address'];
                     }
                     if ((trim((string)($wp['food_type'] ?? '')) === '' || stripos((string)($wp['food_type'] ?? ''), 'food information') !== false) && !empty($pubLocal['food_type'])) {
@@ -928,18 +977,24 @@ try {
         && !isset($body['evaluation'])
         && !$outOfScope
         && empty($intent['strict_dishes'])
-        && mapFindIntentIsSupported($intent, $requestedRestaurantCore)) {
+        && mapFindIntentIsSupported($intent, $localRestaurantCore)) {
         try {
             $mapSnapshot = loadLocalOsmNearbySnapshot(__DIR__ . '/data/osm-nearby-places.json');
-            $mapFindSearch['search_type'] = $requestedRestaurantCore !== null
+            $mapFindSearch['search_type'] = $localRestaurantCore !== null
                 ? 'brand_branches'
                 : ($fastFoodItems ? 'fast_food_items' : 'category');
             $mapFindSearch['snapshot_updated_at'] = $mapSnapshot['updated_at'];
+            $mapFindIntent = $intent;
+            if ($approximateRestaurantQuery) {
+                $mapFindIntent['cuisines'] = [];
+                $mapFindIntent['specific_dishes'] = [];
+                $mapFindIntent['fast_food_items'] = [];
+            }
             $mapFindResults = buildMapFindResults(
                 $mapSnapshot['places'],
                 (string)($intent['effective_query'] !== '' ? $intent['effective_query'] : $query),
-                $intent,
-                $requestedRestaurantCore,
+                $mapFindIntent,
+                $localRestaurantCore,
                 100
             );
 
@@ -971,6 +1026,8 @@ try {
             error_log('OpenStreetMap map finds unavailable: ' . $error->getMessage());
         }
     }
+
+    $results = filterLocalPlacesDuplicatedOnline($results, $webResults);
 
     if ($nearbyLocation !== null && !$outOfScope) {
         $mapPlaces = $nearbyMapPlaces;
@@ -1214,6 +1271,7 @@ try {
     if ($requestedRestaurantCore !== null && !$outOfScope) {
         $results = filterPlacesByRestaurantCore($results, $requestedRestaurantCore);
         $webResults = filterPlacesByRestaurantCore($webResults, $requestedRestaurantCore);
+        $mapFindResults = filterPlacesByRestaurantCore($mapFindResults, $requestedRestaurantCore);
         $sources = [];
         if ($nearbyLocation === null) {
             $brandName = restaurantCoreDisplayName($places, $requestedRestaurantCore);
@@ -1227,6 +1285,21 @@ try {
                     . (count($matchingNames) > 8 ? ' Additional known locations are listed below.' : '')
                     . ($mapFindResults ? ' OpenStreetMap-only locations are not live-verified.' : '')
                 : 'I could not find a verified ' . $brandName . ' location in the Davao City dataset for this search.';
+        } elseif (empty($intent['strict_dishes']) && !$fastFoodItems) {
+            $nearbyBrandMatches = array_merge($results, $webResults, $mapFindResults);
+            $answer = nearbyRestaurantCoreSummary($nearbyBrandMatches, $requestedRestaurantCore);
+            $nearbySearch['result_count'] = count($nearbyBrandMatches);
+            $nearbySearch['status'] = $nearbyBrandMatches
+                ? 'ok'
+                : ($nearbyMapPlaces ? 'no_matching_places_within_radius' : 'no_map_data');
+        }
+    } elseif ($approximateRestaurantQuery && !$outOfScope) {
+        $results = filterPlacesByRestaurantCore($results, (string)$localRestaurantCore);
+        $mapFindResults = filterPlacesByRestaurantCore($mapFindResults, (string)$localRestaurantCore);
+        if ($mapFindSearch['status'] !== 'not_applicable') {
+            $mapFindSearch['search_type'] = 'brand_branches';
+            $mapFindSearch['status'] = $mapFindResults ? 'ok' : 'no_matching_map_places';
+            $mapFindSearch['result_count'] = count($mapFindResults);
         }
     }
     $searchSuggestions = [];
@@ -1294,6 +1367,54 @@ try {
                 . implode(', ', array_slice($chainNames, 0, 8))
                 . '. Branch-specific menu availability may vary and has not been verified.';
         }
+    }
+
+    if (in_array('dairy_free', $intent['dietary'] ?? [], true)) {
+        $previousPlaceCount = count($results) + count($webResults) + count($mapFindResults);
+        $results = filterPlacesByVerifiedDietaryRequirements($results, $evidence, $intent);
+        $webResults = filterPlacesByVerifiedDietaryRequirements($webResults, $evidence, $intent);
+        $mapFindResults = filterPlacesByVerifiedDietaryRequirements($mapFindResults, $evidence, $intent);
+        if (isset($nearbyItems) && is_array($nearbyItems)) {
+            $nearbyItems = filterPlacesByVerifiedDietaryRequirements($nearbyItems, $evidence, $intent);
+            $nearbySearch['result_count'] = count($nearbyItems);
+            $nearbySearch['status'] = $nearbyItems ? 'ok' : 'no_verified_dietary_matches';
+        }
+
+        $verifiedPlaces = array_merge($webResults, $results, $mapFindResults);
+        $sources = filterSourcesByVerifiedDietaryRequirements($sources, $verifiedPlaces, $evidence, $intent);
+        if (!$verifiedPlaces) {
+            $answer = 'I could not verify a Davao City restaurant as dairy-free from an accessible source, so I cannot recommend a place as safe for lactose intolerance. Please confirm ingredients and cross-contact directly with the restaurant.';
+        } elseif ($previousPlaceCount !== count($verifiedPlaces)) {
+            $verifiedNames = [];
+            foreach ($verifiedPlaces as $place) {
+                $name = trim((string)($place['name'] ?? ''));
+                if ($name !== '' && !in_array($name, $verifiedNames, true)) $verifiedNames[] = $name;
+            }
+            $answer = 'These places have accessible source evidence mentioning dairy-free options: '
+                . implode(', ', $verifiedNames)
+                . '. Please confirm ingredients and cross-contact directly with each restaurant.';
+        } elseif ($answer !== '') {
+            $answer .= ' Please confirm ingredients and cross-contact directly with the restaurant; online listings cannot guarantee a meal is safe for your tolerance.';
+        }
+    }
+
+    if ($outOfScope === false
+        && !empty($intent['areas'])
+        && !in_array('dairy_free', $intent['dietary'] ?? [], true)) {
+        $areaLabels = array_values(array_unique(array_filter(array_map(
+            fn($area) => mb_convert_case(trim((string)$area), MB_CASE_TITLE, 'UTF-8'),
+            $intent['areas']
+        ))));
+        $matchingNames = [];
+        foreach (array_merge($webResults, $results, $mapFindResults) as $place) {
+            $name = trim((string)($place['name'] ?? ''));
+            if ($name !== '' && !in_array($name, $matchingNames, true)) $matchingNames[] = $name;
+        }
+        $answer = $matchingNames
+            ? 'For your request in ' . implode(', ', $areaLabels) . ', matching places found are: '
+                . implode(', ', array_slice($matchingNames, 0, 8))
+                . '. Check each linked source for details that may not be verified.'
+            : 'I could not find matching places in ' . implode(', ', $areaLabels) . ' in the available results.';
     }
 
     emitSearchProgress('Putting your recommendations together…');

@@ -312,6 +312,17 @@ assertCheck(
     && $halalFollowupAfterFries['dietary'] === ['halal'],
     'Explicit follow-ups retain relevant context while a new dish pivots away from the previous cuisine'
 );
+$matinaSushiIntent = parseQueryIntent("I'm craving sushi in Matina and hoping to spend under PHP 500");
+$matinaOutOfScopeIntent = parseQueryIntent('Japanese restaurants in Tagum City');
+assertCheck(
+    !$matinaSushiIntent['out_of_scope']
+    && in_array('matina', $matinaSushiIntent['areas'], true)
+    && !plannerOutOfScopeIsApplicable(true, false, $matinaSushiIntent)
+    && plannerOutOfScopeIsApplicable(true, false, [])
+    && !correctModelOutOfScopeForRecognizedDavaoArea(true, $matinaSushiIntent)
+    && correctModelOutOfScopeForRecognizedDavaoArea(true, $matinaOutOfScopeIntent),
+    'Known Davao areas such as Matina override an AI false refusal without weakening outside-city checks'
+);
 $fastFoodMapPlaces = [
     ['name'=>'Quick Bites', 'city'=>'Davao City', 'food_type'=>'fast_food', 'district'=>'Poblacion', 'street'=>'Roxas Avenue', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/202'],
 ];
@@ -735,6 +746,16 @@ assertCheck(
 $brandIntent = parseQueryIntent('KFC');
 $brandMapFinds = buildMapFindResults($mapFindFixtures, 'KFC', $brandIntent, 'kfc', 100);
 $anywhereKfcCore = detectExplicitRestaurantCoreQuery([['name'=>'KFC']], 'KFC anywhere in Davao');
+$jollibeeQueryCore = detectExplicitRestaurantCoreQuery([
+    ['name'=>'Jollibee - Matina'],
+    ['name'=>'Jollibee - Lanang'],
+    ['name'=>'Alberto\'s Pizza - Matina'],
+], 'Can you find me Jollibee Chickenjoy near Matina?');
+$jollibeeQueryPlaces = filterPlacesByRestaurantCore([
+    ['name'=>'Jollibee - Matina'],
+    ['name'=>'Jollibee - Lanang'],
+    ['name'=>'Alberto\'s Pizza - Matina'],
+], (string)$jollibeeQueryCore);
 $duplicateKfcMapFinds = buildMapFindResults([
     ['name'=>'KFC - Buhangin Airport', 'city'=>'Davao City', 'food_type'=>'fast food', 'nearby_street'=>'Carlos P. Garcia Highway', 'address'=>'Davao City', 'latitude'=>7.1, 'longitude'=>125.6, 'url'=>'https://www.openstreetmap.org/node/809'],
     ['name'=>'KFC', 'city'=>'Davao City', 'food_type'=>'fast food', 'nearby_street'=>'Carlos P. Garcia Highway', 'address'=>'Davao City', 'latitude'=>7.10001, 'longitude'=>125.60001, 'url'=>'https://www.openstreetmap.org/way/810'],
@@ -745,6 +766,8 @@ assertCheck(
     && count($brandMapFinds) === 2
     && count(array_unique(array_column($brandMapFinds, 'location_source_url'))) === 2
     && $anywhereKfcCore === 'kfc'
+    && $jollibeeQueryCore === 'jollibee'
+    && array_column($jollibeeQueryPlaces, 'name') === ['Jollibee - Matina', 'Jollibee - Lanang']
     && count($duplicateKfcMapFinds) === 1
     && str_contains($duplicateKfcMapFinds[0]['name'], 'Buhangin Airport')
     && !mapBranchMatchesPlace($brandMapFinds[0], ['name'=>'KFC', 'address'=>'Davao City'])
@@ -853,7 +876,10 @@ $coffeeWebResults = rankNearbyWebPlaces(
 );
 assertCheck(
     count($coffeeWebResults) === 1
-    && str_contains($coffeeWebResults[0]['name'], 'Poblacion (J.P. Laurel Avenue)'),
+    && str_contains($coffeeWebResults[0]['name'], 'Poblacion (J.P. Laurel Avenue)')
+    && ($coffeeWebResults[0]['location_verified'] ?? false) === true
+    && $coffeeWebResults[0]['location_label'] === 'J.P. Laurel Avenue, Poblacion, Davao City'
+    && $coffeeWebResults[0]['location_source'] === 'OpenStreetMap',
     'Web-found near-me branches also receive their mapped district and street in the display name'
 );
 $relevanceFirstMapPlaces = [
@@ -1371,6 +1397,50 @@ assertCheck(
     && empty($standaloneJollibeeIntent['specific_dishes']),
     'Explicit Jollibee search resets inherited chicken intent and excludes other chains'
 );
+$restaurantCoreFixtures = [
+    ['name'=>'Mang Inasal - Buhangin', '_id'=>'mang-inasal'],
+    ['name'=>'Jollibee - Lanang', '_id'=>'jollibee'],
+    ['name'=>'McDonald\'s - Bajada', '_id'=>'mcdonalds'],
+];
+$approximateRestaurantCore = detectApproximateRestaurantCoreQuery($restaurantCoreFixtures, 'magn inasal');
+$approximateRestaurantMatches = $approximateRestaurantCore !== null
+    ? filterPlacesByRestaurantCore($restaurantCoreFixtures, $approximateRestaurantCore)
+    : [];
+$approximateMapIntent = parseQueryIntent('magn inasal');
+$approximateMapIntent['cuisines'] = [];
+$approximateMapIntent['specific_dishes'] = [];
+$approximateMapIntent['fast_food_items'] = [];
+$approximateMapFinds = buildMapFindResults([
+    ['name'=>'Mang Inasal - Buhangin', 'city'=>'Davao City', 'food_type'=>'fast food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/851'],
+    ['name'=>'Jollibee - Lanang', 'city'=>'Davao City', 'food_type'=>'fast food', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/852'],
+], 'magn inasal', $approximateMapIntent, $approximateRestaurantCore ?? '', 100);
+assertCheck(
+    $approximateRestaurantCore === 'manginasal'
+    && count($approximateRestaurantMatches) === 1
+    && $approximateRestaurantMatches[0]['_id'] === 'mang-inasal'
+    && count($approximateMapFinds) === 1
+    && str_starts_with($approximateMapFinds[0]['name'], 'Mang Inasal')
+    && detectApproximateRestaurantCoreQuery($restaurantCoreFixtures, 'chicken') === null
+    && detectApproximateRestaurantCoreQuery($restaurantCoreFixtures, 'fast food') === null,
+    'Corrects a near-exact restaurant name for local/map filtering without interpreting broad food categories as brands'
+);
+$nearbyChowkingSummary = nearbyRestaurantCoreSummary([
+    ['name'=>'J&K Yogopop - Buhangin District (Waling-Waling Street)', 'distance_km'=>0.8],
+    ['name'=>'Penong\'s - Carlos P. Garcia Highway', 'distance_km'=>0.8],
+    ['name'=>'Chowking - SM Lanang', 'distance_km'=>1.2],
+], 'chowking');
+$noNearbyChowkingSummary = nearbyRestaurantCoreSummary([
+    ['name'=>'J&K Yogopop - Buhangin District (Waling-Waling Street)', 'distance_km'=>0.8],
+    ['name'=>'Penong\'s - Carlos P. Garcia Highway', 'distance_km'=>0.8],
+], 'chowking');
+assertCheck(
+    strpos($nearbyChowkingSummary, 'Chowking - SM Lanang') !== false
+    && strpos($nearbyChowkingSummary, 'J&K Yogopop') === false
+    && strpos($nearbyChowkingSummary, 'Penong') === false
+    && strpos($noNearbyChowkingSummary, 'could not verify a Chowking location') !== false
+    && strpos($noNearbyChowkingSummary, 'J&K Yogopop') === false,
+    'Nearby brand summaries only name verified branches matching the requested restaurant'
+);
 $rankedChickenPlaces = shortlistPlaces($popularChickenPlaces, 'chicken', 10, $chickenIntent);
 $rankedChickenIds = array_column($rankedChickenPlaces, '_id');
 $expandedChickenIds = supplementRankedPlaceIds(['chicken-jollibee'], $rankedChickenPlaces, 4);
@@ -1573,6 +1643,56 @@ assertCheck(
     array_column(evidencePlacesFallback($articleEvidence), 'name') === ['KFC - SM City Davao'],
     'Raw web fallback returns the restaurant, not article headlines'
 );
+$misleadingVenueEvidence = [
+    'results'=>[
+        [
+            'title'=>'r/davao on Reddit: Best Burger Chain Recommendations',
+            'url'=>'https://www.reddit.com/r/davao/comments/example',
+            'text'=>'Davao City burger and sandwich recommendations.',
+            'source_type'=>'community_post',
+        ],
+        [
+            'title'=>'Davao Sandwich Shop - Facebook',
+            'url'=>'https://www.facebook.com/davaosandwichshop/posts/example',
+            'text'=>'A Davao City business serving sandwiches.',
+            'source_type'=>'community_post',
+        ],
+        [
+            'title'=>'Access to this page has been denied',
+            'url'=>'https://example.com/denied',
+            'text'=>'Davao City sandwich restaurant information.',
+        ],
+        [
+            'title'=>'Top Sandwich Restaurants in Davao City',
+            'url'=>'https://example.com/sandwich-guide',
+            'text'=>'A guide to sandwich restaurants in Davao City.',
+            'source_type'=>'blog_search_result',
+        ],
+        [
+            'title'=>'Subway - Davao City',
+            'url'=>'https://example.com/subway-davao',
+            'text'=>'Subway is a sandwich restaurant in Davao City.',
+        ],
+    ],
+];
+$misleadingFallbackNames = array_column(evidencePlacesFallback($misleadingVenueEvidence), 'name');
+$misleadingSanitizedNames = array_column(sanitizeWebPlaces([
+    ['name'=>'r/davao on Reddit: Best Burger Chain Recommendations', 'city'=>'Davao City', 'source_url'=>'https://www.reddit.com/r/davao/comments/example'],
+    ['name'=>'Davao Sandwich Shop', 'city'=>'Davao City', 'source_url'=>'https://www.facebook.com/davaosandwichshop/posts/example'],
+    ['name'=>'Access to this page has been denied', 'city'=>'Davao City', 'source_url'=>'https://example.com/denied'],
+    ['name'=>'Top Sandwich Restaurants in Davao City', 'city'=>'Davao City', 'source_url'=>'https://example.com/sandwich-guide'],
+    ['name'=>'Subway - Davao City', 'city'=>'Davao City', 'source_url'=>'https://example.com/subway-davao'],
+], $misleadingVenueEvidence), 'name');
+$sandwichOnlineFallback = sourceBackedOnlineFallback($misleadingVenueEvidence, parseQueryIntent('sandwich'));
+assertCheck(
+    isLikelyNonVenueTitle('r/davao on Reddit: Best Burger Chain Recommendations')
+    && isLikelyNonVenueTitle('Access to this page has been denied')
+    && isLikelyNonVenueTitle('Our Guide to Sandwiches in Davao')
+    && $misleadingFallbackNames === ['Subway']
+    && $misleadingSanitizedNames === ['Subway - Davao City']
+    && array_column($sandwichOnlineFallback, 'name') === ['Subway'],
+    'Shared online fallbacks reject post, article, and error-page titles while retaining a named venue'
+);
 $onlineFallbackEvidence = [
     'sources'=>[['title'=>'Davao Burger Results', 'url'=>'https://example.com/davao-burgers']],
     'results'=>[
@@ -1685,6 +1805,52 @@ assertCheck(
     'Fallback includes positive food-specific venue reviews, excluding negative reviews and review listicles'
 );
 
+$branchEvidence = [
+    'results'=>[
+        [
+            'title'=>'Cafe Uno - C.M. Recto',
+            'url'=>'https://example.com/cafe-recto',
+            'text'=>'Cafe Uno is located on C.M. Recto in Davao City.',
+        ],
+        [
+            'title'=>'Cafe Uno - Abreeza Mall',
+            'url'=>'https://example.com/cafe-abreeza',
+            'text'=>'Cafe Uno has a branch inside Abreeza Mall in Davao City.',
+        ],
+        [
+            'title'=>'Cafe Uno Davao City',
+            'url'=>'https://example.com/cafe-unspecified',
+            'text'=>'Cafe Uno is a restaurant in Davao City.',
+        ],
+        [
+            'title'=>'Cafe Dos Davao City',
+            'url'=>'https://example.com/cafe-dos',
+            'text'=>'Cafe Dos is located at 123 C.M. Recto Street, Davao City.',
+        ],
+    ],
+];
+$branchWebPlaces = sanitizeWebPlaces([
+    ['name'=>'Cafe Uno - C.M. Recto', 'city'=>'Davao City', 'address'=>'Davao City', 'source_url'=>'https://example.com/cafe-recto'],
+    ['name'=>'Cafe Uno - Abreeza Mall', 'city'=>'Davao City', 'address'=>'Davao City', 'source_url'=>'https://example.com/cafe-abreeza'],
+    ['name'=>'Cafe Uno', 'city'=>'Davao City', 'address'=>'Davao City', 'source_url'=>'https://example.com/cafe-unspecified'],
+    ['name'=>'Cafe Dos', 'city'=>'Davao City', 'address'=>'123 C.M. Recto Street, Davao City', 'source_url'=>'https://example.com/cafe-dos'],
+], $branchEvidence);
+$branchDedupedLocalPlaces = filterLocalPlacesDuplicatedOnline([
+    ['name'=>'Cafe Uno - C.M. Recto', 'address'=>'Davao City'],
+    ['name'=>'Cafe Uno - Abreeza Mall', 'address'=>'Davao City'],
+    ['name'=>'Cafe Uno - Lanang', 'address'=>'Davao City'],
+    ['name'=>'Cafe Uno', 'address'=>'Davao City'],
+], [$branchWebPlaces[0], $branchWebPlaces[2]]);
+assertCheck(
+    ($branchWebPlaces[0]['location_verified'] ?? false) === true
+    && $branchWebPlaces[0]['location_label'] === 'C.M. Recto'
+    && ($branchWebPlaces[2]['location_verified'] ?? false) === false
+    && !sameVerifiedVenueBranch($branchWebPlaces[0], ['name'=>'Cafe Uno - Abreeza Mall'], true, false)
+    && ($branchWebPlaces[3]['location_label'] ?? '') === '123 C.M. Recto Street, Davao City'
+    && array_column($branchDedupedLocalPlaces, 'name') === ['Cafe Uno - Abreeza Mall', 'Cafe Uno - Lanang', 'Cafe Uno'],
+    'Branch locations require source evidence and only confirmed online/local branch duplicates are suppressed'
+);
+
 $yelpDirectoryEvidence = [
     'results'=>[
         [
@@ -1711,6 +1877,110 @@ assertCheck(
     && ($chickenDirectoryPlaces[4]['rating'] ?? null) === ''
     && str_contains($chickenDirectoryPlaces[4]['description'], 'does not verify'),
     'Directory matches remain source-linked without invented ratings or menu claims'
+);
+
+$tripadvisorDirectoryEvidence = [
+    'results'=>[[
+        'title'=>'Best Chicken Restaurants in Davao City - Tripadvisor',
+        'url'=>'https://www.tripadvisor.com.ph/Restaurants-g298568-Davao_City_Mindanao.html',
+        'text'=>"Search snippet: Best chicken restaurants in Davao City | Restaurants in Davao City\n1. Matina Chicken House\n2. Grill House Davao\n3. Chicken Corner",
+        'food_query'=>'chicken',
+        'source_type'=>'web_page',
+        'source_access'=>'source_page',
+    ]],
+];
+$tripadvisorDirectoryPlaces = sourceBackedOnlineFallback($tripadvisorDirectoryEvidence, parseQueryIntent('chicken'));
+assertCheck(
+    array_column($tripadvisorDirectoryPlaces, 'name') === ['Matina Chicken House', 'Grill House Davao', 'Chicken Corner']
+    && count(array_filter($tripadvisorDirectoryPlaces, fn($place) => $place['source_url'] === $tripadvisorDirectoryEvidence['results'][0]['url'])) === 3,
+    'Accessible numbered directory pages yield individual source-linked venues instead of the publisher page'
+);
+
+$publisherTitleEvidence = [
+    'results'=>[[
+        'title'=>'Eat Local',
+        'url'=>'https://example.com/eat-local-davao',
+        'text'=>"Restaurants in Davao City\n1. Matina Chicken House\n2. Grill House Davao",
+        'food_query'=>'chicken',
+        'source_access'=>'source_page',
+    ]],
+];
+$websiteDomainEvidence = [
+    'results'=>[[
+        'title'=>'tripadvisor.com.ph',
+        'url'=>'https://www.tripadvisor.com.ph/Restaurants-g298568-Davao_City_Mindanao.html',
+        'text'=>'Davao City restaurant directory',
+        'source_access'=>'source_page',
+    ]],
+];
+assertCheck(
+    sanitizeWebPlaces([[
+        'name'=>'Eat Local',
+        'city'=>'Davao City',
+        'address'=>'Davao City',
+        'source_url'=>'https://example.com/eat-local-davao',
+    ]], $publisherTitleEvidence) === []
+    && sanitizeWebPlaces([[
+        'name'=>'tripadvisor.com.ph',
+        'city'=>'Davao City',
+        'address'=>'Davao City',
+        'source_url'=>'https://www.tripadvisor.com.ph/Restaurants-g298568-Davao_City_Mindanao.html',
+    ]], $websiteDomainEvidence) === [],
+    'Publisher names and website domains are never emitted as venue cards'
+);
+
+$glutenDirectoryEvidence = [
+    'results'=>[[
+        'title'=>'Gluten-Free Restaurants in Davao City',
+        'url'=>'https://example.com/davao-gluten-free-restaurants',
+        'text'=>"Gluten-free restaurants in Davao City\n1. Cafe Uno\n2. Cafe Dos",
+        'food_query'=>'lactose intolerant restaurant',
+        'source_access'=>'source_page',
+        'source_type'=>'web_page',
+    ]],
+];
+$dairyFreeDirectoryPlaces = sourceBackedOnlineFallback($glutenDirectoryEvidence, parseQueryIntent('lactose intolerant restaurant'));
+$glutenDirectoryEvidence['results'][0]['food_query'] = 'gluten-free restaurant';
+$glutenFreeDirectoryPlaces = sourceBackedOnlineFallback($glutenDirectoryEvidence, parseQueryIntent('gluten-free restaurant'));
+$lactoseIntent = parseQueryIntent("I'm lactose intolerant. What can I safely eat?");
+$unverifiedDairyPlace = ['name'=>'Cafe Uno', 'city'=>'Davao City', 'food_type'=>'Coffee'];
+$dairyMenuEvidence = [
+    'results'=>[[
+        'title'=>'Cafe Uno menu - Davao City',
+        'url'=>'https://example.com/cafe-uno-menu',
+        'text'=>'Cafe Uno offers dairy-free drinks and dishes in Davao City.',
+        'food_query'=>'I am lactose intolerant',
+        'source_access'=>'source_page',
+        'source_type'=>'web_page',
+    ]],
+];
+$verifiedDairyPlace = ['name'=>'Cafe Uno', 'city'=>'Davao City', 'food_type'=>'Coffee', 'source_url'=>'https://example.com/cafe-uno-menu'];
+assertCheck(
+    $dairyFreeDirectoryPlaces === []
+    && array_column($glutenFreeDirectoryPlaces, 'name') === ['Cafe Uno', 'Cafe Dos'],
+    'A gluten-free directory does not support lactose-free claims, while its matching gluten-free list may be used'
+);
+assertCheck(
+    $lactoseIntent['dietary'] === ['dairy_free']
+    && filterPlacesByVerifiedDietaryRequirements([$unverifiedDairyPlace], [], $lactoseIntent) === []
+    && filterPlacesByVerifiedDietaryRequirements([$verifiedDairyPlace], $dairyMenuEvidence, $lactoseIntent) === [$verifiedDairyPlace],
+    'Lactose-intolerance requests exclude unsupported local matches and retain only accessible venue-specific dairy-free evidence'
+);
+assertCheck(
+    filterSourcesByVerifiedDietaryRequirements([
+        ['title'=>'Cafe Uno menu', 'url'=>'https://example.com/cafe-uno-menu'],
+        ['title'=>'Davao vegan dining guide', 'url'=>'https://example.com/vegan-guide'],
+    ], [$verifiedDairyPlace], [
+        'results'=>array_merge($dairyMenuEvidence['results'], [[
+            'title'=>'Davao vegan dining guide',
+            'url'=>'https://example.com/vegan-guide',
+            'text'=>'Vegan and healthy restaurants around Davao City.',
+            'food_query'=>'I am lactose intolerant',
+            'source_access'=>'source_page',
+            'source_type'=>'web_page',
+        ]]),
+    ], $lactoseIntent) === [['title'=>'Cafe Uno menu', 'url'=>'https://example.com/cafe-uno-menu']],
+    'Lactose-intolerance responses only link sources that support a displayed dairy-free match'
 );
 
 $hybridIntent = ['planner_used'=>true];

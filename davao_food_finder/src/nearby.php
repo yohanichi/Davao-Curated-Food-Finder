@@ -1,5 +1,7 @@
 <?php
 
+const DAVAO_NEARBY_RADIUS_KM = 3.0;
+
 function nearbyPlaceCore(string $name): string {
     $core = preg_replace('/\s*(?:[-–|]\s*[^-–|]+|\([^)]*\))\s*$/u', '', trim($name)) ?? trim($name);
     return mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $core) ?? '', 'UTF-8');
@@ -228,7 +230,7 @@ function nearbyDistanceKm(float $latitude, float $longitude, float $placeLatitud
     return $earthRadiusKm * 2 * asin(min(1.0, sqrt($a)));
 }
 
-function nearbySearchBounds(float $latitude, float $longitude, float $radiusKm = 2.5): array {
+function nearbySearchBounds(float $latitude, float $longitude, float $radiusKm = DAVAO_NEARBY_RADIUS_KM): array {
     if (!is_finite($latitude) || $latitude < -90 || $latitude > 90
         || !is_finite($longitude) || $longitude < -180 || $longitude > 180
         || !is_finite($radiusKm) || $radiusKm <= 0) {

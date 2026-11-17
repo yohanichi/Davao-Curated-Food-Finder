@@ -461,6 +461,12 @@ assertCheck(
     'Web-found near-me branches also receive their mapped district and street in the display name'
 );
 assertApprox(nearbyDistanceKm(0.0, 0.0, 0.0, 1.0), 111.195, 0.01, 'Haversine distance uses kilometers');
+assertCheck(
+    DAVAO_NEARBY_RADIUS_KM === 3.0
+    && nearbyDistanceWithinRadius(3.0, DAVAO_NEARBY_RADIUS_KM)
+    && !nearbyDistanceWithinRadius(3.01, DAVAO_NEARBY_RADIUS_KM),
+    'Near-me radius includes places up to 3 km and excludes more distant places'
+);
 $nearbySearchBounds = nearbySearchBounds(7.105, 125.635);
 assertCheck(
     $nearbySearchBounds['west'] <= 125.635

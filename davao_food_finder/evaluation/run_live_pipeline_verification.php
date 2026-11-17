@@ -7,7 +7,20 @@ const LIVE_PIPELINE_QUERIES = [
     ['id'=>'japanese_dining', 'query'=>'Affordable Japanese restaurants in Davao City', 'controlled_violation'=>false],
     ['id'=>'study_cafes', 'query'=>'Quiet cafes for studying in Davao City', 'controlled_violation'=>false],
     ['id'=>'grilled_chicken', 'query'=>'Where can I get grilled chicken in Davao City?', 'controlled_violation'=>false],
-    ['id'=>'price_ceiling_violation', 'query'=>'Find Japanese restaurants in Davao City with a full meal under ₱1 per person', 'controlled_violation'=>true],
+    [
+        'id'=>'impossible_price_budget',
+        'query'=>'Find Japanese restaurants in Davao City with a full meal under ₱1 per person',
+        'controlled_violation'=>false,
+        'behavior_check'=>'impossible_budget_refusal',
+        'max_price_php'=>1,
+    ],
+    [
+        'id'=>'price_ceiling_repair',
+        'query'=>'Find Japanese restaurants in Davao City with a full meal under ₱250 per person',
+        'controlled_violation'=>true,
+        'behavior_check'=>'price_violation_repair',
+        'max_price_php'=>250,
+    ],
 ];
 
 function livePipelineSafeUrl(string $url): string {
@@ -28,6 +41,39 @@ function livePipelineSafeUrl(string $url): string {
 
 function livePipelineIsSupportedDeepSeekModel(string $model): bool {
     return in_array(strtolower(trim($model)), ['deepseek-flash', 'deepseek-v4-pro'], true);
+}
+
+function liveImpossibleBudgetResponseEvidence(string $answer, float $maxPricePhp): array {
+    $limit = rtrim(rtrim(number_format($maxPricePhp, 2, '.', ''), '0'), '.');
+    $pricePattern = '(?:₱\s*|PHP\s*)' . preg_quote($limit, '/') . '(?!\d|\.\d)';
+    $noMatchClaim = preg_match(
+        '/\b(?:no|none|cannot|can\'t|unable|impossible|unrealistic)\b.{0,220}\b(?:under|below|less than)\s*' . $pricePattern . '/isu',
+        $answer
+    ) === 1;
+    $noMatchClaim = $noMatchClaim || preg_match(
+        '/\b(?:under|below|less than)\s*' . $pricePattern . '.{0,80}\b(?:is\s+not|isn\'t|not)\s+(?:realistic|feasible|possible|practical)\b/isu',
+        $answer
+    ) === 1;
+    $aboveBudgetAlternativeContext = preg_match(
+        '/\b(?:alternative|most affordable|another option|more realistic budget|higher budget|cheapest|prices?\s+(?:start|begin)|for instance|for example)\b/iu',
+        $answer
+    ) === 1;
+    $pricesAboveBudget = [];
+    if (preg_match_all('/(?:₱\s*|PHP\s*)([\d,]+(?:\.\d+)?)/iu', $answer, $matches)) {
+        foreach ($matches[1] as $match) {
+            $price = (float)str_replace(',', '', $match);
+            if ($price > $maxPricePhp && !in_array($price, $pricesAboveBudget, true)) {
+                $pricesAboveBudget[] = $price;
+            }
+        }
+    }
+
+    return [
+        'no_match_claim'=>$noMatchClaim,
+        'above_budget_alternative_context'=>$aboveBudgetAlternativeContext,
+        'alternative_price_above_budget'=>count($pricesAboveBudget) > 0,
+        'prices_above_budget_php'=>$pricesAboveBudget,
+    ];
 }
 
 function livePipelineStageResults(array $data): array {
@@ -189,6 +235,33 @@ function livePipelineBuildResult(array $case, array $response, float $clientLate
     $loopOutcome = $violations
         ? ($violationsRepaired > 0 ? 'violation_detected_and_repaired' : 'violation_detected_not_repaired')
         : (!$requestSuccess || !$loopEnabled ? 'not_observed' : 'no_violation_detected');
+    $controlledViolationObserved = $requestSuccess && $loopEnabled && (int)($loop['iterations'] ?? 0) > 0;
+    $controlledViolationStatus = !(bool)($case['controlled_violation'] ?? false)
+        ? 'not_applicable'
+        : (!$controlledViolationObserved
+            ? 'not_observed'
+            : (count($violations) > 0
+                ? ($violationsRepaired > 0 ? 'detected_and_repaired' : 'detected_not_repaired')
+                : 'not_detected'));
+    $behaviorCheck = (string)($case['behavior_check'] ?? '');
+    $behaviorCheckEvidence = [];
+    if ($behaviorCheck === 'impossible_budget_refusal') {
+        $behaviorCheckEvidence = liveImpossibleBudgetResponseEvidence(
+            (string)($data['answer'] ?? ''),
+            (float)($case['max_price_php'] ?? 0)
+        );
+        $behaviorCheckStatus = !$requestSuccess
+            ? 'not_observed'
+            : ($behaviorCheckEvidence['no_match_claim']
+                && $behaviorCheckEvidence['above_budget_alternative_context']
+                && $behaviorCheckEvidence['alternative_price_above_budget']
+                ? 'passed'
+                : 'failed');
+    } elseif ($behaviorCheck === 'price_violation_repair') {
+        $behaviorCheckStatus = $controlledViolationStatus;
+    } else {
+        $behaviorCheckStatus = 'not_applicable';
+    }
     $requestedDeepseekBackend = (string)($runConfiguration['deepseek_backend'] ?? 'auto');
     $observedDeepseekBackend = (string)($stages['4_deepseek_r1_reasoner']['backend'] ?? 'not_run');
     $backendMatches = $requestedDeepseekBackend === 'auto'
@@ -202,19 +275,18 @@ function livePipelineBuildResult(array $case, array $response, float $clientLate
         'query'=>(string)$case['query'],
         'controlled_violation_case'=>(bool)$case['controlled_violation'],
         'controlled_violation_expected'=>(bool)$case['controlled_violation'],
-        'controlled_violation_status'=>!(bool)$case['controlled_violation']
-            ? 'not_applicable'
-            : (!$controlledViolationObserved
-                ? 'not_observed'
-                : (count($violations) > 0
-                    ? ($violationsRepaired > 0 ? 'detected_and_repaired' : 'detected_not_repaired')
-                    : 'not_detected')),
-        'controlled_violation_detected'=>!(bool)$case['controlled_violation'] || !$controlledViolationObserved
+        'controlled_violation_status'=>$controlledViolationStatus,
+        'controlled_violation_detected'=>!(bool)($case['controlled_violation'] ?? false) || !$controlledViolationObserved
             ? null
             : count($violations) > 0,
-        'controlled_violation_repaired'=>!(bool)$case['controlled_violation'] || !$controlledViolationObserved
+        'controlled_violation_repaired'=>!(bool)($case['controlled_violation'] ?? false) || !$controlledViolationObserved
             ? null
             : $violationsRepaired > 0,
+        'behavior_check'=>[
+            'type'=>$behaviorCheck !== '' ? $behaviorCheck : 'none',
+            'status'=>$behaviorCheckStatus,
+            'evidence'=>$behaviorCheckEvidence,
+        ],
         'configuration'=>[
             'provider'=>'hybrid',
             'agentic_refinement_enabled'=>true,
@@ -352,6 +424,10 @@ function runLivePipelineVerification(string $apiUrl, string $outputDirectory, ar
             'requests'=>count($records),
             'request_successes'=>count(array_filter($records, static fn(array $record): bool => $record['request_success'])),
             'full_live_pipeline_successes'=>count(array_filter($records, static fn(array $record): bool => $record['all_five_stages_succeeded_on_live_request'])),
+            'impossible_budget_refusal_cases'=>count(array_filter($records, static fn(array $record): bool => $record['behavior_check']['type'] === 'impossible_budget_refusal')),
+            'impossible_budget_refusal_passed'=>count(array_filter($records, static fn(array $record): bool => $record['behavior_check']['type'] === 'impossible_budget_refusal' && $record['behavior_check']['status'] === 'passed')),
+            'price_violation_repair_cases'=>count(array_filter($records, static fn(array $record): bool => $record['behavior_check']['type'] === 'price_violation_repair')),
+            'price_violation_repair_detected_and_repaired'=>count(array_filter($records, static fn(array $record): bool => $record['behavior_check']['type'] === 'price_violation_repair' && $record['behavior_check']['status'] === 'detected_and_repaired')),
             'controlled_violation_detected'=>count(array_filter($records, static fn(array $record): bool => $record['controlled_violation_detected'] === true)),
             'controlled_violation_repaired'=>count(array_filter($records, static fn(array $record): bool => $record['controlled_violation_repaired'] === true)),
         ],
@@ -363,7 +439,7 @@ function runLivePipelineVerification(string $apiUrl, string $outputDirectory, ar
     }
     $csv = fopen($basePath . '.csv', 'wb');
     if ($csv === false) throw new RuntimeException('Unable to write the CSV verification report.');
-    fputcsv($csv, ['case_id','query','provider','agentic_refinement_enabled','iterative_loop_enabled','cache_policy','temperature','prompt_style','seed','evidence_override_used','deepseek_backend_requested','deepseek_backend_request_matches_observed','requested_backend_prerequisite_met','stages','deepseek_backend','deepseek_model','cache_status','evidence_count','source_urls','retrieval_time_ms','client_latency_ms','server_latency_ms','loop','request_success','all_five_stages_succeeded_on_live_request','execution_class','http_status','error_category']);
+    fputcsv($csv, ['case_id','query','provider','agentic_refinement_enabled','iterative_loop_enabled','cache_policy','temperature','prompt_style','seed','evidence_override_used','deepseek_backend_requested','deepseek_backend_request_matches_observed','requested_backend_prerequisite_met','behavior_check_type','behavior_check_status','controlled_violation_status','stages','deepseek_backend','deepseek_model','cache_status','evidence_count','source_urls','retrieval_time_ms','client_latency_ms','server_latency_ms','loop','request_success','all_five_stages_succeeded_on_live_request','execution_class','http_status','error_category']);
     foreach ($records as $record) {
         fputcsv($csv, [
             $record['case_id'],
@@ -379,6 +455,9 @@ function runLivePipelineVerification(string $apiUrl, string $outputDirectory, ar
             $record['configuration']['deepseek_backend_requested'],
             $record['configuration']['deepseek_backend_request_matches_observed'] ? 'true' : 'false',
             $record['configuration']['requested_backend_prerequisite_met'] ? 'true' : 'false',
+            $record['behavior_check']['type'],
+            $record['behavior_check']['status'],
+            $record['controlled_violation_status'],
             json_encode($record['stages'], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
             $record['stages']['4_deepseek_r1_reasoner']['backend'] ?? '',
             $record['stages']['4_deepseek_r1_reasoner']['model'] ?? '',

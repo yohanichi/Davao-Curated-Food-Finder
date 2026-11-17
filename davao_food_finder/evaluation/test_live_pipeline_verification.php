@@ -68,6 +68,40 @@ $check($full['stages']['2_playwright_retrieval']['browser_used'], 'records actua
 $check($full['source_urls'] === ['https://example.test/restaurant?id=2'], 'records source URLs');
 $check($full['stages']['1_gpt4o_mini_planner']['planned_query'] === 'Davao City restaurants', 'records the query returned by the planner');
 $check($full['configuration']['evidence_override_used'] === false, 'records that no evidence override was used');
+$impossibleBudgetEvidence = liveImpossibleBudgetResponseEvidence(
+    'No Japanese restaurant can serve a full meal under ₱1. The cheapest verified meal prices start around ₱175. For instance, Sukidesu offers meals from ₱200.',
+    1
+);
+$check(
+    $impossibleBudgetEvidence['no_match_claim']
+        && $impossibleBudgetEvidence['above_budget_alternative_context']
+        && $impossibleBudgetEvidence['alternative_price_above_budget'],
+    'recognizes an impossible-budget rejection with a priced, higher-budget alternative'
+);
+$misleadingBudgetEvidence = liveImpossibleBudgetResponseEvidence(
+    'This Japanese restaurant costs ₱200 and fits your budget under ₱1.',
+    1
+);
+$check(
+    !$misleadingBudgetEvidence['no_match_claim'] || !$misleadingBudgetEvidence['alternative_price_above_budget'],
+    'rejects a claim that an above-budget recommendation fits an impossible budget'
+);
+$impossibleBudgetCase = [
+    'id'=>'impossible_budget',
+    'query'=>'Japanese restaurant under ₱1',
+    'controlled_violation'=>false,
+    'behavior_check'=>'impossible_budget_refusal',
+    'max_price_php'=>1,
+];
+$impossibleBudgetData = $liveData;
+$impossibleBudgetData['answer'] = 'No Japanese restaurants have a full meal under ₱1. The most affordable option is around ₱200.';
+$impossibleBudget = livePipelineBuildResult(
+    $impossibleBudgetCase,
+    ['http_status'=>200, 'data'=>$impossibleBudgetData],
+    1300
+);
+$check($impossibleBudget['behavior_check']['status'] === 'passed', 'passes a correctly separated impossible-budget response');
+$check($impossibleBudget['controlled_violation_status'] === 'not_applicable', 'does not classify a correct refusal as a controlled violation');
 $requestedHosted = livePipelineBuildResult($case, $response, 1300, ['deepseek_backend'=>'hosted-api']);
 $check(!$requestedHosted['all_five_stages_succeeded_on_live_request'], 'does not count a backend mismatch as full-pipeline success');
 $check(!$requestedHosted['configuration']['deepseek_backend_request_matches_observed'], 'records actual backend mismatch against the requested backend');
@@ -138,12 +172,19 @@ $gptProviderMetrics = [
 $gptProviderCall = liveProviderCallEvidence('gpt-4o-mini', $gptProviderMetrics, true);
 $check($gptProviderCall['succeeded'], 'verifies a usable live GPT-4o mini provider call');
 
-$violationCase = ['id'=>'controlled', 'query'=>'query', 'controlled_violation'=>true];
+$violationCase = [
+    'id'=>'controlled',
+    'query'=>'Japanese meal under ₱250',
+    'controlled_violation'=>true,
+    'behavior_check'=>'price_violation_repair',
+    'max_price_php'=>250,
+];
 $violationData = $liveData;
 $violationData['metrics']['agentic_loop']['violations_detected'] = ['price_ceiling_exceeded:Venue A'];
 $violationData['metrics']['agentic_loop']['violations_repaired'] = 1;
 $violation = livePipelineBuildResult($violationCase, ['http_status'=>200, 'data'=>$violationData], 1300);
 $check($violation['controlled_violation_detected'] && $violation['controlled_violation_repaired'], 'reports controlled violation detection and repair separately');
+$check($violation['behavior_check']['status'] === 'detected_and_repaired', 'classifies a realistic price-ceiling repair separately');
 $unavailableControlled = livePipelineBuildResult(
     $violationCase,
     ['http_status'=>0, 'data'=>[], 'error_category'=>'api_unreachable_or_timeout'],

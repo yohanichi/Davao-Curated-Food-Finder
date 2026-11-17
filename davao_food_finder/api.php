@@ -105,6 +105,7 @@ try {
     $mapFindSearch = [
         'status'=>'not_applicable',
         'source'=>'OpenStreetMap local snapshot',
+        'search_type'=>'category',
         'snapshot_updated_at'=>null,
         'result_count'=>0,
     ];
@@ -799,6 +800,7 @@ try {
         && mapFindIntentIsSupported($intent, $requestedRestaurantCore)) {
         try {
             $mapSnapshot = loadLocalOsmNearbySnapshot(__DIR__ . '/data/osm-nearby-places.json');
+            $mapFindSearch['search_type'] = $requestedRestaurantCore !== null ? 'brand_branches' : 'category';
             $mapFindSearch['snapshot_updated_at'] = $mapSnapshot['updated_at'];
             $mapFindResults = buildMapFindResults(
                 $mapSnapshot['places'],
@@ -808,25 +810,19 @@ try {
                 100
             );
 
-            $mapCoreCounts = [];
-            foreach ($places as $place) {
-                $core = $normCoreName((string)($place['name'] ?? ''));
-                if ($core !== '') $mapCoreCounts[$core] = ($mapCoreCounts[$core] ?? 0) + 1;
-            }
             $existingPlaces = array_merge($results, $webResults);
             $supplementalMapResults = [];
             foreach ($mapFindResults as $mapResult) {
                 $duplicate = false;
                 foreach ($existingPlaces as $existingPlace) {
-                    $core = $normCoreName((string)($existingPlace['name'] ?? ''));
-                    if ($venuesMatch($mapResult, $existingPlace, $mapCoreCounts[$core] ?? 1)) {
+                    if (mapBranchMatchesPlace($mapResult, $existingPlace)) {
                         $duplicate = true;
                         break;
                     }
                 }
                 if (!$duplicate && !empty($intent['exclude_shown'])) {
                     foreach ($shownNames as $shownName) {
-                        if ($venuesMatch($mapResult, ['name'=>(string)$shownName], $mapCoreCounts[$normCoreName((string)$shownName)] ?? 1)) {
+                        if (mapBranchMatchesPlace($mapResult, ['name'=>(string)$shownName])) {
                             $duplicate = true;
                             break;
                         }
@@ -834,7 +830,7 @@ try {
                 }
                 if (!$duplicate) $supplementalMapResults[] = $mapResult;
             }
-            $mapFindResults = array_slice($supplementalMapResults, 0, 20);
+            $mapFindResults = array_slice($supplementalMapResults, 0, 100);
             $mapFindSearch['status'] = $mapFindResults ? 'ok' : 'no_matching_map_places';
             $mapFindSearch['result_count'] = count($mapFindResults);
         } catch (RuntimeException $error) {
@@ -928,12 +924,14 @@ try {
         if ($nearbyLocation === null) {
             $brandName = restaurantCoreDisplayName($places, $requestedRestaurantCore);
             $matchingNames = [];
-            foreach (array_merge($results, $webResults) as $place) {
+            foreach (array_merge($results, $webResults, $mapFindResults) as $place) {
                 $name = trim((string)($place['name'] ?? ''));
                 if ($name !== '' && !in_array($name, $matchingNames, true)) $matchingNames[] = $name;
             }
             $answer = $matchingNames
-                ? 'Here are matching ' . $brandName . ' locations in Davao City: ' . implode(', ', array_slice($matchingNames, 0, 8)) . '.'
+                ? 'Here are matching ' . $brandName . ' locations found in Davao City: ' . implode(', ', array_slice($matchingNames, 0, 8)) . '.'
+                    . (count($matchingNames) > 8 ? ' Additional known locations are listed below.' : '')
+                    . ($mapFindResults ? ' OpenStreetMap-only locations are not live-verified.' : '')
                 : 'I could not find a verified ' . $brandName . ' location in the Davao City dataset for this search.';
         }
     }

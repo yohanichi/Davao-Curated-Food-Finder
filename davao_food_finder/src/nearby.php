@@ -43,7 +43,7 @@ function detectExplicitRestaurantCoreQuery(array $places, string $query): ?strin
         trim($query)
     ) ?? trim($query));
     $cleaned = preg_replace(
-        '/\s+(?:near|in|around)\s+(?:me|davao(?:\s+city)?|lanang|matina(?:\s+crossing|\s+aplaya)?|obrero|bajada|ecoland|toril|buhangin|poblacion|downtown|agdao|talomo|maa)\b.*$/iu',
+        '/\s+(?:(?:anywhere\s+)?(?:near|in|around)\s+)?(?:me|davao(?:\s+city)?|lanang|matina(?:\s+crossing|\s+aplaya)?|obrero|bajada|ecoland|toril|buhangin|poblacion|downtown|agdao|talomo|maa)\b.*$/iu',
         '',
         $cleaned
     ) ?? $cleaned;
@@ -464,7 +464,7 @@ function mapFindIntentIsSupported(array $intent, ?string $requestedRestaurantCor
     $dishes = is_array($intent['specific_dishes'] ?? null) ? $intent['specific_dishes'] : [];
     $dietary = is_array($intent['dietary'] ?? null) ? $intent['dietary'] : [];
     if (!empty($intent['out_of_scope'])
-        || !empty($intent['is_ambiguous'])
+        || (!empty($intent['is_ambiguous']) && $requestedRestaurantCore === null)
         || !empty($intent['online_only'])
         || !empty($intent['min_rating'])
         || !empty($intent['min_price_php'])
@@ -501,17 +501,18 @@ function buildMapFindResults(
     if (!mapFindIntentIsSupported($intent, $requestedRestaurantCore)) return [];
 
     $requestedAreas = is_array($intent['areas'] ?? null) ? $intent['areas'] : [];
+    $hasAdditionalFoodConstraints = !empty($intent['cuisines'])
+        || !empty($intent['specific_dishes'])
+        || !empty($intent['dietary']);
     $results = [];
     $seenUrls = [];
     foreach ($mapPlaces as $feature) {
-        if (!is_array($feature) || !isValidNearbyMapPlace($feature)
-            || !nearbyFeatureMatchesRequest($feature, $query, $intent)) {
-            continue;
-        }
+        if (!is_array($feature) || !isValidNearbyMapPlace($feature)) continue;
         $name = nearbyFeatureDisplayName($feature);
-        if ($requestedRestaurantCore !== null && !restaurantNameMatchesCore($name, $requestedRestaurantCore)) {
-            continue;
-        }
+        if ($requestedRestaurantCore !== null) {
+            if (!restaurantNameMatchesCore($name, $requestedRestaurantCore)) continue;
+            if ($hasAdditionalFoodConstraints && !nearbyFeatureMatchesRequest($feature, $query, $intent)) continue;
+        } elseif (!nearbyFeatureMatchesRequest($feature, $query, $intent)) continue;
         $address = nearbyFeatureAddress($feature);
         if ($requestedAreas
             && evaluateDavaoAreaProximity(['name'=>$name, 'address'=>$address], $requestedAreas) !== 'exact') {
@@ -549,7 +550,76 @@ function buildMapFindResults(
     }
 
     usort($results, fn($a, $b) => strnatcasecmp((string)$a['name'], (string)$b['name']));
-    return array_slice($results, 0, max(1, min(100, $limit)));
+    $deduped = [];
+    $duplicateDistanceKm = 0.03;
+    foreach ($results as $result) {
+        $duplicateIndex = null;
+        foreach ($deduped as $index => $existing) {
+            $existingCore = $requestedRestaurantCore ?? nearbyPlaceCore((string)$existing['name']);
+            $resultCore = $requestedRestaurantCore ?? nearbyPlaceCore((string)$result['name']);
+            if ($existingCore !== $resultCore) continue;
+            $distance = nearbyDistanceKm(
+                (float)$existing['latitude'],
+                (float)$existing['longitude'],
+                (float)$result['latitude'],
+                (float)$result['longitude']
+            );
+            if ($distance <= $duplicateDistanceKm) {
+                $duplicateIndex = $index;
+                break;
+            }
+        }
+        if ($duplicateIndex !== null) {
+            $existing = $deduped[$duplicateIndex];
+            $detailScore = static fn(array $place): int =>
+                ((mb_strtolower(trim((string)$place['address']), 'UTF-8') !== 'davao city') ? 1000 : 0)
+                + mb_strlen((string)$place['name'], 'UTF-8');
+            if ($detailScore($result) > $detailScore($existing)) $deduped[$duplicateIndex] = $result;
+            continue;
+        }
+        $deduped[] = $result;
+    }
+    return array_slice($deduped, 0, max(1, min(100, $limit)));
+}
+
+function mapBranchMatchesPlace(array $mapPlace, array $place): bool {
+    $mapName = trim((string)($mapPlace['name'] ?? ''));
+    $placeName = trim((string)($place['name'] ?? ''));
+    $mapCore = nearbyPlaceCore($mapName);
+    if ($mapCore === '' || $mapCore !== nearbyPlaceCore($placeName)) return false;
+
+    $mapUrl = trim((string)($mapPlace['location_source_url'] ?? $mapPlace['source_url'] ?? ''));
+    $placeUrl = trim((string)($place['location_source_url'] ?? $place['source_url'] ?? ''));
+    if ($mapUrl !== '' && $mapUrl === $placeUrl) return true;
+
+    $normalize = static fn(string $value): string => mb_strtolower(
+        preg_replace('/[^\p{L}\p{N}]+/u', '', $value) ?? '',
+        'UTF-8'
+    );
+    $mapAddress = $normalize(trim((string)($mapPlace['address'] ?? '')));
+    $placeAddress = $normalize(trim((string)($place['address'] ?? '')));
+    if ($mapAddress !== '' && $mapAddress !== 'davaocity'
+        && $placeAddress !== '' && $placeAddress !== 'davaocity'
+        && ($mapAddress === $placeAddress
+            || str_contains($mapAddress, $placeAddress)
+            || str_contains($placeAddress, $mapAddress))) {
+        return true;
+    }
+
+    $mapBranch = $normalize(extractBranchArea($mapName));
+    $placeBranch = $normalize(extractBranchArea($placeName));
+    if ($mapBranch !== '' && $placeBranch !== '') {
+        return $mapBranch === $placeBranch
+            || str_contains($mapBranch, $placeBranch)
+            || str_contains($placeBranch, $mapBranch);
+    }
+    if ($mapBranch !== '' && $placeAddress !== '' && $placeAddress !== 'davaocity') {
+        return str_contains($placeAddress, $mapBranch);
+    }
+    if ($placeBranch !== '' && $mapAddress !== '' && $mapAddress !== 'davaocity') {
+        return str_contains($mapAddress, $placeBranch);
+    }
+    return false;
 }
 
 function buildNearbyMapResults(

@@ -9,6 +9,8 @@ const { buildOsmSnapshot } = require('./scripts/update-osm-places');
 const {
   collectBraveBrowser,
   collectPhotonPlaces,
+  buildDiscoveryQueries,
+  classifyEvidenceSource,
   fetchBraveSearchApi,
   fetchPhotonPlaces,
   nominatimSearchUrl,
@@ -21,6 +23,19 @@ const {
   shouldFetchSourcePage,
   waitForSearchResults
 } = require('./scripts/web-search');
+
+test('adds bounded blog and public community discovery queries with source labels', () => {
+  const queries = buildDiscoveryQueries('KFC restaurants Davao City');
+  assert.equal(queries.length, 5);
+  assert.match(queries.find(query => query.discoveryType === 'blog').query, /food blog recommendations/);
+  assert.match(queries.find(query => query.discoveryType === 'community').query, /site:reddit\.com/);
+  assert.match(queries.find(query => query.discoveryType === 'community').query, /site:facebook\.com/);
+  assert.match(queries.find(query => query.discoveryType === 'community').query, /site:tiktok\.com/);
+  assert.equal(classifyEvidenceSource('https://www.facebook.com/posts/123'), 'community_post');
+  assert.equal(classifyEvidenceSource('https://old.reddit.com/r/food/123'), 'community_post');
+  assert.equal(classifyEvidenceSource('https://example.com/davao-food', 'blog'), 'blog_search_result');
+  assert.equal(classifyEvidenceSource('https://example.com/davao-food', 'web'), 'web_page');
+});
 
 test('builds a normalized local OSM snapshot from nodes and centered ways', () => {
   const snapshot = buildOsmSnapshot({

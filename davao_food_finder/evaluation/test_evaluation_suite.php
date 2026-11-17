@@ -358,6 +358,10 @@ $mapFindFixtures = [
     ['name'=>'Burger Stop', 'city'=>'Davao City', 'food_type'=>'fast food', 'cuisine'=>'burger', 'district'=>'Poblacion', 'address'=>'Poblacion, Davao City', 'latitude'=>7.069, 'longitude'=>125.605, 'url'=>'https://www.openstreetmap.org/node/802'],
     ['name'=>'Generic Fast Food', 'city'=>'Davao City', 'food_type'=>'fast food', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/803'],
     ['name'=>'Coffee Stop', 'city'=>'Davao City', 'food_type'=>'cafe', 'cuisine'=>'coffee', 'latitude'=>7.107, 'longitude'=>125.637, 'url'=>'https://www.openstreetmap.org/node/804'],
+    ['name'=>'KFC', 'branch'=>'Quirino', 'city'=>'Davao City', 'food_type'=>'fast food', 'address'=>'Quirino Avenue, Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/805'],
+    ['name'=>'KFC', 'branch'=>'Lanang', 'city'=>'Davao City', 'food_type'=>'fast food', 'address'=>'Lanang, Davao City', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/806'],
+    ['name'=>'KFC', 'city'=>'Davao City', 'food_type'=>'fast food', 'address'=>'Davao City', 'latitude'=>7.10602, 'longitude'=>125.63602, 'url'=>'https://www.openstreetmap.org/way/808'],
+    ['name'=>'Jollibee', 'branch'=>'Matina', 'city'=>'Davao City', 'food_type'=>'fast food', 'address'=>'Matina, Davao City', 'latitude'=>7.069, 'longitude'=>125.605, 'url'=>'https://www.openstreetmap.org/node/807'],
 ];
 $burgerMapFinds = buildMapFindResults($mapFindFixtures, 'burger', $burgerIntent);
 $lanangBurgerIntent = $burgerIntent;
@@ -374,6 +378,26 @@ assertCheck(
     && $burgerMapFinds[0]['review_count'] === null
     && buildMapFindResults($mapFindFixtures, 'burger under PHP 250', $budgetBurgerIntent) === [],
     'Map finds require category evidence, honor requested areas, and never imply unverified ratings or prices'
+);
+$brandIntent = parseQueryIntent('KFC');
+$brandMapFinds = buildMapFindResults($mapFindFixtures, 'KFC', $brandIntent, 'kfc', 100);
+$anywhereKfcCore = detectExplicitRestaurantCoreQuery([['name'=>'KFC']], 'KFC anywhere in Davao');
+$duplicateKfcMapFinds = buildMapFindResults([
+    ['name'=>'KFC - Buhangin Airport', 'city'=>'Davao City', 'food_type'=>'fast food', 'nearby_street'=>'Carlos P. Garcia Highway', 'address'=>'Davao City', 'latitude'=>7.1, 'longitude'=>125.6, 'url'=>'https://www.openstreetmap.org/node/809'],
+    ['name'=>'KFC', 'city'=>'Davao City', 'food_type'=>'fast food', 'nearby_street'=>'Carlos P. Garcia Highway', 'address'=>'Davao City', 'latitude'=>7.10001, 'longitude'=>125.60001, 'url'=>'https://www.openstreetmap.org/way/810'],
+], 'KFC', $brandIntent, 'kfc', 100);
+assertCheck(
+    !empty($brandIntent['is_ambiguous'])
+    && mapFindIntentIsSupported($brandIntent, 'kfc')
+    && count($brandMapFinds) === 2
+    && count(array_unique(array_column($brandMapFinds, 'location_source_url'))) === 2
+    && $anywhereKfcCore === 'kfc'
+    && count($duplicateKfcMapFinds) === 1
+    && str_contains($duplicateKfcMapFinds[0]['name'], 'Buhangin Airport')
+    && !mapBranchMatchesPlace($brandMapFinds[0], ['name'=>'KFC', 'address'=>'Davao City'])
+    && mapBranchMatchesPlace($brandMapFinds[0], ['name'=>$brandMapFinds[0]['name'], 'address'=>$brandMapFinds[0]['address']])
+    && buildMapFindResults($mapFindFixtures, 'KFC', $brandIntent) === [],
+    'Known brand-only requests show distinct mapped branches without hiding them behind a generic brand match'
 );
 assertCheck(
     !nearbyFeatureMatchesRequest(
@@ -458,6 +482,19 @@ $fullLocalOsmSnapshot = loadLocalOsmNearbySnapshot($appRoot . '/data/osm-nearby-
 assertCheck(
     count($fullLocalOsmSnapshot['places']) > count($localOsmSnapshot['places']),
     'Loads the full local Davao OSM snapshot for non-location map supplements'
+);
+$jollibeeMapFinds = buildMapFindResults(
+    $fullLocalOsmSnapshot['places'],
+    'Jollibee',
+    parseQueryIntent('Jollibee'),
+    'jollibee',
+    100
+);
+assertCheck(
+    count($jollibeeMapFinds) > 1
+    && count(array_unique(array_column($jollibeeMapFinds, 'location_source_url'))) === count($jollibeeMapFinds)
+    && count(array_filter($jollibeeMapFinds, fn($place) => !empty($place['map_only']))) === count($jollibeeMapFinds),
+    'A brand-only search returns multiple distinct, explicitly map-only branches from the local OSM snapshot'
 );
 $fullSnapshotBurgerFinds = buildMapFindResults(
     $fullLocalOsmSnapshot['places'],
@@ -1064,7 +1101,7 @@ $articleEvidence = [
     'results'=>[
         ['title'=>'Order from the best Chicken restaurants', 'url'=>'https://example.com/order-chicken', 'text'=>'Davao City chicken delivery'],
         ['title'=>'The 19 best spots for fried chicken', 'url'=>'https://example.com/best-fried-chicken', 'text'=>'Davao City fried chicken guide'],
-        ['title'=>'KFC - SM City Davao', 'url'=>'https://example.com/kfc', 'text'=>'Davao City chicken restaurant'],
+        ['title'=>'KFC - SM City Davao', 'url'=>'https://example.com/kfc', 'text'=>'Davao City chicken restaurant', 'source_type'=>'blog_search_result', 'source_access'=>'source_page'],
     ],
 ];
 assertCheck(
@@ -1097,6 +1134,8 @@ assertCheck(
             'city'=>'Davao City',
             'description'=>'',
             'source_url'=>'https://example.com/kfc',
+            'source_type'=>'blog_search_result',
+            'source_access'=>'source_page',
             'unsupported'=>false,
             'source_status'=>'supported',
         ],

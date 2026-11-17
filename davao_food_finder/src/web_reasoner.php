@@ -196,7 +196,7 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
         }
     }
     $nearbyAreaCacheKey = $nearbyAreaJson !== '' ? hash('sha256', $nearbyAreaJson) : '';
-    $key = hash('sha256', ($includeNearby ? 'v10:' : 'v9:') . ($includeNearby ? 'nearby|' . mb_strtolower(implode('|', $nearbyQueries), 'UTF-8') . '|' . $nearbyAreaCacheKey . '|' : '') . mb_strtolower(preg_replace('/\s+/u', ' ', $searchQuery) . '|' . implode('|', $priceQueries)));
+    $key = hash('sha256', ($includeNearby ? 'v11:' : 'v10:') . ($includeNearby ? 'nearby|' . mb_strtolower(implode('|', $nearbyQueries), 'UTF-8') . '|' . $nearbyAreaCacheKey . '|' : '') . mb_strtolower(preg_replace('/\s+/u', ' ', $searchQuery) . '|' . implode('|', $priceQueries)));
     $cacheFile = rtrim($cacheDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $key . '.json';
 
     $bypassCacheRead = in_array($cachePolicy, ['cold', 'bypass'], true);
@@ -600,6 +600,19 @@ function sanitizeWebPlaces(array $rawPlaces, array $evidence): array {
         $hasUrl = ($sourceUrl !== '' && filter_var($sourceUrl, FILTER_VALIDATE_URL) && in_array(strtolower((string)parse_url($sourceUrl, PHP_URL_SCHEME)), ['http', 'https'], true));
         $hasRecordId = !empty($place['dataset_id']) || !empty($place['record_id']) || !empty($place['id']);
         $isSupported = $hasUrl || $hasRecordId;
+        $sourceType = 'web_page';
+        $sourceAccess = 'search_result_snippet';
+        $sourceKey = normalizeEvidenceUrlKey($sourceUrl);
+        foreach ($evidenceResults as $ev) {
+            if (!is_array($ev) || empty($ev['url']) || normalizeEvidenceUrlKey((string)$ev['url']) !== $sourceKey) continue;
+            if (in_array($ev['source_type'] ?? '', ['community_post', 'blog_search_result', 'web_page'], true)) {
+                $sourceType = (string)$ev['source_type'];
+            }
+            if (in_array($ev['source_access'] ?? '', ['source_page', 'search_result_snippet'], true)) {
+                $sourceAccess = (string)$ev['source_access'];
+            }
+            break;
+        }
 
         $entry = [
             'name'=>mb_substr($name, 0, 160),
@@ -611,6 +624,8 @@ function sanitizeWebPlaces(array $rawPlaces, array $evidence): array {
             'city'=>'Davao City',
             'description'=>mb_substr(trim((string)($place['description'] ?? '')), 0, 360),
             'source_url'=>mb_substr($sourceUrl, 0, 500),
+            'source_type'=>$sourceType,
+            'source_access'=>$sourceAccess,
             'unsupported'=>!$isSupported,
             'source_status'=>$isSupported ? 'supported' : 'unsupported',
         ];

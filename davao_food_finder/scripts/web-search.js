@@ -733,6 +733,32 @@ function buildReviewSearchQuery(searchQuery) {
     : `${searchQuery} customer reviews`;
 }
 
+function buildDiscoveryQueries(searchQuery, reviewSearchQuery = buildReviewSearchQuery(searchQuery)) {
+  return [
+    { query: searchQuery, reviewSearch: false, useBraveBrowser: true, discoveryType: 'web' },
+    { query: `${searchQuery} branches locations`, reviewSearch: false, discoveryType: 'web' },
+    { query: reviewSearchQuery, reviewSearch: true, discoveryType: 'review' },
+    { query: `${searchQuery} food blog recommendations`, reviewSearch: false, discoveryType: 'blog' },
+    {
+      query: `(${searchQuery}) (site:reddit.com OR site:facebook.com OR site:tiktok.com)`,
+      reviewSearch: false,
+      discoveryType: 'community'
+    }
+  ];
+}
+
+function classifyEvidenceSource(url, discoveryType = 'web') {
+  let hostname = '';
+  try {
+    hostname = new URL(String(url || '')).hostname.toLowerCase();
+  } catch {
+    return 'web_page';
+  }
+  if (/(^|\.)((reddit|facebook|tiktok|instagram)\.com)$/.test(hostname)) return 'community_post';
+  if (discoveryType === 'blog') return 'blog_search_result';
+  return 'web_page';
+}
+
 function shouldFetchSourcePage(link, { browserActive, fetchedPricePages }) {
   if (link.placeLookup) return false;
   if (link.priceLookup) return fetchedPricePages < 3;
@@ -992,11 +1018,7 @@ async function run() {
     return [...byUrl.values()].slice(0, 12);
   };
 
-  const discoveryQueries = [
-    { query: searchQuery, reviewSearch: false, useBraveBrowser: true },
-    { query: `${searchQuery} branches locations`, reviewSearch: false },
-    { query: reviewSearchQuery, reviewSearch: true }
-  ];
+  const discoveryQueries = buildDiscoveryQueries(searchQuery, reviewSearchQuery);
   const searchGroups = await Promise.all(discoveryQueries.map(async group => ({
     ...group,
     results: await collectSearchResults(group.query, group.useBraveBrowser === true)
@@ -1005,7 +1027,11 @@ async function run() {
   const maxSearchResults = Math.max(...searchGroups.map(group => group.results.length));
   for (let i = 0; i < maxSearchResults; i++) {
     for (const group of searchGroups) {
-      if (group.results[i]) candidates.push({ ...group.results[i], reviewSearch: group.reviewSearch });
+      if (group.results[i]) candidates.push({
+        ...group.results[i],
+        reviewSearch: group.reviewSearch,
+        discoveryType: group.discoveryType
+      });
     }
   }
   const photonPlaces = await photonPlacesPromise;
@@ -1037,7 +1063,7 @@ async function run() {
     if (!normUrl || seenUrls.has(normUrl)) continue;
     seenUrls.add(normUrl);
     deduped.push(item);
-    if (deduped.length >= 16) break;
+    if (deduped.length >= 24) break;
   }
 
   // 3. Fetch a bounded set of source pages concurrently rather than serially.
@@ -1046,7 +1072,7 @@ async function run() {
   const pageFetches = new Map();
   const linksToFetch = [];
   for (const link of deduped) {
-    const isSocialOrReview = /facebook\.com|tiktok\.com|instagram\.com/i.test(link.url);
+    const isSocialOrReview = classifyEvidenceSource(link.url) === 'community_post';
     const shouldFetchPricePage = link.priceLookup && fetchedPricePages < 3;
     const shouldFetchPage = (!hasEnoughNominatimResults || link.priceLookup) && shouldFetchSourcePage(link, {
       browserActive: Boolean(browser),
@@ -1111,7 +1137,9 @@ async function run() {
         review_search: Boolean(link.reviewSearch),
         review_query: link.reviewSearch ? reviewSearchQuery : '',
         food_query: searchQuery,
-        price_lookup: Boolean(link.priceLookup)
+        price_lookup: Boolean(link.priceLookup),
+        source_type: classifyEvidenceSource(link.url, link.discoveryType),
+        source_access: browserFetchedPage ? 'source_page' : 'search_result_snippet'
       });
     }
   }
@@ -1155,6 +1183,8 @@ module.exports = {
   parseBraveSearchApiResults,
   parseNominatimPlaces,
   photonPlaceSearchUrl,
+  buildDiscoveryQueries,
+  classifyEvidenceSource,
   parseBingHtml,
   retryAfterTimestamp,
   shouldFetchSourcePage,

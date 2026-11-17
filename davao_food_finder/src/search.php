@@ -195,6 +195,8 @@ function specificDishPatterns(): array {
         'takoyaki'   => '/\b(takoyaki)\b/iu',
         'siomai'     => '/\b(siomai|dimsum|dumplings?)\b/iu',
         'fries'      => '/\b(french\s+fries|fries)\b/iu',
+        'sundae'     => '/\bsundaes?\b/iu',
+        'burger steak' => '/\b(burger[\s-]*steak|hamburger[\s-]*steak)\b/iu',
         'wings'      => '/\b(wings|unli\s+wings|buffalo\s+wings)\b/iu',
         'kinilaw'    => '/\b(kinilaw|sutukil)\b/iu',
     ];
@@ -220,15 +222,31 @@ function expandMenuItemSearchQuery(string $query, array $intent): string {
     $alternatives = [];
     $dishes = array_map(fn($dish) => mb_strtolower(trim((string)$dish), 'UTF-8'), $intent['specific_dishes'] ?? []);
     $cuisines = array_map(fn($cuisine) => mb_strtolower(trim((string)$cuisine), 'UTF-8'), $intent['cuisines'] ?? []);
+    $fastFoodItems = is_array($intent['fast_food_items'] ?? null) ? $intent['fast_food_items'] : [];
 
     if (in_array('fries', $dishes, true)) {
-        $alternatives = array_merge($alternatives, ['fries', '"french fries"', '"Potato Corner"']);
+        $alternatives = array_merge($alternatives, ['fries', '"french fries"']);
+        if (!in_array('fries', $fastFoodItems, true)) $alternatives[] = '"Potato Corner"';
     }
     if (in_array('burgers', $cuisines, true)) {
         $alternatives = array_merge($alternatives, ['burger', 'burgers', 'hamburger', '"Burger King"', '"Minute Burger"']);
     }
     if (in_array('chicken', $cuisines, true) || in_array('fried chicken', $cuisines, true)) {
         $alternatives = array_merge($alternatives, ['chicken', '"fried chicken"', 'KFC', 'Jollibee', '"McDonald\'s"', '"Mang Inasal"']);
+    }
+    if (in_array('sundaes', $fastFoodItems, true)) {
+        $alternatives = array_merge($alternatives, ['sundae', 'McDonald\'s', 'Jollibee', '"Burger King"']);
+    }
+    if ($fastFoodItems) {
+        $chainQueries = [
+            'burgers'=>['McDonald\'s', 'Jollibee', '"Burger King"', '"Minute Burger"'],
+            'chicken'=>['KFC', 'Jollibee', 'McDonald\'s', '"Mang Inasal"'],
+            'fries'=>['McDonald\'s', 'KFC', 'Jollibee', '"Burger King"', '"Minute Burger"'],
+            'sundaes'=>['McDonald\'s', 'Jollibee', '"Burger King"'],
+        ];
+        foreach ($fastFoodItems as $item) {
+            $alternatives = array_merge($alternatives, $chainQueries[$item] ?? []);
+        }
     }
 
     if (!$alternatives) return trim($query);
@@ -244,12 +262,13 @@ function extractStrictDishes(string $rawText): array {
     if (!$dishes) return [];
 
     // Do not enforce single-dish exclusivity if the user also explicitly asked for a broader umbrella cuisine/category
-    $broadUmbrellaRegex = '/\b(filipino|lutong\s+bahay|ulam|carinderia|karinderya|kan[- ]?anan|barbecue|barbeque|bbq|japanese|korean|indian|middle\s+eastern|noodle\s+houses?|cakes?|desserts?|snacks?|street\s+food|breakfast|painitan|24\/7|24\s*hours|late[- ]night|burgers?|hamburgers?|chicken|fast\s+food)\b/iu';
-    if (preg_match($broadUmbrellaRegex, $lower) === 1) {
+    $broadUmbrellaRegex = '/\b(filipino|lutong\s+bahay|ulam|carinderia|karinderya|kan[- ]?anan|barbecue|barbeque|bbq|japanese|korean|indian|middle\s+eastern|noodle\s+houses?|cakes?|desserts?|snacks?|street\s+food|breakfast|painitan|24\/7|24\s*hours|late[- ]night|burgers?|hamburgers?|fast\s+food)\b/iu';
+    $isBurgerSteakRequest = preg_match('/\b(?:burger|hamburger)[\s-]*steak\b/iu', $lower) === 1;
+    if (!$isBurgerSteakRequest && preg_match($broadUmbrellaRegex, $lower) === 1) {
         return [];
     }
 
-    $strictEligible = ['sisig', 'bulalo', 'balbacua', 'bulcachong', 'satti', 'takoyaki', 'lomi', 'batchoy', 'halo-halo', 'shawarma', 'biryani', 'lugaw', 'pares', 'silog', 'kinilaw', 'fries'];
+    $strictEligible = ['sisig', 'bulalo', 'balbacua', 'bulcachong', 'satti', 'takoyaki', 'lomi', 'batchoy', 'halo-halo', 'shawarma', 'biryani', 'lugaw', 'pares', 'silog', 'kinilaw', 'fries', 'burger steak'];
     return array_values(array_intersect($dishes, $strictEligible));
 }
 
@@ -265,6 +284,26 @@ function placeMatchesSpecificDishes(array $place, array $dishes): bool {
 
     foreach ($dishes as $dish) {
         $regex = $patterns[$dish] ?? ('/\b' . preg_quote(mb_strtolower((string)$dish, 'UTF-8'), '/') . '\b/iu');
+        if (mb_strtolower(trim((string)$dish), 'UTF-8') === 'burger steak') {
+            $evidenceTexts = array_merge(
+                [(string)($place['name'] ?? ''), (string)($place['description'] ?? '')],
+                is_array($place['_review_snippets'] ?? null) ? $place['_review_snippets'] : []
+            );
+            foreach ($evidenceTexts as $evidenceText) {
+                $sentences = preg_split('/(?<=[.!?;])\s+|\R/u', (string)$evidenceText) ?: [];
+                foreach ($sentences as $sentence) {
+                    if (preg_match($regex, $sentence) !== 1) continue;
+                    if (preg_match(
+                        '/\b(?:may|might|could)\s+(?:possibly\s+)?(?:serve|have|offer|sell|be\b)|\b(?:unverified|unconfirmed|uncertain)\b|\bnot\s+(?:explicitly\s+)?(?:verified|confirmed|listed)\b|\bavailability\s+(?:is\s+)?not\b|\bno\s+(?:evidence|confirmation)\b|\bnone\s+(?:have|has)\s+confirmed\b|\bdoes(?:\s+not|n\'t)\s+(?:serve|offer|sell)\b|\bnot\s+(?:on|in)\s+(?:the|their)\s+menu\b/iu',
+                        $sentence
+                    ) === 1) {
+                        continue;
+                    }
+                    return true;
+                }
+            }
+            continue;
+        }
         if (preg_match($regex, $haystack) === 1) {
             return true;
         }
@@ -635,7 +674,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'Japanese' => '/\b(japanese|japan|ramen|udon|sushi|sashimi|gyoza|katsu|takoyaki|izakaya|tempura|teriyaki)\b/iu',
             'Coffee' => '/\b(coffee(?:\s*shops?)?|coffeehouses?|cafe|café|cafes|cafés|espresso|latte|kapehan|brew|roastery|cappuccino|americano)\b/iu',
             'Fried Chicken' => '/\b(fried\s+chicken|boneless\s+chicken|chicken\s+wings?|wings|unli\s+wings|inasal)\b/iu',
-            'Chicken' => '/\b(chicken|manok|roasters)\b/iu',
+            'Chicken' => '/\b(chickens?|manok|roasters)\b/iu',
             'Korean' => '/\b(korean|samgyup|samgyupsal|kimchi|bibimbap|jjajang|corndog|k-food)\b/iu',
             'Pizza' => '/\b(pizza|pizzeria|italian|pasta|spaghetti|lasagna|palabok)\b/iu',
             'Seafood' => '/\b(seafood|tuna|fish|shrimp|crab|kinilaw|sutukil|hito)\b/iu',
@@ -644,7 +683,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'BBQ' => '/\b(bbq|barbecue|barbeque|ihaw|grill|grilled|liempo|lechon|sisig|ribs|steak|sinugba)\b/iu',
             'Indian' => '/\b(indian|biryani|curry|masala|punjabi|tandoori)\b/iu',
             'Shawarma' => '/\b(shawarma|kebab|kabab|middle\s+eastern|turkish|arabian|mediterranean|wraps)\b/iu',
-            'Desserts' => '/\b(desserts?|cakes?|pastry|pastries|halo[- ]halo|ice\s+cream|gelato|donuts?|brownies|sweet|waffles?|pancakes?|bakeshop|bakery|bakeries)\b/iu',
+            'Desserts' => '/\b(desserts?|cakes?|pastry|pastries|halo[- ]halo|ice\s+cream|gelato|sundaes?|donuts?|brownies|sweet|waffles?|pancakes?|bakeshop|bakery|bakeries)\b/iu',
             'Noodles' => '/\b(noodles?|pancit|pansit|batchoy|mami|lomi|lugaw|porridge|gotokai|dimsum|siomai)\b/iu',
             'Filipino' => '/\b(filipino|pinoy|lutong\s+bahay|ulam|carinderia|bulalo|sinigang|kambingan|silog|silogan|pares|paresan|satti)\b/iu',
             'Healthy' => '/(\b(healthy|salads?|vegan|vegetarian|plant[- ]based|veggie|low[- ]calorie)\b|\bgreen\s+(salads?|bowls?|food|veggies?|smoothies?)\b)/iu',
@@ -663,6 +702,28 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
 
         $specificDishes = extractSpecificDishes($rawText);
         $strictDishes = extractStrictDishes($rawText);
+        $fastFoodItems = [];
+        $nonGenericDishes = array_diff($specificDishes, ['fries', 'sundae']);
+        $fastFoodCuisines = ['Burgers', 'Chicken', 'Fried Chicken', 'Desserts'];
+        $otherCuisines = array_diff($cuisines, $fastFoodCuisines);
+        if (!$nonGenericDishes && !$otherCuisines) {
+            if (preg_match('/\b(burgers?|hamburgers?)\b/iu', $rawLower) === 1) $fastFoodItems[] = 'burgers';
+            if (preg_match('/\b(chickens?|manok|roasters)\b/iu', $rawLower) === 1) $fastFoodItems[] = 'chicken';
+            if (in_array('fries', $specificDishes, true)) $fastFoodItems[] = 'fries';
+            if (in_array('sundae', $specificDishes, true)) $fastFoodItems[] = 'sundaes';
+        }
+        if (in_array('fries', $fastFoodItems, true)) {
+            $strictDishes = array_values(array_diff($strictDishes, ['fries']));
+        }
+        if (in_array('burger steak', $specificDishes, true)) {
+            $remainingText = preg_replace('/\b(?:burger|hamburger)[\s-]*steak\b/iu', ' ', $rawText) ?? $rawText;
+            if (preg_match('/\b(burgers?|hamburgers?)\b/iu', $remainingText) !== 1) {
+                $cuisines = array_values(array_diff($cuisines, ['Burgers']));
+            }
+            if (preg_match('/\b(bbq|barbecue|barbeque|grill(?:ed)?|steak)\b/iu', $remainingText) !== 1) {
+                $cuisines = array_values(array_diff($cuisines, ['BBQ']));
+            }
+        }
 
         $areas = [];
         $areaMap = [
@@ -761,6 +822,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'cuisines'=>$cuisines,
             'specific_dishes'=>$specificDishes,
             'strict_dishes'=>$strictDishes,
+            'fast_food_items'=>array_values(array_unique($fastFoodItems)),
             'areas'=>array_values(array_unique($areas)),
             'min_rating'=>$minRating,
             'min_price_php'=>$minPricePhp,
@@ -806,6 +868,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'cuisines'=>[],
             'specific_dishes'=>[],
             'strict_dishes'=>[],
+            'fast_food_items'=>[],
             'areas'=>[],
             'min_rating'=>null,
             'min_price_php'=>null,
@@ -856,6 +919,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
                 $state['cuisines'] = $extracted['cuisines'];
                 $state['specific_dishes'] = $extracted['specific_dishes'];
                 $state['strict_dishes'] = $extracted['strict_dishes'];
+                $state['fast_food_items'] = $extracted['fast_food_items'];
                 if ($isCuisinePivot && $extracted['max_price_php'] === null && $extracted['budget'] === null
                     && preg_match('/\b(still|same\s+budget|under|below|cheap|affordable)\b/iu', $tLower) !== 1) {
                     $state['max_price_php'] = null;
@@ -871,6 +935,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
                 $state['cuisines'] = [];
                 $state['specific_dishes'] = $extracted['specific_dishes'];
                 $state['strict_dishes'] = $extracted['strict_dishes'];
+                $state['fast_food_items'] = $extracted['fast_food_items'];
             }
 
             if (preg_match('/\b(anywhere\s+in\s+davao|all\s+over\s+davao|around\s+davao\s+city|whole\s+davao|any\s+area|doesn\'?t\s+have\s+to\s+be\s+(in|near))\b/iu', $tLower) === 1) {
@@ -968,6 +1033,9 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
     $metaDirectivesRegex = '/\b(?:don\'?t|do\s+not)\s+give\s+(?:me\s+)?suggestions?\s+from\s+(?:the\s+)?dataset\b|\b(?:not\s+from|no)\s+(?:the\s+)?dataset\b|\b(?:find|search|look(?:\s+it)?\s+up)\s+(?:it\s+)?online\b|\bonline\s+only\b|\bonly\s+online\b|\bfrom\s+(?:the\s+)?web\b|\b(?:the\s+)?dataset\b/iu';
     $cleanBaseText = trim(preg_replace($metaDirectivesRegex, '', $baseTextForSearch) ?? $baseTextForSearch);
     $cleanBaseText = trim(preg_replace('/\s+/u', ' ', $cleanBaseText) ?? $cleanBaseText);
+    if (in_array('burger steak', $current['specific_dishes'], true)) {
+        $cleanBaseText = preg_replace('/\b(?:burger|hamburger)[\s-]*steak\b/iu', 'burger steak', $cleanBaseText) ?? $cleanBaseText;
+    }
 
     $effectiveQuery = $isLayeredFollowup
         ? trim(($isUserCorrection || $isOnlineOnlyRequested ? '' : $cleanBaseText . ' ') . implode(' ', $effectiveParts))
@@ -1014,6 +1082,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         'cuisines'=>$current['cuisines'],
         'specific_dishes'=>$current['specific_dishes'],
         'strict_dishes'=>$current['strict_dishes'],
+        'fast_food_items'=>$current['fast_food_items'],
         'areas'=>$current['areas'],
         'min_rating'=>$current['min_rating'],
         'min_price_php'=>$current['min_price_php'],

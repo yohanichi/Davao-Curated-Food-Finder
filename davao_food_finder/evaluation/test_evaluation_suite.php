@@ -317,12 +317,141 @@ $fastFoodMapPlaces = [
 ];
 $explicitBurgerMapPlaces = [
     $fastFoodMapPlaces[0],
-    ['name'=>'Burger Stop', 'city'=>'Davao City', 'food_type'=>'fast_food', 'cuisine'=>'burger', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/203'],
+    ['name'=>'Burger King - Davao', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/203'],
 ];
 $burgerIntent = parseQueryIntent('burger');
 $chickenIntent = parseQueryIntent('chicken');
+$chickenPluralIntent = parseQueryIntent('chickens');
 $friesIntent = parseQueryIntent('fries');
+$sundaeIntent = parseQueryIntent('sundae');
+$mixedBurgerSushiIntent = parseQueryIntent('burgers and sushi');
+$burgerSteakIntent = parseQueryIntent('burgersteak');
+$filipinoBurgerSteakIntent = parseQueryIntent('Filipino burger steak');
 $mixedFriesBurgerIntent = parseQueryIntent('fries and burgers');
+$chickenBiryaniIntent = parseQueryIntent('chicken biryani');
+$dateNightIntent = parseQueryIntent('date night restaurants');
+$dateNightArticleUrl = 'https://example.com/davao-date-night';
+$dateNightEvidence = ['results'=>[[
+    'url'=>$dateNightArticleUrl,
+    'title'=>'Best Romantic Restaurants in Davao for the Perfect Date Night',
+    'text'=>'The White House Fusion Cuisine & Wine Lounge - An intimate heritage-home dining experience for couples. Jacks Ridge offers scenic city views.',
+]]];
+$whiteHouseOnlinePlace = [
+    'name'=>'The White House Fusion Cuisine & Wine Lounge',
+    'source_url'=>$dateNightArticleUrl,
+];
+$burgerSteakNearbyResults = buildNearbyMapResults(
+    [],
+    [
+        ['name'=>'J&K Yogopop - Buhangin', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/218'],
+        ['name'=>'Pickup Coffee', 'city'=>'Davao City', 'food_type'=>'cafe', 'latitude'=>7.1051, 'longitude'=>125.6351, 'url'=>'https://www.openstreetmap.org/node/219'],
+        ['name'=>'Burger Steak House', 'city'=>'Davao City', 'food_type'=>'restaurant', 'description'=>'Serves burger steak', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/220'],
+    ],
+    7.105,
+    125.635,
+    5.0,
+    'burgersteak',
+    $burgerSteakIntent
+);
+assertCheck(
+    $burgerSteakIntent['specific_dishes'] === ['burger steak']
+    && $burgerSteakIntent['strict_dishes'] === ['burger steak']
+    && $burgerSteakIntent['cuisines'] === []
+    && $burgerSteakIntent['effective_query'] === parseQueryIntent('burger steak')['effective_query']
+    && $filipinoBurgerSteakIntent['strict_dishes'] === ['burger steak']
+    && !in_array('Burgers', $filipinoBurgerSteakIntent['cuisines'], true)
+    && !in_array('BBQ', $filipinoBurgerSteakIntent['cuisines'], true)
+    && in_array('Burgers', parseQueryIntent('burger places')['cuisines'], true)
+    && count($burgerSteakNearbyResults) === 1
+    && $burgerSteakNearbyResults[0]['name'] === 'Burger Steak House'
+    && nearbyBroadSearchSuggestions($burgerSteakIntent) === ['Filipino restaurants', 'burger places']
+    && nearbyBroadSearchSuggestions($burgerIntent) === [],
+    'Burger-steak searches require dish evidence and offer broader options only for a specific dish'
+);
+assertCheck(
+    $dateNightIntent['thematic'] === ['date_romantic']
+    && onlinePlaceHasIntentEvidence($whiteHouseOnlinePlace, $dateNightEvidence, $dateNightIntent)
+    && !onlinePlaceHasIntentEvidence(
+        ['name'=>'J&K Yogopop - Buhangin District', 'source_url'=>$dateNightArticleUrl],
+        $dateNightEvidence,
+        $dateNightIntent
+    )
+    && nearbyPlaceHasIntentEvidence(['_review_signals'=>['date_romantic'=>1]], $dateNightIntent)
+    && !nearbyPlaceHasIntentEvidence(['name'=>'J&K Yogopop', 'food_type'=>'Fast food'], $dateNightIntent)
+    && !nearbyFeatureMatchesRequest(
+        ['name'=>'Nearby Generic Eatery', 'food_type'=>'restaurant'],
+        'date night restaurants',
+        $dateNightIntent
+    ),
+    'Date-night nearby recommendations require positive venue-level review or linked-source evidence'
+);
+assertCheck(
+    buildNearbyMapResults(
+        [],
+        [['name'=>'Nearby Generic Eatery', 'city'=>'Davao City', 'food_type'=>'restaurant', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/900']],
+        7.105,
+        125.635,
+        3.0,
+        'date night restaurants',
+        $dateNightIntent
+    ) === [],
+    'Generic OSM proximity matches are not added as date-night recommendations'
+);
+$unverifiedBurgerSteakResult = [
+    'name'=>'Backyard Burgers',
+    'food_type'=>'Burgers',
+    'description'=>'Burger-focused Davao venue; burger steak availability not explicitly verified.',
+];
+assertCheck(
+    !placeMatchesSpecificDishes($unverifiedBurgerSteakResult, ['burger steak'])
+    && !placeMatchesSpecificDishes([
+        'name'=>'Burger Chef',
+        'food_type'=>'Burgers',
+        'description'=>'This restaurant might serve burger steak, but its menu has not been confirmed.',
+    ], ['burger steak'])
+    && placeMatchesSpecificDishes([
+        'name'=>'Burger Steak House',
+        'description'=>'Serves burger steak daily.',
+    ], ['burger steak']),
+    'Generic burger venues with unverified burger-steak mentions are not treated as dish matches'
+);
+$billyjeansPlace = ['name'=>'BillyJean\'s Bistro & Restaurant', 'source_url'=>'https://example.com/billyjeans'];
+$billyjeansCategoryEvidence = ['results'=>[[
+    'url'=>'https://example.com/billyjeans',
+    'title'=>'Steak, Mexican, Thai, Burgers, & More | BillyJean\'s Bistro & Restaurant',
+    'text'=>'Steak, Mexican, Thai, Burgers, & More in Davao City.',
+]]];
+$billyjeansMenuEvidence = ['results'=>[[
+    'url'=>'https://example.com/billyjeans',
+    'title'=>'BillyJean\'s Bistro & Restaurant menu',
+    'text'=>'BillyJean\'s Bistro & Restaurant menu includes burger steak for PHP 150.',
+]]];
+assertCheck(
+    !onlinePlaceHasSpecificDishEvidence($billyjeansPlace, $billyjeansCategoryEvidence, ['burger steak'])
+    && onlinePlaceHasSpecificDishEvidence($billyjeansPlace, $billyjeansMenuEvidence, ['burger steak']),
+    'A venue category page is not burger-steak evidence, while a venue-linked menu item is'
+);
+$chickenBiryaniLocalResults = shortlistPlaces(
+    [
+        ['_id'=>'chicken-only', 'name'=>'Chicken House', 'food_type'=>'Chicken', 'description'=>'Fried chicken menu', 'address'=>'Davao City', 'rating'=>4.5, 'review_count'=>20],
+        ['_id'=>'chicken-biryani', 'name'=>'Biryani House', 'food_type'=>'Indian', 'description'=>'Chicken biryani menu', 'address'=>'Davao City', 'rating'=>4.6, 'review_count'=>30],
+    ],
+    'chicken biryani',
+    10,
+    $chickenBiryaniIntent
+);
+$chickenBiryaniNearbyResults = buildNearbyMapResults(
+    [],
+    [
+        ['name'=>'Chicken House', 'city'=>'Davao City', 'food_type'=>'chicken', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/216'],
+        ['name'=>'Biryani House', 'city'=>'Davao City', 'food_type'=>'Indian', 'description'=>'Chicken biryani', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/217'],
+    ],
+    7.105,
+    125.635,
+    5.0,
+    'chicken biryani',
+    $chickenBiryaniIntent
+);
 $fastFoodResults = [];
 foreach ([
     ['burger', $burgerIntent],
@@ -330,6 +459,24 @@ foreach ([
     ['fries', $friesIntent],
 ] as [$query, $intent]) {
     $fastFoodResults[$query] = buildNearbyMapResults([], $fastFoodMapPlaces, 7.105, 125.635, 5.0, $query, $intent);
+}
+$chainMapPlaces = [
+    ['name'=>"McDonald's - Bajada", 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/301'],
+    ['name'=>'KFC - Buhangin', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/302'],
+    ['name'=>'Jollibee - Lanang', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/303'],
+    ['name'=>'Burger King - Matina', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/304'],
+    ['name'=>'Minute Burger - Obrero', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/305'],
+    ['name'=>'Mang Inasal - Ecoland', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/306'],
+    ['name'=>'Burger Stop', 'city'=>'Davao City', 'food_type'=>'fast_food', 'cuisine'=>'burger', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/307'],
+];
+$chainNearbyResults = [];
+foreach ([
+    ['burger', $burgerIntent],
+    ['chicken', $chickenIntent],
+    ['fries', $friesIntent],
+    ['sundae', $sundaeIntent],
+] as [$query, $intent]) {
+    $chainNearbyResults[$query] = buildNearbyMapResults([], $chainMapPlaces, 7.105, 125.635, 5.0, $query, $intent);
 }
 $explicitBurgerResults = buildNearbyMapResults(
     [],
@@ -342,6 +489,15 @@ $explicitBurgerResults = buildNearbyMapResults(
 );
 assertCheck(
     $friesIntent['specific_dishes'] === ['fries']
+    && $friesIntent['strict_dishes'] === []
+    && $friesIntent['fast_food_items'] === ['fries']
+    && $sundaeIntent['fast_food_items'] === ['sundaes']
+    && $burgerIntent['fast_food_items'] === ['burgers']
+    && $chickenIntent['fast_food_items'] === ['chicken']
+    && $chickenPluralIntent['fast_food_items'] === ['chicken']
+    && $burgerSteakIntent['fast_food_items'] === []
+    && $chickenBiryaniIntent['fast_food_items'] === []
+    && $mixedBurgerSushiIntent['fast_food_items'] === []
     && nearbyCategoryQueryTerms($burgerIntent) === ['fast food']
     && nearbyCategoryQueryTerms($chickenIntent) === ['fast food']
     && nearbyCategoryQueryTerms($friesIntent) === ['fast food']
@@ -349,13 +505,27 @@ assertCheck(
     && count($fastFoodResults['chicken']) === 0
     && count($fastFoodResults['fries']) === 0
     && count($explicitBurgerResults) === 1
-    && $explicitBurgerResults[0]['name'] === 'Burger Stop'
+    && $explicitBurgerResults[0]['name'] === 'Burger King - Davao'
+    && array_column($chainNearbyResults['burger'], 'name') === [
+        "McDonald's - Bajada", 'Jollibee - Lanang', 'Burger King - Matina', 'Minute Burger - Obrero'
+    ]
+    && array_column($chainNearbyResults['chicken'], 'name') === [
+        "McDonald's - Bajada", 'KFC - Buhangin', 'Jollibee - Lanang', 'Mang Inasal - Ecoland'
+    ]
+    && array_column($chainNearbyResults['fries'], 'name') === [
+        "McDonald's - Bajada", 'KFC - Buhangin', 'Jollibee - Lanang', 'Burger King - Matina', 'Minute Burger - Obrero'
+    ]
+    && array_column($chainNearbyResults['sundae'], 'name') === [
+        "McDonald's - Bajada", 'Jollibee - Lanang', 'Burger King - Matina'
+    ]
+    && !nearbyFeatureMatchesRequest(['name'=>'Burger Stop', 'food_type'=>'fast_food'], 'burger', $burgerIntent)
     && buildNearbyMapResults([], $fastFoodMapPlaces, 7.105, 125.635, 5.0, 'salad', parseQueryIntent('salad')) === [],
-    'Broad fast-food lookup categories do not prove burger, chicken, or fries relevance without cuisine evidence'
+    'Generic item searches include only compatible fast-food chains and keep specific dish searches distinct'
 );
 $mapFindFixtures = [
     ['name'=>'Burger Stop', 'city'=>'Davao City', 'food_type'=>'fast food', 'cuisine'=>'burger', 'district'=>'Lanang', 'address'=>'Lanang, Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/801'],
     ['name'=>'Burger Stop', 'city'=>'Davao City', 'food_type'=>'fast food', 'cuisine'=>'burger', 'district'=>'Poblacion', 'address'=>'Poblacion, Davao City', 'latitude'=>7.069, 'longitude'=>125.605, 'url'=>'https://www.openstreetmap.org/node/802'],
+    ['name'=>'Burger King - Lanang', 'city'=>'Davao City', 'food_type'=>'fast food', 'address'=>'Lanang, Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/811'],
     ['name'=>'Generic Fast Food', 'city'=>'Davao City', 'food_type'=>'fast food', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/803'],
     ['name'=>'Coffee Stop', 'city'=>'Davao City', 'food_type'=>'cafe', 'cuisine'=>'coffee', 'latitude'=>7.107, 'longitude'=>125.637, 'url'=>'https://www.openstreetmap.org/node/804'],
     ['name'=>'KFC', 'branch'=>'Quirino', 'city'=>'Davao City', 'food_type'=>'fast food', 'address'=>'Quirino Avenue, Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/805'],
@@ -372,7 +542,7 @@ $budgetBurgerIntent['max_price_php'] = 250;
 assertCheck(
     count($burgerMapFinds) === 2
     && count($lanangMapFinds) === 1
-    && str_contains($lanangMapFinds[0]['name'], 'Lanang')
+    && $lanangMapFinds[0]['name'] === 'Burger King - Lanang'
     && $burgerMapFinds[0]['map_only'] === true
     && $burgerMapFinds[0]['rating'] === null
     && $burgerMapFinds[0]['review_count'] === null
@@ -426,7 +596,7 @@ $verifiedFriesMapResults = buildNearbyMapResults(
     'fries',
     $friesIntent
 );
-assertCheck(count($verifiedFriesMapResults) === 1, 'A mapped venue with independent fries evidence remains eligible');
+assertCheck($verifiedFriesMapResults === [], 'Standalone fries shops are excluded from chain-only generic fries searches');
 $friesCandidates = [
     ['_id'=>'potato-corner', 'name'=>'Potato Corner - Maa', 'food_type'=>'Fries', 'description'=>'', 'address'=>'Davao City', 'rating'=>4.8, 'review_count'=>100],
     ['_id'=>'fries-b4-guys', 'name'=>'Fries b4 Guys - Buhangin', 'food_type'=>'Chicken', 'description'=>'', 'address'=>'Davao City', 'rating'=>4.5, 'review_count'=>20],
@@ -439,13 +609,27 @@ $mixedMenuPlaces = shortlistPlaces([
     $friesCandidates[2],
 ], 'fries burgers', 10, $mixedFriesBurgerIntent);
 assertCheck(
-    $friesIntent['strict_dishes'] === ['fries']
+    $friesIntent['strict_dishes'] === []
     && array_column($rankedFries, '_id') === ['potato-corner', 'fries-b4-guys']
     && $mixedFriesBurgerIntent['strict_dishes'] === []
     && count($mixedMenuPlaces) === 2
-    && str_contains(expandMenuItemSearchQuery('fries Davao City', $friesIntent), '"Potato Corner"')
+    && !str_contains(expandMenuItemSearchQuery('fries Davao City', $friesIntent), '"Potato Corner"')
+    && str_contains(expandMenuItemSearchQuery('fries Davao City', $friesIntent), 'McDonald')
     && str_contains(expandMenuItemSearchQuery('chicken Davao City', $chickenIntent), 'KFC'),
     'Menu-item searches keep exact fries matches, preserve mixed food searches, and expand Playwright queries with relevant brands'
+);
+assertCheck(
+    $chickenBiryaniIntent['specific_dishes'] === ['biryani']
+    && $chickenBiryaniIntent['strict_dishes'] === ['biryani']
+    && array_column($chickenBiryaniLocalResults, '_id') === ['chicken-biryani']
+    && count($chickenBiryaniNearbyResults) === 1
+    && $chickenBiryaniNearbyResults[0]['name'] === 'Biryani House'
+    && !nearbyFeatureMatchesRequest(
+        ['name'=>'Chicken House', 'food_type'=>'chicken'],
+        'chicken biryani',
+        $chickenBiryaniIntent
+    ),
+    'Chicken biryani searches keep the dish constraint and reject generic chicken-only map matches'
 );
 $coffeeWebResults = rankNearbyWebPlaces(
     [['name'=>'Starbucks', 'address'=>'Davao City']],
@@ -459,6 +643,41 @@ assertCheck(
     count($coffeeWebResults) === 1
     && str_contains($coffeeWebResults[0]['name'], 'Poblacion (J.P. Laurel Avenue)'),
     'Web-found near-me branches also receive their mapped district and street in the display name'
+);
+$relevanceFirstMapPlaces = [
+    ['name'=>'Far Bistro', 'city'=>'Davao City', 'latitude'=>7.12, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/901'],
+    ['name'=>'Close Cafe', 'city'=>'Davao City', 'latitude'=>7.106, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/902'],
+];
+$relevanceFirstCandidates = [
+    ['_id'=>'far-bistro', 'name'=>'Far Bistro', 'address'=>'Davao City'],
+    ['_id'=>'close-cafe', 'name'=>'Close Cafe', 'address'=>'Davao City'],
+];
+$relevanceFirstLocal = rankNearbyCandidates(
+    $relevanceFirstCandidates,
+    $relevanceFirstCandidates,
+    $relevanceFirstMapPlaces,
+    7.105,
+    125.635,
+    3.0,
+    0.0,
+    true
+);
+$relevanceFirstWeb = rankNearbyWebPlaces(
+    [['name'=>'Far Bistro'], ['name'=>'Close Cafe']],
+    $relevanceFirstMapPlaces,
+    [],
+    7.105,
+    125.635,
+    3.0,
+    0.0,
+    true
+);
+assertCheck(
+    array_column($relevanceFirstLocal, 'name') === ['Far Bistro', 'Close Cafe']
+    && array_column($relevanceFirstWeb, 'name') === ['Far Bistro', 'Close Cafe']
+    && $relevanceFirstLocal[0]['_nearby_distance_km'] > $relevanceFirstLocal[1]['_nearby_distance_km']
+    && $relevanceFirstWeb[0]['distance_km'] > $relevanceFirstWeb[1]['distance_km'],
+    'Experience-aware nearby results preserve recommendation relevance before using distance as a tie-breaker'
 );
 assertApprox(nearbyDistanceKm(0.0, 0.0, 0.0, 1.0), 111.195, 0.01, 'Haversine distance uses kilometers');
 assertCheck(
@@ -1123,6 +1342,44 @@ assertCheck(
 assertCheck(
     array_column(evidencePlacesFallback($articleEvidence), 'name') === ['KFC - SM City Davao'],
     'Raw web fallback returns the restaurant, not article headlines'
+);
+$onlineFallbackEvidence = [
+    'sources'=>[['title'=>'Davao Burger Results', 'url'=>'https://example.com/davao-burgers']],
+    'results'=>[
+        ['title'=>'Burger Stop Davao City', 'url'=>'https://example.com/davao-burgers', 'text'=>'A Davao City restaurant serving burgers and cheeseburgers.'],
+        ['title'=>'Chicken House Davao City', 'url'=>'https://example.com/davao-chicken', 'text'=>'A Davao City restaurant serving fried chicken.'],
+    ],
+];
+$burgerOnlineFallback = sourceBackedOnlineFallback($onlineFallbackEvidence, parseQueryIntent('cheese burger'));
+$burgerSteakOnlineFallback = sourceBackedOnlineFallback([
+    'sources'=>[['title'=>'Burger steak places in Davao City', 'url'=>'https://www.yelp.com/search?find_desc=burger+steak&find_loc=Davao+City']],
+    'results'=>[[
+        'title'=>'Burger steak places in Davao City - Yelp',
+        'url'=>'https://www.yelp.com/search?find_desc=burger+steak&find_loc=Davao+City',
+        'text'=>'Philippines - Yelp - Backyard Burgers, Burger Chef, Red Corner Burger Cafe',
+    ]],
+], parseQueryIntent('burger steak'));
+$failedHybridFallback = answerWithHybridPipeline(
+    'cheese burger',
+    [],
+    [],
+    $onlineFallbackEvidence,
+    ['intent'=>array_merge(parseQueryIntent('cheese burger'), ['planner_used'=>false])]
+);
+$biryaniOnlineFallback = sourceBackedOnlineFallback([
+    'sources'=>[['title'=>'Chicken restaurant Davao', 'url'=>'https://example.com/chicken']],
+    'results'=>[
+        ['title'=>'Chicken House Davao City', 'url'=>'https://example.com/chicken', 'text'=>'A Davao City chicken restaurant.'],
+    ],
+], parseQueryIntent('chicken biryani'));
+assertCheck(
+    array_column($burgerOnlineFallback, 'name') === ['Burger Stop']
+    && $burgerOnlineFallback[0]['source_url'] === 'https://example.com/davao-burgers'
+    && $burgerSteakOnlineFallback === []
+    && $failedHybridFallback[2] === 'error'
+    && array_column($failedHybridFallback[4], 'name') === ['Burger Stop']
+    && $biryaniOnlineFallback === [],
+    'Hybrid pipeline failure preserves source-backed online finds relevant to the requested food'
 );
 assertCheck(
     sanitizeWebPlaces([

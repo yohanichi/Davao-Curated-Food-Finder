@@ -7,6 +7,84 @@ function nearbyPlaceCore(string $name): string {
     return mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $core) ?? '', 'UTF-8');
 }
 
+function fastFoodChainMatchesItems(array $place, array $items): bool {
+    $core = nearbyPlaceCore((string)($place['name'] ?? ''));
+    if ($core === '' || !$items) return false;
+
+    $chainItems = [
+        'mcdonalds'=>['burgers', 'chicken', 'fries', 'sundaes'],
+        'kfc'=>['chicken', 'fries'],
+        'jollibee'=>['burgers', 'chicken', 'fries', 'sundaes'],
+        'burgerking'=>['burgers', 'fries', 'sundaes'],
+        'minuteburger'=>['burgers', 'fries'],
+        'manginasal'=>['chicken'],
+    ];
+    foreach ($chainItems as $chain => $supportedItems) {
+        if (($core === $chain || str_starts_with($core, $chain))
+            && !array_diff($items, $supportedItems)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function nearbyIntentRequiresEvidence(array $intent): bool {
+    return !empty($intent['thematic']) || !empty($intent['ambiance']);
+}
+
+function nearbyIntentEvidenceLabel(array $intent): string {
+    if (in_array('date_romantic', $intent['thematic'] ?? [], true)) return 'date-night or romantic atmosphere';
+    if (in_array('quiet_study', $intent['ambiance'] ?? [], true)) return 'quiet or study-friendly atmosphere';
+    if (in_array('family_group', $intent['ambiance'] ?? [], true)) return 'family or group-friendly atmosphere';
+    return 'requested dining experience';
+}
+
+function nearbyPlaceHasIntentEvidence(array $place, array $intent): bool {
+    $evidenceRules = [
+        'date_romantic'=>[
+            'signal'=>'date_romantic',
+            'pattern'=>'/\b(date[\s-]?night|romantic|couples?|intimate|anniversary|candlelit|candlelight|proposal|scenic\s+views?|city\s+views?|mountain\s+views?)\b/iu',
+        ],
+        'quiet_study'=>[
+            'signal'=>'quiet_study',
+            'pattern'=>'/\b(quiet|study|studying|peaceful|cozy|chill|reading|work[- ]friendly)\b/iu',
+        ],
+        'family_group'=>[
+            'signal'=>'family_group',
+            'pattern'=>'/\b(family[- ]friendly|families|groups?|barkada|kids|children|celebrations?|sharing|platter|buffet)\b/iu',
+        ],
+        'wifi_outlet'=>[
+            'signal'=>'wifi_outlet',
+            'pattern'=>'/\b(wi-?fi|outlets?|sockets?|power\s+plugs?)\b/iu',
+        ],
+        'solo_quick'=>[
+            'signal'=>'solo_quick',
+            'pattern'=>'/\b(solo|quick\s+bite|fast\s+service|on\s+the\s+go|lunch\s+break)\b/iu',
+        ],
+        'pasalubong'=>[
+            'signal'=>'pasalubong',
+            'pattern'=>'/\b(pasalubong|souvenirs?|take[- ]?home|gift\s+boxes?)\b/iu',
+        ],
+    ];
+    $requested = array_merge(
+        is_array($intent['thematic'] ?? null) ? $intent['thematic'] : [],
+        is_array($intent['ambiance'] ?? null) ? $intent['ambiance'] : []
+    );
+    if (!$requested) return true;
+
+    $signals = is_array($place['_review_signals'] ?? null) ? $place['_review_signals'] : [];
+    $reviewText = is_array($place['_review_snippets'] ?? null) ? implode(' ', $place['_review_snippets']) : '';
+    $description = is_scalar($place['description'] ?? null) ? (string)$place['description'] : '';
+    $evidenceText = $reviewText . ' ' . $description;
+    foreach ($requested as $key) {
+        $rule = $evidenceRules[(string)$key] ?? null;
+        if ($rule === null) return false;
+        if ((int)($signals[$rule['signal']] ?? 0) > 0) continue;
+        if (preg_match($rule['pattern'], $evidenceText) !== 1) return false;
+    }
+    return true;
+}
+
 function nearbyBrandQueryTerms(array $candidates, int $limit = 3): array {
     $terms = [];
     foreach ($candidates as $candidate) {
@@ -23,6 +101,8 @@ function nearbyBrandQueryTerms(array $candidates, int $limit = 3): array {
 }
 
 function nearbyCategoryQueryTerms(array $intent): array {
+    if (!empty($intent['fast_food_items'])) return ['fast food'];
+
     $cuisines = array_map(
         fn($cuisine) => mb_strtolower(trim((string)$cuisine), 'UTF-8'),
         $intent['cuisines'] ?? []
@@ -36,6 +116,37 @@ function nearbyCategoryQueryTerms(array $intent): array {
         || in_array('fries', $dishes, true)
         ? ['fast food']
         : [];
+}
+
+function nearbyBroadSearchSuggestions(array $intent): array {
+    $suggestionsByDish = [
+        'burger steak'=>['Filipino restaurants', 'burger places'],
+        'biryani'=>['Indian restaurants'],
+        'sisig'=>['Filipino restaurants'],
+        'bulalo'=>['Filipino restaurants'],
+        'balbacua'=>['Filipino restaurants'],
+        'bulcachong'=>['Filipino restaurants'],
+        'satti'=>['Filipino restaurants'],
+        'pares'=>['Filipino restaurants'],
+        'silog'=>['Filipino restaurants'],
+        'kinilaw'=>['Filipino restaurants'],
+        'lugaw'=>['Filipino restaurants'],
+        'ramen'=>['Japanese restaurants'],
+        'takoyaki'=>['Japanese restaurants'],
+        'samgyupsal'=>['Korean restaurants'],
+        'shawarma'=>['Middle Eastern restaurants'],
+        'fries'=>['fast food', 'burger places'],
+        'halo-halo'=>['Filipino dessert shops'],
+    ];
+    $suggestions = [];
+    foreach (($intent['specific_dishes'] ?? []) as $dish) {
+        $dish = mb_strtolower(trim((string)$dish), 'UTF-8');
+        foreach ($suggestionsByDish[$dish] ?? [] as $suggestion) {
+            if (!in_array($suggestion, $suggestions, true)) $suggestions[] = $suggestion;
+            if (count($suggestions) >= 3) return $suggestions;
+        }
+    }
+    return $suggestions;
 }
 
 function detectExplicitRestaurantCoreQuery(array $places, string $query): ?string {
@@ -283,7 +394,8 @@ function rankNearbyCandidates(
     float $latitude,
     float $longitude,
     float $radiusKm,
-    float $locationAccuracyKm = 0.0
+    float $locationAccuracyKm = 0.0,
+    bool $relevanceFirst = false
 ): array {
     $venueCoreCounts = [];
     foreach ($allPlaces as $place) {
@@ -299,7 +411,7 @@ function rankNearbyCandidates(
     }
 
     $nearby = [];
-    foreach ($candidates as $candidate) {
+    foreach ($candidates as $candidateIndex => $candidate) {
         $core = nearbyPlaceCore((string)($candidate['name'] ?? ''));
         $features = $featuresByCore[$core] ?? [];
         $nearest = null;
@@ -321,11 +433,17 @@ function rankNearbyCandidates(
             $candidate['address'] = nearbyFeatureAddress($nearest['feature']);
             $candidate['nearby_street'] = nearbyFeatureInferredStreet($nearest['feature']);
         }
+        $candidate['_nearby_relevance_order'] = $candidateIndex;
         $nearby[] = $candidate;
     }
 
-    usort($nearby, fn($a, $b) => ($a['_nearby_distance_km'] <=> $b['_nearby_distance_km'])
+    usort($nearby, fn($a, $b) => ($relevanceFirst
+        ? ($a['_nearby_relevance_order'] <=> $b['_nearby_relevance_order'])
+        : ($a['_nearby_distance_km'] <=> $b['_nearby_distance_km']))
+        ?: ($a['_nearby_distance_km'] <=> $b['_nearby_distance_km'])
         ?: (reviewBasedRankingScore($b) <=> reviewBasedRankingScore($a)));
+    foreach ($nearby as &$place) unset($place['_nearby_relevance_order']);
+    unset($place);
     return $nearby;
 }
 
@@ -336,7 +454,8 @@ function rankNearbyWebPlaces(
     float $latitude,
     float $longitude,
     float $radiusKm,
-    float $locationAccuracyKm = 0.0
+    float $locationAccuracyKm = 0.0,
+    bool $relevanceFirst = false
 ): array {
     $venueCoreCounts = [];
     foreach ($allPlaces as $place) {
@@ -351,7 +470,7 @@ function rankNearbyWebPlaces(
     }
 
     $ranked = [];
-    foreach ($webPlaces as $webPlace) {
+    foreach ($webPlaces as $relevanceOrder => $webPlace) {
         if (!is_array($webPlace)) continue;
         $core = nearbyPlaceCore((string)($webPlace['name'] ?? ''));
         $features = $featuresByCore[$core] ?? [];
@@ -370,6 +489,7 @@ function rankNearbyWebPlaces(
         $webPlace['name'] = nearbyFeatureDisplayName($nearest['feature'], (string)($webPlace['name'] ?? ''));
         $webPlace['distance_km'] = round($nearest['distance'], 2);
         $webPlace['location_source_url'] = (string)$nearest['feature']['url'];
+        $webPlace['_nearby_relevance_order'] = $relevanceOrder;
         if (trim((string)($webPlace['address'] ?? '')) === '' || mb_strtolower(trim((string)$webPlace['address']), 'UTF-8') === 'davao city') {
             $webPlace['address'] = nearbyFeatureAddress($nearest['feature']);
             $webPlace['nearby_street'] = nearbyFeatureInferredStreet($nearest['feature']);
@@ -377,11 +497,22 @@ function rankNearbyWebPlaces(
         $ranked[] = $webPlace;
     }
 
-    usort($ranked, fn($a, $b) => ($a['distance_km'] <=> $b['distance_km']));
+    usort($ranked, fn($a, $b) => ($relevanceFirst
+        ? ($a['_nearby_relevance_order'] <=> $b['_nearby_relevance_order'])
+        : ($a['distance_km'] <=> $b['distance_km']))
+        ?: ($a['distance_km'] <=> $b['distance_km']));
+    foreach ($ranked as &$place) unset($place['_nearby_relevance_order']);
+    unset($place);
     return $ranked;
 }
 
 function nearbyFeatureMatchesRequest(array $feature, string $query, array $intent): bool {
+    $strictDishes = is_array($intent['strict_dishes'] ?? null) ? $intent['strict_dishes'] : [];
+    if ($strictDishes && !placeMatchesSpecificDishes($feature, $strictDishes)) return false;
+    $fastFoodItems = is_array($intent['fast_food_items'] ?? null) ? $intent['fast_food_items'] : [];
+    if ($fastFoodItems && !fastFoodChainMatchesItems($feature, $fastFoodItems)) return false;
+    if (!nearbyPlaceHasIntentEvidence($feature, $intent)) return false;
+
     $hasDietaryConstraint = !empty($intent['dietary'])
         || preg_match('/\b(halal|vegan|vegetarian|muslim[- ]friendly|no\s+pork|pork[- ]free)\b/iu', $query) === 1;
     if (!$hasDietaryConstraint && detectExplicitRestaurantCoreQuery([$feature], $query) !== null) {
@@ -448,6 +579,7 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
             return false;
         }
     }
+    if ($fastFoodItems) return true;
     if (!$requestedTerms) return true;
     foreach ($requestedTerms as $term) {
         if (preg_match(
@@ -488,6 +620,7 @@ function mapFindIntentIsSupported(array $intent, ?string $requestedRestaurantCor
     if (array_diff($dietary, $supportedDietaryTerms)) return false;
 
     $foodTermCount = count($cuisines) + count($dishes);
+    if (!empty($intent['fast_food_items'])) $foodTermCount = 1;
     return $requestedRestaurantCore !== null
         || $foodTermCount === 1
         || ($foodTermCount === 0 && count($dietary) === 1);
@@ -532,7 +665,9 @@ function buildMapFindResults(
         $results[] = [
             'name'=>$name,
             'food_type'=>$category,
-            'description'=>"OpenStreetMap lists this {$category} {$locationDescription}. Menu, prices, reviews, hours, and current business status are not verified.",
+            'description'=>!empty($intent['fast_food_items'])
+                ? "OpenStreetMap lists this fast-food chain {$locationDescription}. Branch-specific menu availability is not verified."
+                : "OpenStreetMap lists this {$category} {$locationDescription}. Menu, prices, reviews, hours, and current business status are not verified.",
             'address'=>$address,
             'nearby_street'=>$nearbyStreet,
             'city'=>'Davao City',
@@ -673,7 +808,9 @@ function buildNearbyMapResults(
         $results[] = [
             'name'=>$name,
             'food_type'=>$foodType,
-            'description'=>"OpenStreetMap lists this {$foodType} {$locationDescription}. Current hours and business status are not verified.",
+            'description'=>!empty($intent['fast_food_items'])
+                ? "OpenStreetMap lists this fast-food chain {$locationDescription}. Branch-specific menu availability is not verified."
+                : "OpenStreetMap lists this {$foodType} {$locationDescription}. Current hours and business status are not verified.",
             'address'=>$address,
             'nearby_street'=>$nearbyStreet,
             'city'=>'Davao City',

@@ -62,7 +62,7 @@ $ollamaInferenceTimeout = getenv('OLLAMA_INFERENCE_TIMEOUT');
 $pwProcTimeout = getenv('PLAYWRIGHT_PROC_TIMEOUT');
 $pwStepTimeout = getenv('PLAYWRIGHT_STEP_TIMEOUT');
 
-define('TIMEOUT_PHP_MAX_EXECUTION', $phpMaxExec !== false && is_numeric($phpMaxExec) ? (int)$phpMaxExec : 300);
+define('TIMEOUT_PHP_MAX_EXECUTION', $phpMaxExec !== false && is_numeric($phpMaxExec) ? (int)$phpMaxExec : 450);
 define('TIMEOUT_CURL_CONNECT', $curlConnect !== false && is_numeric($curlConnect) ? (int)$curlConnect : 10);
 define('TIMEOUT_CURL', $curlTimeout !== false && is_numeric($curlTimeout) ? (int)$curlTimeout : 180);
 define('TIMEOUT_LLM', max(120, $llmTimeout !== false && is_numeric($llmTimeout) ? (int)$llmTimeout : 120));

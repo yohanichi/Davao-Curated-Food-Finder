@@ -66,6 +66,65 @@ All conditions run against identical SHA-256 verified CSV files, splits, and see
 
 ## 5. Reproducible CLI Commands
 
+### Controlled and live trial modes
+
+`run_evaluation.php` defaults to a controlled trial: it evaluates labeled
+ground-truth queries using the selected cache policy and writes
+`results/eval_<timestamp>.json` plus `results/latest_run.json`. Passing
+`--controlled-trial` makes that mode explicit.
+
+Use `--live-trial` to send those same labeled benchmark queries through live
+web retrieval with the Playwright cache bypassed. The runner still scores
+against `ground_truth.json`, but it does not select a best configuration from
+the live run. It writes `results/live_eval_<timestamp>.json` and
+`results/live_latest_run.json`, keeping live output separate from controlled
+artifacts. This is a live-evidence benchmark, not an open-ended stream of
+unlabeled visitor queries. Live results should be reported separately from
+controlled results because web evidence, provider behavior, and prices can
+change between runs.
+
+The default interactive mode of `run_volatility_experiment.php` accepts
+real-time user queries and saves `live_volatility_<timestamp>.json` /
+`live_latest_volatility.json` with the returned venues, sources, and any
+volatility-reconciliation telemetry reported by the pipeline. This mode is
+explicitly observational: absent independently labeled expected changes, it
+does not calculate a resilience pass rate. The four matched conditions and
+scenario-based resilience score remain in the `--controlled-scenarios` mode.
+
+For a scored live volatility trial, use `--live-experiment`. It automatically
+uses the query text and IDs from `volatility_cases.json`, searches current web
+results, and has an AI annotator propose changes and alternatives with exact
+source quotes/URLs. The validator accepts only source-matching quotes,
+confidence at least 0.85, and at least three cited alternatives; ambiguous
+cases are skipped. The fixture's expected venues and injected stale/fresh
+evidence are not used as live labels. These remain machine-generated
+annotations, not human ground truth, so cite the method and report eligible
+case counts.
+
+The runner compares the static baseline, an existing cache only when it is
+actually at least 12 hours old and predates the cited change, a fresh-web
+no-loop run, and a fresh-web iterative-loop run. Fresh arms are scored only
+when Playwright actually fetched live results. The stale arm is marked
+ineligible when no matching pre-change cache exists; fixture evidence is never
+substituted. A pilot can limit the query set with `--limit=N`. Each case may
+make one browser search, one annotation-model request, and up to three
+provider-backed comparison requests, so API charges may apply.
+
+```powershell
+# Explicit controlled benchmark (default behavior)
+php .\evaluation\run_evaluation.php --controlled-trial --provider=hybrid --split=dev
+
+# Labeled benchmark with fresh live web evidence; held-out test is allowed
+# here because the live trial does not select a best configuration.
+php .\evaluation\run_evaluation.php --live-trial --provider=hybrid --split=test
+
+# Interactive live volatility observations (not scored)
+php .\evaluation\run_volatility_experiment.php --local-cli --live-provider=hybrid
+
+# Automatically sourced, citation-gated live volatility trial (pilot with 3 cases)
+php .\evaluation\run_volatility_experiment.php --live-experiment --local-cli --live-provider=hybrid --limit=3
+```
+
 ```powershell
 Set-Location 'C:\Users\cyber\OneDrive\Documents\Thesis20261028-main\Davao-Food-Finder-main\Davao-Food-Finder-main\davao_food_finder'
 

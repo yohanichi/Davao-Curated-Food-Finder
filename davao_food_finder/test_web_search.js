@@ -48,6 +48,18 @@ test('uses menu and ordering searches instead of review-only queries for exact d
   assert.equal(queries.some(query => query.reviewSearch), false);
 });
 
+test('recognizes every halo-halo spelling as a menu-item search', () => {
+  for (const spelling of ['halo-halo', 'halo halo', 'halohalo']) {
+    const queries = buildDiscoveryQueries(`${spelling} Davao City`);
+    assert.equal(queries.length, 8);
+    assert.equal(queries.some(query => query.discoveryType === 'menu'), true);
+    assert.equal(queries.some(query => query.reviewSearch), false);
+    assert.match(queries.find(query => query.query.includes('"Mang Inasal"')).query, /"halo-halo".*Davao City.*"Mang Inasal".*menu/i);
+    assert.match(queries.find(query => query.query.includes('Chowking')).query, /"halo-halo".*Davao City.*Chowking.*menu/i);
+    assert.match(queries.find(query => query.query.includes('Jollibee')).query, /"halo-halo".*Davao City.*Jollibee.*menu/i);
+  }
+});
+
 test('builds a normalized local OSM snapshot from nodes and centered ways', () => {
   const snapshot = buildOsmSnapshot({
     osm3s: { timestamp_osm_base: '2026-11-16T12:00:00Z' },

@@ -1,7 +1,7 @@
 {
     "experiment": "data_volatility_resilience_v3",
-    "started_at_utc": "2026-11-16T07:22:31+00:00",
-    "completed_at_utc": "2026-11-16T07:22:40+00:00",
+    "started_at_utc": "2026-11-17T16:44:08+00:00",
+    "completed_at_utc": "2026-11-17T16:44:15+00:00",
     "scenario_count": 15,
     "summary": [
         {
@@ -11,11 +11,11 @@
             "description": "Static 2025 CSV retrieval without web volatility reconciliation",
             "scenario_count": 15,
             "resilience_pass_rate": {
-                "mean": 0.3333333333333333,
-                "sd": 0.48795003647426666,
-                "se": 0.12598815766974242,
-                "ci_lower": 0.13166666666666677,
-                "ci_upper": 0.6,
+                "mean": 0.26666666666666666,
+                "sd": 0.4577377082170635,
+                "se": 0.11818736805705578,
+                "ci_lower": 0.06666666666666667,
+                "ci_upper": 0.4666666666666667,
                 "n": 15
             },
             "invalid_venue_suppression_rate": {
@@ -27,22 +27,22 @@
                 "n": 15
             },
             "valid_top5_precision": {
-                "mean": 0.6822222222222223,
-                "sd": 0.2698814162479122,
-                "se": 0.06968308203860238,
-                "ci_lower": 0.5532777777777776,
-                "ci_upper": 0.8133333333333334,
+                "mean": 0.5755555555555555,
+                "sd": 0.31983792191717403,
+                "se": 0.08258179633805354,
+                "ci_lower": 0.42666666666666675,
+                "ci_upper": 0.7333888888888888,
                 "n": 15
             },
             "accuracy_by_volatility_type": {
                 "closure": 0,
-                "price_drift": 0.5,
+                "price_drift": 0.25,
                 "hours_change": 0.6667,
                 "rating_shift": 0.3333,
                 "compound_volatility": 0
             },
-            "mean_latency_s": 0.1527,
-            "median_latency_s": 0.1506
+            "mean_latency_s": 0.1231,
+            "median_latency_s": 0.1199
         },
         {
             "id": "STALE-CACHE-12H",
@@ -51,38 +51,38 @@
             "description": "Agentic pipeline reading outdated (>12h) pre-change cached web snapshot",
             "scenario_count": 15,
             "resilience_pass_rate": {
-                "mean": 0.4666666666666667,
-                "sd": 0.5163977794943222,
-                "se": 0.1333333333333333,
-                "ci_lower": 0.2,
-                "ci_upper": 0.7333333333333333,
+                "mean": 0.6,
+                "sd": 0.50709255283711,
+                "se": 0.13093073414159542,
+                "ci_lower": 0.3333333333333333,
+                "ci_upper": 0.8666666666666667,
                 "n": 15
             },
             "invalid_venue_suppression_rate": {
-                "mean": 0.4666666666666667,
-                "sd": 0.5163977794943222,
-                "se": 0.1333333333333333,
-                "ci_lower": 0.2,
-                "ci_upper": 0.7333333333333333,
+                "mean": 0.6666666666666666,
+                "sd": 0.4879500364742666,
+                "se": 0.12598815766974242,
+                "ci_lower": 0.4,
+                "ci_upper": 0.8666666666666667,
                 "n": 15
             },
             "valid_top5_precision": {
-                "mean": 0.68,
-                "sd": 0.3764495792457281,
-                "se": 0.09719886340703293,
-                "ci_lower": 0.49333333333333335,
-                "ci_upper": 0.8533333333333334,
+                "mean": 0.76,
+                "sd": 0.3794733192202055,
+                "se": 0.09797958971132711,
+                "ci_lower": 0.5599999999999999,
+                "ci_upper": 0.9203333333333316,
                 "n": 15
             },
             "accuracy_by_volatility_type": {
-                "closure": 0.3333,
-                "price_drift": 0.75,
-                "hours_change": 0.6667,
-                "rating_shift": 0,
-                "compound_volatility": 0.5
+                "closure": 1,
+                "price_drift": 0.5,
+                "hours_change": 1,
+                "rating_shift": 0.3333,
+                "compound_volatility": 0
             },
-            "mean_latency_s": 0.1456,
-            "median_latency_s": 0.1508
+            "mean_latency_s": 0.1394,
+            "median_latency_s": 0.1357
         },
         {
             "id": "ABLATION-NO-LOOP-FRESH",
@@ -91,11 +91,11 @@
             "description": "Single-pass agentic intent retrieval with fresh web evidence WITHOUT Pass 2 autonomous critique/repair",
             "scenario_count": 15,
             "resilience_pass_rate": {
-                "mean": 0.4666666666666667,
-                "sd": 0.5163977794943222,
-                "se": 0.1333333333333333,
-                "ci_lower": 0.2,
-                "ci_upper": 0.7333333333333333,
+                "mean": 0.4,
+                "sd": 0.50709255283711,
+                "se": 0.13093073414159542,
+                "ci_lower": 0.13333333333333333,
+                "ci_upper": 0.6666666666666666,
                 "n": 15
             },
             "invalid_venue_suppression_rate": {
@@ -107,11 +107,11 @@
                 "n": 15
             },
             "valid_top5_precision": {
-                "mean": 0.6933333333333334,
-                "sd": 0.36147844564602555,
-                "se": 0.09333333333333332,
-                "ci_lower": 0.5066666666666667,
-                "ci_upper": 0.8533333333333335,
+                "mean": 0.6133333333333334,
+                "sd": 0.4033195589934447,
+                "se": 0.10413666234542207,
+                "ci_lower": 0.41333333333333333,
+                "ci_upper": 0.8133333333333334,
                 "n": 15
             },
             "accuracy_by_volatility_type": {
@@ -119,10 +119,10 @@
                 "price_drift": 0.5,
                 "hours_change": 1,
                 "rating_shift": 0,
-                "compound_volatility": 0.5
+                "compound_volatility": 0
             },
-            "mean_latency_s": 0.1316,
-            "median_latency_s": 0.1354
+            "mean_latency_s": 0.1231,
+            "median_latency_s": 0.1207
         },
         {
             "id": "AGENTIC-LOOP-FRESH",
@@ -131,10 +131,10 @@
             "description": "Full 2-pass Autonomous Iterative Critique-and-Refinement Loop with fresh web evidence",
             "scenario_count": 15,
             "resilience_pass_rate": {
-                "mean": 1,
-                "sd": 0,
-                "se": 0,
-                "ci_lower": 1,
+                "mean": 0.9333333333333333,
+                "sd": 0.2581988897471611,
+                "se": 0.06666666666666665,
+                "ci_lower": 0.8,
                 "ci_upper": 1,
                 "n": 15
             },
@@ -147,10 +147,10 @@
                 "n": 15
             },
             "valid_top5_precision": {
-                "mean": 1,
-                "sd": 0,
-                "se": 0,
-                "ci_lower": 1,
+                "mean": 0.9333333333333333,
+                "sd": 0.2581988897471611,
+                "se": 0.06666666666666665,
+                "ci_lower": 0.8,
                 "ci_upper": 1,
                 "n": 15
             },
@@ -159,22 +159,22 @@
                 "price_drift": 1,
                 "hours_change": 1,
                 "rating_shift": 1,
-                "compound_volatility": 1
+                "compound_volatility": 0.5
             },
-            "mean_latency_s": 0.1537,
-            "median_latency_s": 0.1506
+            "mean_latency_s": 0.1342,
+            "median_latency_s": 0.1344
         }
     ],
     "statistical_tests": {
         "friedman": {
-            "statistic": 17.699999999999996,
+            "statistic": 18.405405405405432,
             "degrees_of_freedom": 3,
-            "p_value": 0.0005071678335994701,
+            "p_value": 0.00036278411025726263,
             "mean_ranks": [
-                2.033333333333333,
-                2.3,
-                2.3,
-                3.3666666666666667
+                1.9333333333333333,
+                2.6,
+                2.2,
+                3.2666666666666666
             ]
         },
         "wilcoxon_posthoc": [
@@ -182,34 +182,34 @@
                 "config_a": "STATIC-CSV-BASELINE",
                 "config_b": "STALE-CACHE-12H",
                 "n_pairs": 15,
-                "n_nonzero": 6,
-                "w_plus": 7,
-                "w_minus": 14,
-                "w_stat": 7,
-                "z_score": -0.8164965809277259,
-                "p_value": 0.6875,
-                "effect_size_r": -0.21081851067789192,
-                "mean_diff": -0.13333333333333333,
+                "n_nonzero": 7,
+                "w_plus": 4,
+                "w_minus": 24,
+                "w_stat": 4,
+                "z_score": -1.889822365046136,
+                "p_value": 0.125,
+                "effect_size_r": -0.48795003647426655,
+                "mean_diff": -0.3333333333333333,
                 "median_diff": 0,
                 "method": "exact",
-                "p_holm": 1,
+                "p_holm": 0.375,
                 "significant_005": false
             },
             {
                 "config_a": "STATIC-CSV-BASELINE",
                 "config_b": "ABLATION-NO-LOOP-FRESH",
                 "n_pairs": 15,
-                "n_nonzero": 6,
-                "w_plus": 7,
-                "w_minus": 14,
-                "w_stat": 7,
-                "z_score": -0.8164965809277259,
-                "p_value": 0.6875,
-                "effect_size_r": -0.21081851067789192,
+                "n_nonzero": 4,
+                "w_plus": 2.5,
+                "w_minus": 7.5,
+                "w_stat": 2.5,
+                "z_score": -1,
+                "p_value": 0.625,
+                "effect_size_r": -0.2581988897471611,
                 "mean_diff": -0.13333333333333333,
                 "median_diff": 0,
                 "method": "exact",
-                "p_holm": 1,
+                "p_holm": 0.625,
                 "significant_005": false
             },
             {
@@ -233,35 +233,35 @@
                 "config_a": "STALE-CACHE-12H",
                 "config_b": "ABLATION-NO-LOOP-FRESH",
                 "n_pairs": 15,
-                "n_nonzero": 2,
-                "w_plus": 1.5,
-                "w_minus": 1.5,
-                "w_stat": 1.5,
-                "z_score": 0,
-                "p_value": 1,
-                "effect_size_r": 0,
-                "mean_diff": 0,
+                "n_nonzero": 3,
+                "w_plus": 6,
+                "w_minus": 0,
+                "w_stat": 0,
+                "z_score": 1.7320508075688774,
+                "p_value": 0.25,
+                "effect_size_r": 0.4472135954999579,
+                "mean_diff": 0.2,
                 "median_diff": 0,
                 "method": "exact",
-                "p_holm": 1,
+                "p_holm": 0.5,
                 "significant_005": false
             },
             {
                 "config_a": "STALE-CACHE-12H",
                 "config_b": "AGENTIC-LOOP-FRESH",
                 "n_pairs": 15,
-                "n_nonzero": 8,
+                "n_nonzero": 5,
                 "w_plus": 0,
-                "w_minus": 36,
+                "w_minus": 15,
                 "w_stat": 0,
-                "z_score": -2.8284271247461903,
-                "p_value": 0.0078125,
-                "effect_size_r": -0.7302967433402215,
-                "mean_diff": -0.5333333333333333,
-                "median_diff": -1,
+                "z_score": -2.23606797749979,
+                "p_value": 0.0625,
+                "effect_size_r": -0.5773502691896257,
+                "mean_diff": -0.3333333333333333,
+                "median_diff": 0,
                 "method": "exact",
-                "p_holm": 0.0390625,
-                "significant_005": true
+                "p_holm": 0.25,
+                "significant_005": false
             },
             {
                 "config_a": "ABLATION-NO-LOOP-FRESH",
@@ -301,7 +301,7 @@
                     "Nonki Japanese Restaurant - AutoVille Building",
                     "Saikono Japanese Restaurant - Matina"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -310,7 +310,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1672
+                "latency_s": 0.1199
             },
             {
                 "scenario_id": "VOL002",
@@ -329,7 +329,7 @@
                     "J.CO Donuts & Coffee - SM Davao Quimpo",
                     "Urbanica Milk Coffee - SM City Davao"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -338,7 +338,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1506
+                "latency_s": 0.1176
             },
             {
                 "scenario_id": "VOL003",
@@ -357,7 +357,7 @@
                     "MODOO KOREAN RESTAURANT - DAMOSA MARKET BASKET",
                     "Tabz and Babz Korean's Chicken House - Maharlika Village"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -366,7 +366,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.212
+                "latency_s": 0.1198
             },
             {
                 "scenario_id": "VOL004",
@@ -385,7 +385,7 @@
                     "Gang Gang Boneless Fried Chicken - Bonifacio Street",
                     "Fried Chicken Station - Jacinto Extn."
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -394,7 +394,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1356
+                "latency_s": 0.1358
             },
             {
                 "scenario_id": "VOL005",
@@ -414,7 +414,7 @@
                     "Vera - Coffee and Bistro",
                     "Taco Boy - SPMC"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -423,7 +423,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1216
+                "latency_s": 0.1348
             },
             {
                 "scenario_id": "VOL006",
@@ -440,7 +440,7 @@
                     "Teacart Milktea and Coffee Shop - Canto Mahayahay",
                     "Ka Paeng Coffee Shop - Catalunan Grande"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -449,24 +449,27 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1531
+                "latency_s": 0.1208
             },
             {
                 "scenario_id": "VOL007",
                 "volatility_type": "price_drift",
                 "query": "Burgers and snacks under ₱200 in Davao City",
-                "strict_pass": true,
-                "invalidated_suppressed": true,
-                "leaked_invalid_venues": [],
-                "valid_top5_precision": 1,
-                "top5_returned": [
-                    "Shaxian Snacks - D Suazo",
-                    "Snacks Republic - Obrero",
-                    "Zark's Burgers - SM Lanang",
-                    "Shaxian Snacks - Bolton",
-                    "Slim Snacks - Doña Luisa Village"
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Harley's Burgers and Shakes - C.M Recto",
+                    "Burger King - Buhangin Davao"
                 ],
-                "loop_iterations": 1,
+                "valid_top5_precision": 0.2,
+                "top5_returned": [
+                    "Zark's Burgers - SM Lanang",
+                    "Harley's Burgers and Shakes - C.M Recto",
+                    "Zark's Burgers - SM City Davao",
+                    "Burger King - J.P. Laurel Davao",
+                    "Burger King - Buhangin Davao"
+                ],
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -475,7 +478,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1361
+                "latency_s": 0.134
             },
             {
                 "scenario_id": "VOL008",
@@ -492,7 +495,7 @@
                     "Black Plate Bistro - La Verna Bypass Road",
                     "Rice 24 Chicken - Davao City"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -501,7 +504,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1379
+                "latency_s": 0.1044
             },
             {
                 "scenario_id": "VOL009",
@@ -514,11 +517,11 @@
                 "top5_returned": [
                     "Flavored Boneless Chicken - Poblacion",
                     "Marfori Best Burger - Poblacion",
-                    "Ahok’s Food Corner - Inigo",
-                    "Kettle Korn - SM Davao",
-                    "Chikoy's Lugawan - Torres"
+                    "Chikoy's Lugawan - Torres",
+                    "Sukidesu Modern Japanese Cuisine - Aurora",
+                    "Soul Kitchen Co. - Torres St."
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -527,7 +530,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1806
+                "latency_s": 0.1055
             },
             {
                 "scenario_id": "VOL010",
@@ -544,7 +547,7 @@
                     "Destino Cafe - Toril",
                     "Green Coffee - Marfori"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -553,7 +556,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1671
+                "latency_s": 0.1057
             },
             {
                 "scenario_id": "VOL011",
@@ -570,7 +573,7 @@
                     "West Empire Seafood And Chinese Restaurant - Insular Village",
                     "Ameling's Seafood and Grill - Ecoland"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -579,7 +582,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1207
+                "latency_s": 0.1196
             },
             {
                 "scenario_id": "VOL012",
@@ -598,7 +601,7 @@
                     "Alberto's Pizza - Ecoland",
                     "Shakey's Pizza - SM Lanang"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -607,7 +610,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1351
+                "latency_s": 0.1355
             },
             {
                 "scenario_id": "VOL013",
@@ -623,10 +626,10 @@
                     "LiberTea MilkTea – SM Lanang",
                     "CoCo Fresh Tea & Juice - SM Lanang",
                     "Infinitea - Damosa Lanang",
-                    "Bubble Black Milk Tea - Bangkal",
-                    "I Love Milktea - Malvar"
+                    "Kagibo Milk Tea - Sasa",
+                    "Gravitea Milktea - Cabantian"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -635,7 +638,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1683
+                "latency_s": 0.1196
             },
             {
                 "scenario_id": "VOL014",
@@ -654,7 +657,7 @@
                     "Zis Goods Halal - Boulevard",
                     "BEST Indian Food Davao Halal - Buhangin"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -663,26 +666,18 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1681
+                "latency_s": 0.1515
             },
             {
                 "scenario_id": "VOL015",
                 "volatility_type": "compound_volatility",
                 "query": "Healthy vegetarian salad in Davao City under ₱250",
                 "strict_pass": false,
-                "invalidated_suppressed": false,
-                "leaked_invalid_venues": [
-                    "Fast Fresh By SKCO - Torres"
-                ],
-                "valid_top5_precision": 0.8,
-                "top5_returned": [
-                    "Kong Ai Vegetarian Centrum - Gempesaw",
-                    "Salads & More - 3rd Avenue",
-                    "Lhealthy Shop-Damosa",
-                    "Soul Kitchen Co. - Torres St.",
-                    "Fast Fresh By SKCO - Torres"
-                ],
-                "loop_iterations": 1,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 0,
+                "top5_returned": [],
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -691,7 +686,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1365
+                "latency_s": 0.1211
             }
         ],
         "STALE-CACHE-12H": [
@@ -699,18 +694,16 @@
                 "scenario_id": "VOL001",
                 "volatility_type": "closure",
                 "query": "Japanese restaurants in Davao City",
-                "strict_pass": false,
-                "invalidated_suppressed": false,
-                "leaked_invalid_venues": [
-                    "Sukidesu Modern Japanese Cuisine - Aurora"
-                ],
-                "valid_top5_precision": 0.4,
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
                 "top5_returned": [
-                    "Sukidesu Modern Japanese Cuisine - Aurora",
                     "Sukidesu Japanese Street Dining - Lanang",
                     "Arhy's Kitchenette and Catering Services - Panorama",
                     "Ginkaku Japanese Restaurant - Matina",
-                    "Tokyo Tokyo - SM Lanang"
+                    "Tokyo Tokyo - SM Lanang",
+                    "Katsu Country - Junction Building"
                 ],
                 "loop_iterations": 1,
                 "loop_repaired": 0,
@@ -718,10 +711,11 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1605
+                "latency_s": 0.1409
             },
             {
                 "scenario_id": "VOL002",
@@ -744,38 +738,38 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1651
+                "latency_s": 0.1357
             },
             {
                 "scenario_id": "VOL003",
                 "volatility_type": "closure",
                 "query": "Korean samgyupsal or Korean BBQ in Davao City",
-                "strict_pass": false,
-                "invalidated_suppressed": false,
-                "leaked_invalid_venues": [
-                    "Samgyupsal & Chicken Korean Restaurant - Aurora"
-                ],
-                "valid_top5_precision": 0.2,
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
                 "top5_returned": [
-                    "Samgyupsal & Chicken Korean Restaurant - Aurora",
                     "Samgyupsal and Chicken Korean Restaurant - Catalunan Grande",
                     "Island Samgyupsal - BELEN ROAD",
                     "Premier The Samgyupsal - Quimpo",
-                    "Omma's Kitchen - Lanang"
+                    "Samgyupsalamat - Davao Quirino",
+                    "Samgyupsalamat - Davao SM Lanang"
                 ],
-                "loop_iterations": 2,
-                "loop_repaired": 1,
+                "loop_iterations": 1,
+                "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1514
+                "latency_s": 0.1492
             },
             {
                 "scenario_id": "VOL004",
@@ -788,9 +782,9 @@
                 "top5_returned": [
                     "McDonald's - SPMC",
                     "Jollibee - Phoenix Lanang",
-                    "Chowking - Davao Gaisano",
-                    "Jenny’s Snack Corner - Flores Street",
-                    "Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - CityMall North Town Davao"
+                    "Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - CityMall North Town Davao",
+                    "CityMall Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - North Town Davao",
+                    "McDonald's - Davao Bajada"
                 ],
                 "loop_iterations": 1,
                 "loop_repaired": 0,
@@ -805,10 +799,11 @@
                             "source_url": "https://example.org/davao/ganggang-menu-2025"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.135
+                "latency_s": 0.1662
             },
             {
                 "scenario_id": "VOL005",
@@ -840,10 +835,11 @@
                             "source_url": "https://example.org/davao/pasta-sorpresa-2025"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1508
+                "latency_s": 0.1653
             },
             {
                 "scenario_id": "VOL006",
@@ -873,25 +869,28 @@
                             "source_url": "https://example.org/davao/green-coffee-marfori-2025"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1506
+                "latency_s": 0.1492
             },
             {
                 "scenario_id": "VOL007",
                 "volatility_type": "price_drift",
                 "query": "Burgers and snacks under ₱200 in Davao City",
-                "strict_pass": true,
-                "invalidated_suppressed": true,
-                "leaked_invalid_venues": [],
-                "valid_top5_precision": 1,
+                "strict_pass": false,
+                "invalidated_suppressed": false,
+                "leaked_invalid_venues": [
+                    "Army Navy - Abreeza Mall"
+                ],
+                "valid_top5_precision": 0.8,
                 "top5_returned": [
                     "Durian Dub Snack Shack x Burger Shack Joint - Quimpo Boulevard",
-                    "Snacks Republic - Obrero",
                     "The Crazy Bite Co Sky Cafe - T Monteverde St",
                     "Okinooki - L. Ma. Guerrero Street",
-                    "Red Corner Burger Cafe - Gaisano Mall Davao"
+                    "Red Corner Burger Cafe - Gaisano Mall Davao",
+                    "Army Navy - Abreeza Mall"
                 ],
                 "loop_iterations": 2,
                 "loop_repaired": 1,
@@ -906,10 +905,11 @@
                             "source_url": "https://example.org/davao/armynavy-abreeza-2025"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1523
+                "latency_s": 0.1646
             },
             {
                 "scenario_id": "VOL008",
@@ -932,6 +932,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [
                         {
                             "name": "Black Plate Bistro - La Verna Bypass Road",
@@ -940,7 +941,7 @@
                     ],
                     "rating_updates": []
                 },
-                "latency_s": 0.121
+                "latency_s": 0.1355
             },
             {
                 "scenario_id": "VOL009",
@@ -963,6 +964,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [
                         {
                             "name": "Snacks N' Bite Station",
@@ -971,24 +973,22 @@
                     ],
                     "rating_updates": []
                 },
-                "latency_s": 0.152
+                "latency_s": 0.135
             },
             {
                 "scenario_id": "VOL010",
                 "volatility_type": "hours_change",
                 "query": "24/7 coffee shop or late night cafe in Davao City",
-                "strict_pass": false,
-                "invalidated_suppressed": false,
-                "leaked_invalid_venues": [
-                    "Coffeemaybe Cafe - Artiaga"
-                ],
-                "valid_top5_precision": 0.2,
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
                 "top5_returned": [
-                    "Coffeemaybe Cafe - Artiaga",
                     "Kofi Gram - Bangkal",
                     "Outlook Coffee",
                     "Seattle's Best Coffee - Davao Global Township",
-                    "Joe's Cafe - Ilustre"
+                    "Joe's Cafe - Ilustre",
+                    "Vanitea Cafe - Rasay Street"
                 ],
                 "loop_iterations": 2,
                 "loop_repaired": 1,
@@ -996,6 +996,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [
                         {
                             "name": "Coffeemaybe Cafe - Artiaga",
@@ -1004,7 +1005,7 @@
                     ],
                     "rating_updates": []
                 },
-                "latency_s": 0.1639
+                "latency_s": 0.1507
             },
             {
                 "scenario_id": "VOL011",
@@ -1029,6 +1030,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": [
                         {
@@ -1037,24 +1039,22 @@
                         }
                     ]
                 },
-                "latency_s": 0.1356
+                "latency_s": 0.1206
             },
             {
                 "scenario_id": "VOL012",
                 "volatility_type": "rating_shift",
                 "query": "Highly rated 4.8+ pizza places in Davao City",
-                "strict_pass": false,
-                "invalidated_suppressed": false,
-                "leaked_invalid_venues": [
-                    "S&R New York Style Pizza - Abreeza Ayala Mall"
-                ],
-                "valid_top5_precision": 0.8,
+                "strict_pass": true,
+                "invalidated_suppressed": true,
+                "leaked_invalid_venues": [],
+                "valid_top5_precision": 1,
                 "top5_returned": [
-                    "S&R New York Style Pizza - Abreeza Ayala Mall",
                     "Alberto's Pizza - Matina",
                     "S&R New York Style Pizza - SM City Davao",
                     "Alberto's Pizza - Ecoland",
-                    "Shakey's Pizza - SM Lanang"
+                    "Shakey's Pizza - SM Lanang",
+                    "Pizza Hut - SM Davao"
                 ],
                 "loop_iterations": 1,
                 "loop_repaired": 0,
@@ -1062,6 +1062,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": [
                         {
@@ -1070,7 +1071,7 @@
                         }
                     ]
                 },
-                "latency_s": 0.1374
+                "latency_s": 0.1193
             },
             {
                 "scenario_id": "VOL013",
@@ -1095,6 +1096,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": [
                         {
@@ -1103,7 +1105,7 @@
                         }
                     ]
                 },
-                "latency_s": 0.1364
+                "latency_s": 0.1198
             },
             {
                 "scenario_id": "VOL014",
@@ -1135,26 +1137,21 @@
                             "source_url": "https://example.org/davao/halal-guide-2025"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1515
+                "latency_s": 0.1339
             },
             {
                 "scenario_id": "VOL015",
                 "volatility_type": "compound_volatility",
                 "query": "Healthy vegetarian salad in Davao City under ₱250",
-                "strict_pass": true,
+                "strict_pass": false,
                 "invalidated_suppressed": true,
                 "leaked_invalid_venues": [],
-                "valid_top5_precision": 1,
-                "top5_returned": [
-                    "The Green Bounty Kitchen - Ecoland",
-                    "Soul Kitchen Co. Grab & Go - Lanang",
-                    "Fast Fresh by SKCO - Lanang",
-                    "Soul Kitchen Co. - Torres St.",
-                    "Happy Fit - Bajada JP Laurel"
-                ],
+                "valid_top5_precision": 0,
+                "top5_returned": [],
                 "loop_iterations": 1,
                 "loop_repaired": 0,
                 "volatility_detected": {
@@ -1168,10 +1165,11 @@
                             "source_url": "https://example.org/davao/skco-torres-2025"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.121
+                "latency_s": 0.1046
             }
         ],
         "ABLATION-NO-LOOP-FRESH": [
@@ -1192,7 +1190,7 @@
                     "Ginkaku Japanese Restaurant - Matina",
                     "Tokyo Tokyo - SM Lanang"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1201,7 +1199,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1332
+                "latency_s": 0.1066
             },
             {
                 "scenario_id": "VOL002",
@@ -1218,7 +1216,7 @@
                     "JH Garden Cafe- Juan Luna Branch",
                     "De'Xpresso Lounge - Felcris Centrale Quimpo Blvd"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1227,7 +1225,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1355
+                "latency_s": 0.1203
             },
             {
                 "scenario_id": "VOL003",
@@ -1244,9 +1242,9 @@
                     "Samgyupsal and Chicken Korean Restaurant - Catalunan Grande",
                     "Island Samgyupsal - BELEN ROAD",
                     "Premier The Samgyupsal - Quimpo",
-                    "SharEat Davao (Samgyupsal Store) - Matina Aplaya Road"
+                    "Samgyupsalamat - Davao Quirino"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1255,7 +1253,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1342
+                "latency_s": 0.1046
             },
             {
                 "scenario_id": "VOL004",
@@ -1268,11 +1266,11 @@
                 "top5_returned": [
                     "McDonald's - SPMC",
                     "Jollibee - Phoenix Lanang",
-                    "Chowking - Davao Gaisano",
-                    "Jenny’s Snack Corner - Flores Street",
-                    "Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - CityMall North Town Davao"
+                    "Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - CityMall North Town Davao",
+                    "CityMall Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - North Town Davao",
+                    "McDonald's - Davao Bajada"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1281,7 +1279,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1361
+                "latency_s": 0.149
             },
             {
                 "scenario_id": "VOL005",
@@ -1301,7 +1299,7 @@
                     "Pasta Sorpresa - Matina",
                     "Alberto's Pizza - Ecoland"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1310,7 +1308,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1352
+                "latency_s": 0.1213
             },
             {
                 "scenario_id": "VOL006",
@@ -1327,7 +1325,7 @@
                     "Jollibee - Phoenix Lanang",
                     "BEARS CAFE - PUROK SAN ANDRES"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1336,7 +1334,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1361
+                "latency_s": 0.1347
             },
             {
                 "scenario_id": "VOL007",
@@ -1347,15 +1345,15 @@
                 "leaked_invalid_venues": [
                     "Burger King - Buhangin Davao"
                 ],
-                "valid_top5_precision": 0.4,
+                "valid_top5_precision": 0.2,
                 "top5_returned": [
                     "Durian Dub Snack Shack x Burger Shack Joint - Quimpo Boulevard",
-                    "Snacks Republic - Obrero",
                     "Burger King - Buhangin Davao",
                     "The Crazy Bite Co Sky Cafe - T Monteverde St",
-                    "Okinooki - L. Ma. Guerrero Street"
+                    "Okinooki - L. Ma. Guerrero Street",
+                    "Red Corner Burger Cafe - Gaisano Mall Davao"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1364,7 +1362,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1193
+                "latency_s": 0.1342
             },
             {
                 "scenario_id": "VOL008",
@@ -1381,7 +1379,7 @@
                     "Khit's Silogan - Claveria",
                     "Food Mania Paresan- Buhangin"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1390,7 +1388,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.12
+                "latency_s": 0.1504
             },
             {
                 "scenario_id": "VOL009",
@@ -1407,7 +1405,7 @@
                     "Chucky's Beef Pares and Pastil - Mabini",
                     "Chikoy's Lugawan - Torres"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1416,7 +1414,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1244
+                "latency_s": 0.1194
             },
             {
                 "scenario_id": "VOL010",
@@ -1433,7 +1431,7 @@
                     "Gotokai - Mamay Road",
                     "Jailourd's Hab-Hub Eatery - Obrero"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1442,7 +1440,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.136
+                "latency_s": 0.1207
             },
             {
                 "scenario_id": "VOL011",
@@ -1461,7 +1459,7 @@
                     "Hangry Tuna - Nova Tierra Village",
                     "Hangry Tuna- Catalunan"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1470,7 +1468,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1367
+                "latency_s": 0.1046
             },
             {
                 "scenario_id": "VOL012",
@@ -1489,7 +1487,7 @@
                     "Alberto's Pizza - Ecoland",
                     "Shakey's Pizza - SM Lanang"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1498,7 +1496,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1354
+                "latency_s": 0.1356
             },
             {
                 "scenario_id": "VOL013",
@@ -1517,7 +1515,7 @@
                     "Serenitea - Damosa",
                     "LiberTea MilkTea – SM Lanang"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1526,7 +1524,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1363
+                "latency_s": 0.1192
             },
             {
                 "scenario_id": "VOL014",
@@ -1545,7 +1543,7 @@
                     "Hangry Tuna - Nova Tierra Village",
                     "Davao Biryani - Toril"
                 ],
-                "loop_iterations": 1,
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1554,24 +1552,18 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1359
+                "latency_s": 0.1207
             },
             {
                 "scenario_id": "VOL015",
                 "volatility_type": "compound_volatility",
                 "query": "Healthy vegetarian salad in Davao City under ₱250",
-                "strict_pass": true,
+                "strict_pass": false,
                 "invalidated_suppressed": true,
                 "leaked_invalid_venues": [],
-                "valid_top5_precision": 1,
-                "top5_returned": [
-                    "The Green Bounty Kitchen - Ecoland",
-                    "Soul Kitchen Co. Grab & Go - Lanang",
-                    "Fast Fresh by SKCO - Lanang",
-                    "Soul Kitchen Co. - Torres St.",
-                    "Happy Fit - Bajada JP Laurel"
-                ],
-                "loop_iterations": 1,
+                "valid_top5_precision": 0,
+                "top5_returned": [],
+                "loop_iterations": 0,
                 "loop_repaired": 0,
                 "volatility_detected": {
                     "evidence_items_scanned": 0,
@@ -1580,7 +1572,7 @@
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1197
+                "latency_s": 0.1055
             }
         ],
         "AGENTIC-LOOP-FRESH": [
@@ -1609,10 +1601,11 @@
                         "Ginkaku Japanese Restaurant - Matina"
                     ],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1494
+                "latency_s": 0.1226
             },
             {
                 "scenario_id": "VOL002",
@@ -1639,10 +1632,11 @@
                         "Green Coffee - Marfori"
                     ],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1505
+                "latency_s": 0.1344
             },
             {
                 "scenario_id": "VOL003",
@@ -1656,21 +1650,22 @@
                     "Samgyupsal and Chicken Korean Restaurant - Catalunan Grande",
                     "Island Samgyupsal - BELEN ROAD",
                     "Premier The Samgyupsal - Quimpo",
-                    "Omma's Kitchen - Lanang",
-                    "Romantic Baboy - The Compound"
+                    "Samgyupsalamat - Davao Quirino",
+                    "Samgyupsalamat - Davao SM Lanang"
                 ],
                 "loop_iterations": 2,
-                "loop_repaired": 2,
+                "loop_repaired": 1,
                 "volatility_detected": {
                     "evidence_items_scanned": 1,
                     "closed_places": [
                         "Samgyupsal & Chicken Korean Restaurant - Aurora"
                     ],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1673
+                "latency_s": 0.1647
             },
             {
                 "scenario_id": "VOL004",
@@ -1683,9 +1678,9 @@
                 "top5_returned": [
                     "McDonald's - SPMC",
                     "Jollibee - Phoenix Lanang",
-                    "Chowking - Davao Gaisano",
-                    "Jenny’s Snack Corner - Flores Street",
-                    "Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - CityMall North Town Davao"
+                    "Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - CityMall North Town Davao",
+                    "CityMall Mix & Match Jollibee, Mang Inasal, Chowking & Greenwich - North Town Davao",
+                    "McDonald's - Davao Bajada"
                 ],
                 "loop_iterations": 1,
                 "loop_repaired": 0,
@@ -1706,10 +1701,11 @@
                             "source_url": "https://example.org/davao/ganggang-menu-2026"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1506
+                "latency_s": 0.1498
             },
             {
                 "scenario_id": "VOL005",
@@ -1745,10 +1741,11 @@
                             "source_url": "https://example.org/davao/pasta-sorpresa-2026"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1505
+                "latency_s": 0.1531
             },
             {
                 "scenario_id": "VOL006",
@@ -1784,10 +1781,11 @@
                             "source_url": "https://example.org/davao/green-coffee-marfori-2026"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1511
+                "latency_s": 0.135
             },
             {
                 "scenario_id": "VOL007",
@@ -1799,10 +1797,10 @@
                 "valid_top5_precision": 1,
                 "top5_returned": [
                     "Durian Dub Snack Shack x Burger Shack Joint - Quimpo Boulevard",
-                    "Snacks Republic - Obrero",
                     "The Crazy Bite Co Sky Cafe - T Monteverde St",
                     "Okinooki - L. Ma. Guerrero Street",
-                    "Red Corner Burger Cafe - Gaisano Mall Davao"
+                    "Red Corner Burger Cafe - Gaisano Mall Davao",
+                    "Jollibee - Davao Magsaysay"
                 ],
                 "loop_iterations": 2,
                 "loop_repaired": 1,
@@ -1817,10 +1815,11 @@
                             "source_url": "https://example.org/davao/armynavy-abreeza-2026"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1492
+                "latency_s": 0.1345
             },
             {
                 "scenario_id": "VOL008",
@@ -1843,6 +1842,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [
                         {
                             "name": "Black Plate Bistro - La Verna Bypass Road",
@@ -1851,7 +1851,7 @@
                     ],
                     "rating_updates": []
                 },
-                "latency_s": 0.152
+                "latency_s": 0.1191
             },
             {
                 "scenario_id": "VOL009",
@@ -1874,6 +1874,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [
                         {
                             "name": "Snacks N' Bite Station",
@@ -1882,7 +1883,7 @@
                     ],
                     "rating_updates": []
                 },
-                "latency_s": 0.1651
+                "latency_s": 0.134
             },
             {
                 "scenario_id": "VOL010",
@@ -1905,6 +1906,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [
                         {
                             "name": "Coffeemaybe Cafe - Artiaga",
@@ -1913,7 +1915,7 @@
                     ],
                     "rating_updates": []
                 },
-                "latency_s": 0.1671
+                "latency_s": 0.1353
             },
             {
                 "scenario_id": "VOL011",
@@ -1936,6 +1938,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": [
                         {
@@ -1944,7 +1947,7 @@
                         }
                     ]
                 },
-                "latency_s": 0.1502
+                "latency_s": 0.1203
             },
             {
                 "scenario_id": "VOL012",
@@ -1967,6 +1970,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": [
                         {
@@ -1975,7 +1979,7 @@
                         }
                     ]
                 },
-                "latency_s": 0.1348
+                "latency_s": 0.1206
             },
             {
                 "scenario_id": "VOL013",
@@ -1998,6 +2002,7 @@
                     "evidence_items_scanned": 1,
                     "closed_places": [],
                     "price_updates": [],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": [
                         {
@@ -2006,7 +2011,7 @@
                         }
                     ]
                 },
-                "latency_s": 0.1506
+                "latency_s": 0.1339
             },
             {
                 "scenario_id": "VOL014",
@@ -2044,26 +2049,21 @@
                             "source_url": "https://example.org/davao/halal-guide-2026"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1515
+                "latency_s": 0.1348
             },
             {
                 "scenario_id": "VOL015",
                 "volatility_type": "compound_volatility",
                 "query": "Healthy vegetarian salad in Davao City under ₱250",
-                "strict_pass": true,
+                "strict_pass": false,
                 "invalidated_suppressed": true,
                 "leaked_invalid_venues": [],
-                "valid_top5_precision": 1,
-                "top5_returned": [
-                    "The Green Bounty Kitchen - Ecoland",
-                    "Soul Kitchen Co. Grab & Go - Lanang",
-                    "Soul Kitchen Co. - Torres St.",
-                    "Happy Fit - Bajada JP Laurel",
-                    "Rose Homemade Specials - Marfori"
-                ],
+                "valid_top5_precision": 0,
+                "top5_returned": [],
                 "loop_iterations": 2,
                 "loop_repaired": 1,
                 "volatility_detected": {
@@ -2086,10 +2086,11 @@
                             "source_url": "https://example.org/davao/skco-torres-2026"
                         }
                     ],
+                    "menu_item_price_updates": [],
                     "hours_updates": [],
                     "rating_updates": []
                 },
-                "latency_s": 0.1651
+                "latency_s": 0.1209
             }
         ]
     }

@@ -14,7 +14,7 @@ const NOMINATIM_BASE_URL = process.env.NOMINATIM_BASE_URL === undefined
 const NOMINATIM_CACHE_DIR = path.join(__dirname, '..', 'data', '.web-cache');
 const NOMINATIM_CACHE_TTL = 12 * 60 * 60 * 1000;
 const NOMINATIM_MIN_INTERVAL = 1000;
-const MENU_ITEM_SEARCH_TERMS = /\b(?:palabok|pancit\s+palabok|sisig|bulalo|balbacua|bulcachong|satti|pares|silog|samgyupsal|ramen|biryani|shawarma|halo[- ]halo|lugaw|lomi|batchoy|lechon|takoyaki|siomai|kinilaw|burger\s+steak|fries|wings)\b/i;
+const MENU_ITEM_SEARCH_TERMS = /\b(?:palabok|pancit\s+palabok|sisig|bulalo|balbacua|bulcachong|satti|pares|silog|samgyupsal|ramen|biryani|shawarma|halo[- ]?halo|halohalo|lugaw|lomi|batchoy|lechon|takoyaki|siomai|kinilaw|burger\s+steak|fries|wings)\b/i;
 
 async function waitForSearchResults(page, selector, source, errors) {
   try {
@@ -750,6 +750,25 @@ function buildDiscoveryQueries(searchQuery, reviewSearchQuery = buildReviewSearc
       { query: `"Pancit Palabok" ${locationContext} restaurant menu`, reviewSearch: false, discoveryType: 'menu' },
       { query: `"Palabok Fiesta" ${locationContext} restaurant menu`, reviewSearch: false, discoveryType: 'menu' },
       { query: `${searchQuery} order online delivery menu`, reviewSearch: false, discoveryType: 'menu' },
+      { query: `${searchQuery} food blog recommendations`, reviewSearch: false, discoveryType: 'blog' }
+    ];
+  }
+  if (/\bhalo[- ]?halo\b|\bhalohalo\b/i.test(searchQuery)) {
+    const locationContext = searchQuery
+      .replace(/\bhalo[- ]?halo\b|\bhalohalo\b/gi, ' ')
+      .replace(/\bOR\b/gi, ' ')
+      .replace(/[()"]/g, ' ')
+      .replace(/\b(?:restaurants?|food|menus?|orders?|online|delivery)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim() || 'Davao City';
+    return [
+      { query: `${searchQuery} restaurant`, reviewSearch: false, useBraveBrowser: true, discoveryType: 'web' },
+      { query: `"halo-halo" ${locationContext} restaurant menu`, reviewSearch: false, discoveryType: 'menu' },
+      { query: `"halo halo" ${locationContext} restaurant menu`, reviewSearch: false, discoveryType: 'menu' },
+      { query: `${searchQuery} order online delivery menu`, reviewSearch: false, discoveryType: 'menu' },
+      { query: `"halo-halo" ${locationContext} "Mang Inasal" menu`, reviewSearch: false, discoveryType: 'menu' },
+      { query: `"halo-halo" ${locationContext} Chowking menu`, reviewSearch: false, discoveryType: 'menu' },
+      { query: `"halo-halo" ${locationContext} Jollibee menu`, reviewSearch: false, discoveryType: 'menu' },
       { query: `${searchQuery} food blog recommendations`, reviewSearch: false, discoveryType: 'blog' }
     ];
   }

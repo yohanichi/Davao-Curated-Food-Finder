@@ -151,7 +151,10 @@ function normalizeDavaoQuerySynonyms(string $query): array {
         '/\b(lomihan|batchoyan)\b/iu' => ['replacement'=>'lomi batchoy noodles', 'tag'=>'filipino_lomihan'],
         '/\b(lechonan)\b/iu' => ['replacement'=>'lechon pork filipino', 'tag'=>'filipino_lechonan'],
         '/\b(kambingan)\b/iu' => ['replacement'=>'kambing goat filipino', 'tag'=>'filipino_kambingan'],
-        '/\b(sangyup|samgyeopsal|samgyup\s*sal|samgy)\b/iu' => ['replacement'=>'samgyupsal korean', 'tag'=>'typo_samgyup'],
+        '/\blemon\b(?!\s+(?:chicken|pepper|pie|tart|cake|tea|water|fish|butter|garlic|herb|sauce|curd|rice|pasta|shrimp|salmon|bars?)\b)/iu' => ['replacement'=>'lemonade juice', 'tag'=>'lemon_lemonade'],
+        '/\b(frappe|frapp[eé]|frappucino|frapucino)\b/iu' => ['replacement'=>'frappuccino blended coffee', 'tag'=>'coffee_frappuccino'],
+        '/\b(samgyupsalamat)\b/iu' => ['replacement'=>'samgyupsal korean', 'tag'=>'venue_samgyupsalamat'],
+        '/\b(samgyup|sangyup|sangyupsal|samgyeopsal|samgyup\s*sal|samgy)\b/iu' => ['replacement'=>'samgyupsal korean', 'tag'=>'typo_samgyup'],
         '/\b(shwarma|shawerma|syawarma)\b/iu' => ['replacement'=>'shawarma middle eastern', 'tag'=>'typo_shawarma'],
         '/\b(briyani|biriyani|beryani)\b/iu' => ['replacement'=>'biryani indian', 'tag'=>'typo_biryani'],
         '/\b(ramyun|ramyeon)\b/iu' => ['replacement'=>'ramen noodles', 'tag'=>'synonym_ramyun'],
@@ -183,7 +186,7 @@ function specificDishPatterns(): array {
         'pares'      => '/\b(pares|paresan)\b/iu',
         'silog'      => '/\b(silog|silogan|tapsilog|tapsilogan|longsilog|tocilog|bangsilog|hotsilog)\b/iu',
         'satti'      => '/\b(satti)\b/iu',
-        'samgyupsal' => '/\b(samgyup|samgyupsal|sangyup|samgyeopsal)\b/iu',
+        'samgyupsal' => '/\b(samgyupsalamat|samgyup|samgyupsal|sangyup|sangyupsal|samgyeopsal)\b/iu',
         'ramen'      => '/\b(ramen|ramyun|ramyeon)\b/iu',
         'biryani'    => '/\b(biryani|briyani|biriyani|beryani)\b/iu',
         'shawarma'   => '/\b(shawarma|shwarma|shawerma|syawarma|kebab|kabab)\b/iu',
@@ -193,6 +196,7 @@ function specificDishPatterns(): array {
         'batchoy'    => '/\b(batchoy|batchoyan)\b/iu',
         'lechon'     => '/\b(lechon|lechonan|litson)\b/iu',
         'takoyaki'   => '/\b(takoyaki)\b/iu',
+        'lemonade'   => '/\b(lemonade|lemon(?!\s+(?:chicken|pepper|pie|tart|cake|tea|water|fish|butter|garlic|herb|sauce|curd|rice|pasta|shrimp|salmon|bars?)\b))\b/iu',
         'siomai'     => '/\b(siomai|dimsum|dumplings?)\b/iu',
         'palabok'    => '/\b(pancit\s+palabok|palabok(?:\s+fiesta)?)\b/iu',
         'fries'      => '/\b(french\s+fries|fries)\b/iu',
@@ -226,6 +230,22 @@ function expandMenuItemSearchQuery(string $query, array $intent): string {
     $fastFoodItems = is_array($intent['fast_food_items'] ?? null) ? $intent['fast_food_items'] : [];
 
     if (in_array('palabok', $dishes, true)) return trim($query);
+
+    if (in_array('halo-halo', $dishes, true)) {
+        $query = trim(preg_replace('/\b(?:halo[- ]?halo|halohalo)\b/iu', ' ', $query) ?? $query);
+        $alternatives = ['"halo-halo"', '"halo halo"', 'halohalo'];
+    }
+
+    if (in_array('samgyupsal', $dishes, true)) {
+        $alternatives = array_merge($alternatives, [
+            'samgyupsal',
+            'samgyup',
+            'sangyup',
+            'samgyeopsal',
+            '"Samgyupsalamat"',
+            '"Sumo Niku"',
+        ]);
+    }
 
     if (in_array('fries', $dishes, true)) {
         $alternatives = array_merge($alternatives, ['fries', '"french fries"']);
@@ -366,6 +386,14 @@ function evaluateDavaoAreaProximity(array $place, array $requestedAreas): string
     }
 
     return 'none';
+}
+
+function filterPlacesByRequestedDavaoAreas(array $places, array $requestedAreas): array {
+    if (!$requestedAreas) return $places;
+    return array_values(array_filter(
+        $places,
+        fn($place) => is_array($place) && evaluateDavaoAreaProximity($place, $requestedAreas) !== 'none'
+    ));
 }
 
 function loadDavaoPlaces(string $dir): array {
@@ -617,9 +645,84 @@ function detectOutOfScopeLocation(string $query): array {
     return ['out_of_scope'=>false, 'matched_location'=>null];
 }
 
+function correctModelOutOfScopeForRecognizedDavaoArea(bool $modelOutOfScope, array $intent): bool {
+    if (!$modelOutOfScope || !empty($intent['out_of_scope'])) return $modelOutOfScope;
+    return empty($intent['areas']);
+}
+
 /**
  * Parse single-turn or multi-turn layered conversational intent into structured constraints.
  */
+function detectFoodAllergyConcern(string $query): ?string {
+    $allergens = [
+        'tree nuts'=>'tree[- ]nuts?',
+        'peanuts'=>'peanuts?',
+        'shellfish'=>'shellfish|crustaceans?|shrimp|prawns?|crab|lobster|mollus[ck]s?',
+        'milk or dairy'=>'milk|dairy|lactose',
+        'eggs'=>'eggs?',
+        'fish'=>'fish',
+        'wheat'=>'wheat',
+        'soy'=>'soybeans?|soya',
+        'sesame'=>'sesame',
+        'gluten'=>'gluten',
+    ];
+    $hasAllergySignal = preg_match('/\b(?:allerg\w*|cross[- ]contact)\b/iu', $query) === 1;
+    $concerns = [];
+
+    foreach ($allergens as $label => $pattern) {
+        if (preg_match('/\b(?:' . $pattern . ')\b/iu', $query) !== 1) continue;
+        $isExplicitRestriction = preg_match(
+            '/\b(?:' . $pattern . ')\s*[- ]free\b|\b(?:free\s+(?:of|from)|without|avoid(?:ing)?|no)\s+(?:the\s+)?(?:' . $pattern . ')\b/iu',
+            $query
+        ) === 1;
+        if ($hasAllergySignal
+            || ($isExplicitRestriction && !in_array($label, ['milk or dairy', 'gluten'], true))) {
+            $concerns[] = $label;
+        }
+    }
+
+    if ($concerns) return implode(' and ', $concerns);
+    return $hasAllergySignal ? 'food allergy' : null;
+}
+
+function activeFoodAllergyConcern(string $query, array $history = []): ?string {
+    $currentConcern = detectFoodAllergyConcern($query);
+    if ($currentConcern !== null) return $currentConcern;
+    if (empty(parseQueryIntent($query, $history)['is_followup'])) return null;
+
+    $lastAssistantMessage = '';
+    $lastUserMessage = '';
+    foreach (array_reverse($history) as $turn) {
+        if (!is_array($turn)) continue;
+        if ($lastAssistantMessage === '' && ($turn['role'] ?? '') === 'assistant') {
+            $lastAssistantMessage = trim((string)($turn['content'] ?? ''));
+        }
+        if (($turn['role'] ?? '') === 'user') {
+            $lastUserMessage = trim((string)($turn['content'] ?? ''));
+            break;
+        }
+    }
+
+    if (!str_contains($lastAssistantMessage, "prevent cross-contact, so I won't list places as safe.")) {
+        return null;
+    }
+    return detectFoodAllergyConcern($lastUserMessage);
+}
+
+function requestedPlantBasedDietaryRequirement(string $query): ?string {
+    if (preg_match('/\b(vegan|plant[- ]based)\b/iu', $query) === 1) return 'vegan';
+    if (preg_match('/\b(vegetarian|veggie)\b/iu', $query) === 1) return 'vegetarian';
+    return null;
+}
+
+function foodAllergySafetyMessage(string $allergen): string {
+    $concern = trim($allergen) !== '' ? trim($allergen) : 'food allergy';
+    $safetyRequirement = $concern === 'food allergy'
+        ? 'safe for your stated food allergy'
+        : "prepare food free from {$concern}";
+    return "I can't verify that any Davao City restaurant can {$safetyRequirement} or prevent cross-contact, so I won't list places as safe. Please confirm ingredients and preparation directly with the restaurant before eating.";
+}
+
 function parseQueryIntent(string $query, array $history = [], array $shownNames = []): array {
     $scope = detectOutOfScopeLocation($query);
     $trimmed = trim($query);
@@ -668,10 +771,10 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         $cuisines = [];
         $cuisineMap = [
             'Japanese' => '/\b(japanese|japan|ramen|udon|sushi|sashimi|gyoza|katsu|takoyaki|izakaya|tempura|teriyaki)\b/iu',
-            'Coffee' => '/\b(coffee(?:\s*shops?)?|coffeehouses?|cafe|café|cafes|cafés|espresso|latte|kapehan|brew|roastery|cappuccino|americano)\b/iu',
+            'Coffee' => '/\b(coffee(?:\s*shops?)?|coffeehouses?|caf[eé]s?|espresso(?:\s+shots?)?|doppios?|americanos?|lattes?|flat\s+whites?|cortados?|cappuccinos?|macchiatos?|mochas?|breves?|affogatos?|cold\s+brews?|nitro(?:\s+coffee)?|iced\s+(?:coffee|americanos?|lattes?|mochas?)|frapp(?:e|é|uccino)s?|blended\s+coffee|caramel\s+macchiatos?|vanilla\s+lattes?|spanish\s+lattes?|white\s+mochas?|hazelnut\s+lattes?|decaf(?:feinated)?\s+coffee|black\s+coffee|kapehan|brew|roastery)\b/iu',
             'Fried Chicken' => '/\b(fried\s+chicken|boneless\s+chicken|chicken\s+wings?|wings|unli\s+wings|inasal)\b/iu',
             'Chicken' => '/\b(chickens?|manok|roasters)\b/iu',
-            'Korean' => '/\b(korean|samgyup|samgyupsal|kimchi|bibimbap|jjajang|corndog|k-food)\b/iu',
+            'Korean' => '/\b(korean|samgyupsalamat|samgyup|samgyupsal|sangyup|sangyupsal|samgyeopsal|kimchi|bibimbap|jjajang|corndog|k-food)\b/iu',
             'Pizza' => '/\b(pizza|pizzeria|italian|pasta|spaghetti|lasagna)\b/iu',
             'Seafood' => '/\b(seafood|tuna|fish|shrimp|crab|kinilaw|sutukil|hito)\b/iu',
             'Milk Tea' => '/\b(milk\s*tea|milktea|boba|bubble\s+tea|fruit\s+tea)\b/iu',

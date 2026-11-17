@@ -254,6 +254,39 @@ assertCheck(
     && str_contains($coffeeMapResults[0]['address'], 'J.P. Laurel Avenue'),
     'Coffee map results include online-only Starbucks locations with a branch label and mapped address'
 );
+$coffeeDrinkQueries = [
+    'espresso', 'doppio', 'americano', 'latte', 'cappuccino', 'flat white', 'cortado',
+    'macchiato', 'mocha', 'breve', 'affogato', 'iced coffee', 'iced americano', 'iced latte',
+    'cold brew', 'nitro coffee', 'frappe', 'frappuccino', 'caramel macchiato', 'vanilla latte',
+    'Spanish latte', 'white mocha', 'hazelnut latte', 'decaf coffee', 'black coffee',
+];
+$coffeeDrinkIntentsValid = true;
+foreach ($coffeeDrinkQueries as $coffeeDrinkQuery) {
+    $coffeeDrinkIntent = parseQueryIntent($coffeeDrinkQuery);
+    if (!in_array('Coffee', $coffeeDrinkIntent['cuisines'], true)
+        || plannerOutOfScopeIsApplicable(true, false, $coffeeDrinkIntent)) {
+        $coffeeDrinkIntentsValid = false;
+        break;
+    }
+}
+$frappucinoIntent = parseQueryIntent('frappucino');
+$frappucinoMapResults = buildNearbyMapResults(
+    [],
+    $starbucksMapPlaces,
+    7.105,
+    125.635,
+    5.0,
+    'frappucino',
+    $frappucinoIntent
+);
+assertCheck(
+    $coffeeDrinkIntentsValid
+    && $frappucinoIntent['cuisines'] === ['Coffee']
+    && count($frappucinoMapResults) === 1
+    && str_starts_with($frappucinoMapResults[0]['name'], 'Starbucks')
+    && str_contains(normalizeDavaoQuerySynonyms('frappucino')['expanded_query'], 'frappuccino'),
+    'Coffee drink names, including the common frappucino misspelling, return coffee shop matches'
+);
 $coffeeAfterBurgerIntent = parseQueryIntent('coffeeshop', [
     ['role'=>'user', 'content'=>'burger'],
     ['role'=>'assistant', 'content'=>'Here are some nearby burger places.'],
@@ -523,7 +556,86 @@ assertCheck(
     && onlinePlaceHasSpecificDishEvidence($billyjeansPlace, $billyjeansMenuEvidence, ['burger steak']),
     'A venue category page is not burger-steak evidence, while a venue-linked menu item is'
 );
+$haloChainEvidence = [
+    'results'=>[
+        [
+            'url'=>'https://example.com/mang-inasal-halo-halo',
+            'title'=>'Halo-Halo menu - Mang Inasal Davao City',
+            'text'=>'Mang Inasal menu lists halo-halo in Davao City.',
+            'source_access'=>'source_page',
+        ],
+        [
+            'url'=>'https://example.com/chowking-halo-halo',
+            'title'=>'Chowking Halo-Halo menu Davao City',
+            'text'=>'Chowking menu lists halo-halo in Davao City.',
+            'source_access'=>'source_page',
+        ],
+    ],
+];
+$haloChainMenuStatuses = [];
+foreach ([
+    ['name'=>'Mang Inasal', 'source_url'=>'https://example.com/mang-inasal-halo-halo'],
+    ['name'=>'Chowking', 'source_url'=>'https://example.com/chowking-halo-halo'],
+] as $haloChainPlace) {
+    $haloChainMenuStatuses[] = onlinePlaceSpecificDishEvidenceStatus($haloChainPlace, $haloChainEvidence, ['halo-halo']);
+}
+assertCheck(
+    $haloChainMenuStatuses === ['menu_source', 'menu_source'],
+    'Accepts venue-linked halo-halo menu evidence for named restaurant chains'
+);
+$haloDeliveryEvidence = ['results'=>[
+    [
+        'title'=>'Chowking - SM Davao Menu, Price | Food Delivery Davao City Davao del Sur | foodpanda',
+        'url'=>'https://www.foodpanda.ph/restaurant/s9mu/chowking-sm-davao',
+        'text'=>'Chowking - SM Davao halo-halo menu in Davao City.',
+        'source_access'=>'search_engine_snippet',
+    ],
+    [
+        'title'=>'Mang Inasal - SM Ecoland Menu, Price | Food Delivery Davao City Davao del Sur | foodpanda',
+        'url'=>'https://www.foodpanda.ph/restaurant/o4jw/mang-inasal-sm-ecoland',
+        'text'=>'Mang Inasal - SM Ecoland halo-halo menu in Davao City.',
+        'source_access'=>'search_engine_snippet',
+    ],
+    [
+        'title'=>'Olah Halo Halo - Phoenix Landmark Menu, Price | Food Delivery Davao City Davao del Sur | foodpanda',
+        'url'=>'https://www.foodpanda.ph/restaurant/jajn/olah-halo-halo-phoenix-landmark',
+        'text'=>'Olah Halo Halo has halo-halo in Davao City.',
+        'source_access'=>'search_engine_snippet',
+    ],
+]];
+$haloDeliveryMatches = [];
+foreach (sanitizeWebPlaces(evidencePlacesFallback($haloDeliveryEvidence), $haloDeliveryEvidence) as $place) {
+    if (placeMatchesSpecificDishes($place, ['halo-halo'])
+        && onlinePlaceHasSpecificDishEvidence($place, $haloDeliveryEvidence, ['halo-halo'])) {
+        $haloDeliveryMatches[] = $place['name'];
+    }
+}
+assertCheck(
+    $haloDeliveryMatches === ['Chowking - SM Davao', 'Mang Inasal - SM Ecoland', 'Olah Halo Halo - Phoenix Landmark'],
+    'Extracts and retains multiple venue-linked halo-halo delivery listings without portal-title suffixes'
+);
 $palabokIntent = parseQueryIntent('palabok');
+$haloHaloIntents = array_map('parseQueryIntent', ['halohalo', 'halo-halo', 'halo halo']);
+assertCheck(
+    array_map(fn($intent) => $intent['specific_dishes'], $haloHaloIntents)
+        === [['halo-halo'], ['halo-halo'], ['halo-halo']],
+    'Recognizes halo-halo dish intent with joined, hyphenated, and spaced spellings'
+);
+$haloHaloExpandedQueries = array_map(
+    fn($intent, $query) => expandMenuItemSearchQuery($query . ' Davao City', $intent),
+    $haloHaloIntents,
+    ['halohalo', 'halo-halo', 'halo halo']
+);
+assertCheck(
+    count(array_filter(
+        $haloHaloExpandedQueries,
+        fn($query) => str_contains($query, '"halo-halo"')
+            && str_contains($query, '"halo halo"')
+            && str_contains($query, 'halohalo')
+            && str_contains($query, 'Davao City')
+    )) === 3,
+    'Expands all halo-halo spellings into venue-discovery search aliases'
+);
 $expandedPalabokQuery = expandMenuItemSearchQuery('palabok Davao City', $palabokIntent);
 $jollibeePalabokPlace = [
     'name'=>'Jollibee',
@@ -1150,6 +1262,32 @@ assertCheck(count($volSpec['scenarios'] ?? []) === 15, 'Volatility benchmark has
 // 6. Test Objective 2 — Davao Bisaya Synonyms & Anti-Polysemy Guards
 $synCheck = normalizeDavaoQuerySynonyms('Affordable kan-anan sinugba and sangyup or shwarma in Davao');
 assertCheck(count($synCheck['matched_synonyms']) >= 3, 'Normalizes Davao Bisaya & phonetic culinary variants');
+$lemonSynonym = normalizeDavaoQuerySynonyms('lemon');
+$lemonIntent = parseQueryIntent('lemon');
+$lemonChickenIntent = parseQueryIntent('lemon chicken');
+assertCheck(
+    str_contains($lemonSynonym['expanded_query'], 'lemonade')
+    && $lemonIntent['specific_dishes'] === ['lemonade']
+    && !plannerOutOfScopeIsApplicable(true, false, $lemonIntent)
+    && $lemonChickenIntent['specific_dishes'] === [],
+    'Resolves standalone lemon to lemonade without misclassifying lemon chicken or allowing a false scope refusal'
+);
+$samgyupIntent = parseQueryIntent('samgyup');
+$sangyupsalIntent = parseQueryIntent('sangyupsal');
+$samgyupsalamatIntent = parseQueryIntent('Samgyupsalamat');
+$tagumSamgyupIntent = parseQueryIntent('samgyup in Tagum City');
+$samgyupSearchQuery = expandMenuItemSearchQuery('samgyupsal Davao City', $samgyupIntent);
+assertCheck(
+    str_contains(normalizeDavaoQuerySynonyms('samgyup')['expanded_query'], 'samgyupsal')
+    && $samgyupIntent['specific_dishes'] === ['samgyupsal']
+    && $sangyupsalIntent['specific_dishes'] === ['samgyupsal']
+    && $samgyupsalamatIntent['specific_dishes'] === ['samgyupsal']
+    && str_contains($samgyupSearchQuery, 'Samgyupsalamat')
+    && str_contains($samgyupSearchQuery, 'Sumo Niku')
+    && !plannerOutOfScopeIsApplicable(true, false, $samgyupIntent)
+    && plannerOutOfScopeIsApplicable(true, false, $tagumSamgyupIntent),
+    'Samgyup variants resolve to samgyupsal and search known venues without overriding explicit out-of-city scope'
+);
 
 $saladIntent = parseQueryIntent('Fresh green salad and healthy vegetarian food in Davao City');
 assertCheck(matchesAntiPolysemyGuard(['name'=>'Greenwich - Abreeza', 'food_type'=>'Pizza'], $saladIntent)['valid'] === false, 'Rejects Greenwich polysemy trap on green salad query');
@@ -1584,6 +1722,15 @@ assertCheck(
     && evaluateDavaoAreaProximity(['name'=>'Kapitan Sisig - Toril', 'address'=>'Toril, Davao City'], ['jacinto']) === 'none',
     'Davao urban proximity distinguishes exact street, adjacent Downtown street, and distant Toril district'
 );
+$ecolandMatches = filterPlacesByRequestedDavaoAreas([
+    ['name'=>'Green Bounty Kitchen - Ecoland', 'address'=>'Davao City'],
+    ['name'=>'The Vegan Dinosaur', 'address'=>'Ruby Street, Poblacion District, Davao City'],
+    ['name'=>'Unlocated Venue', 'address'=>'Davao City'],
+], ['ecoland']);
+assertCheck(
+    array_column($ecolandMatches, 'name') === ['Green Bounty Kitchen - Ecoland'],
+    'Area-restricted recommendations omit known out-of-area and unlocated venues'
+);
 $sisigHistory = [
     ['role'=>'user', 'content'=>'sisigan near jacinto street'],
     ['role'=>'assistant', 'content'=>'Check out HYGGE Coffee - Jacinto and Urban Pizza - Jacinto.'],
@@ -1643,6 +1790,39 @@ assertCheck(
     array_column(evidencePlacesFallback($articleEvidence), 'name') === ['KFC - SM City Davao'],
     'Raw web fallback returns the restaurant, not article headlines'
 );
+$haloArticleEvidence = [
+    'sources'=>[
+        ['title'=>"Halo-Halo In Aling Foping's Halo-Halo | TasteAtlas | Recommended authentic restaurants", 'url'=>'https://www.tasteatlas.com/example-article'],
+        ['title'=>"Aling Foping's Halo-Halo - Davao City", 'url'=>'https://example.com/aling-fopings-halo-halo'],
+    ],
+    'results'=>[
+    [
+        'title'=>"Halo-Halo In Aling Foping's Halo-Halo | TasteAtlas | Recommended authentic restaurants",
+        'url'=>'https://www.tasteatlas.com/example-article',
+        'text'=>'A Davao City restaurant guide with halo-halo recommendations.',
+        'source_type'=>'blog_search_result',
+        'source_access'=>'source_page',
+    ],
+    [
+        'title'=>"Aling Foping's Halo-Halo - Davao City",
+        'url'=>'https://example.com/aling-fopings-halo-halo',
+        'text'=>'A Davao City restaurant serving halo-halo.',
+        'source_type'=>'web_page',
+        'source_access'=>'source_page',
+    ],
+    ],
+];
+$haloArticleFallback = evidencePlacesFallback($haloArticleEvidence);
+$haloArticleSanitized = sanitizeWebPlaces([
+    ['name'=>"Halo-Halo In Aling Foping's Halo-Halo | TasteAtlas | Recommended authentic restaurants", 'city'=>'Davao City', 'source_url'=>'https://www.tasteatlas.com/example-article'],
+    ['name'=>"Aling Foping's Halo-Halo | TasteAtlas | Recommended authentic restaurants", 'city'=>'Davao City', 'source_url'=>'https://www.tasteatlas.com/example-article'],
+    ['name'=>"Aling Foping's Halo-Halo - Davao City", 'city'=>'Davao City', 'source_url'=>'https://example.com/aling-fopings-halo-halo'],
+], $haloArticleEvidence);
+assertCheck(
+    array_column($haloArticleFallback, 'name') === ["Aling Foping's Halo-Halo"]
+    && array_column($haloArticleSanitized, 'name') === ["Aling Foping's Halo-Halo - Davao City"],
+    'Halo-halo search rejects TasteAtlas article headlines from fallback and model results'
+);
 $misleadingVenueEvidence = [
     'results'=>[
         [
@@ -1688,6 +1868,9 @@ assertCheck(
     isLikelyNonVenueTitle('r/davao on Reddit: Best Burger Chain Recommendations')
     && isLikelyNonVenueTitle('Access to this page has been denied')
     && isLikelyNonVenueTitle('Our Guide to Sandwiches in Davao')
+    && isLikelyNonVenueTitle("Halo-Halo In Aling Foping's Halo-Halo | TasteAtlas | Recommended authentic restaurants")
+    && isLikelyNonVenueTitle("<strong>Aling Foping's Halo-Halo</strong> | TasteAtlas | Recommended authentic restaurants")
+    && !isLikelyNonVenueTitle("Aling Foping's Halo-Halo")
     && $misleadingFallbackNames === ['Subway']
     && $misleadingSanitizedNames === ['Subway - Davao City']
     && array_column($sandwichOnlineFallback, 'name') === ['Subway'],
@@ -1981,6 +2164,57 @@ assertCheck(
         ]]),
     ], $lactoseIntent) === [['title'=>'Cafe Uno menu', 'url'=>'https://example.com/cafe-uno-menu']],
     'Lactose-intolerance responses only link sources that support a displayed dairy-free match'
+);
+
+$peanutAllergy = detectFoodAllergyConcern('I have a severe peanut allergy; confirm cross-contact precautions.');
+$peanutFreeRequest = detectFoodAllergyConcern('Find a peanut-free meal.');
+$ordinaryPeanutQuery = detectFoodAllergyConcern('Find peanut noodles in Davao City.');
+$dairyFreePreference = detectFoodAllergyConcern('Find a dairy-free coffee.');
+$allergyHistory = [
+    ['role'=>'user', 'content'=>'I have a severe peanut allergy.'],
+    ['role'=>'assistant', 'content'=>foodAllergySafetyMessage('peanuts')],
+];
+assertCheck(
+    $peanutAllergy === 'peanuts'
+    && $peanutFreeRequest === 'peanuts'
+    && $ordinaryPeanutQuery === null
+    && $dairyFreePreference === null
+    && activeFoodAllergyConcern('What about Matina?', $allergyHistory) === 'peanuts'
+    && activeFoodAllergyConcern('Find vegan places in Matina.') === null
+    && str_contains(foodAllergySafetyMessage((string)$peanutAllergy), 'cross-contact')
+    && !str_contains(foodAllergySafetyMessage((string)$peanutAllergy), 'dairy-free'),
+    'Allergy requests preserve the named allergen and use an explicit cross-contact safety response'
+);
+
+$veganIntent = ['dietary'=>['vegan']];
+$veganMenuEvidence = [
+    'results'=>[[
+        'title'=>'Green Bounty Kitchen menu',
+        'url'=>'https://example.com/green-bounty-menu',
+        'text'=>'Green Bounty Kitchen offers vegan rice bowls.',
+        'food_query'=>'vegan lunch in Ecoland',
+        'source_access'=>'source_page',
+        'source_type'=>'web_page',
+    ]],
+];
+$verifiedVeganPlace = [
+    'name'=>'Green Bounty Kitchen',
+    'city'=>'Davao City',
+    'source_url'=>'https://example.com/green-bounty-menu',
+];
+$unverifiedLechonPlace = [
+    'name'=>'Gracia\'s Lechon Belly',
+    'city'=>'Davao City',
+];
+assertCheck(
+    requestedPlantBasedDietaryRequirement('Vegan-friendly Filipino lunch') === 'vegan'
+    && requestedPlantBasedDietaryRequirement('Vegetarian options nearby') === 'vegetarian'
+    && filterPlacesByVerifiedDietaryRequirements(
+        [$verifiedVeganPlace, $unverifiedLechonPlace],
+        $veganMenuEvidence,
+        $veganIntent
+    ) === [$verifiedVeganPlace],
+    'Explicit vegan searches retain only venues with accessible, venue-specific vegan evidence'
 );
 
 $hybridIntent = ['planner_used'=>true];

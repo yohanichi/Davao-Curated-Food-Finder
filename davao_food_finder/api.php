@@ -102,6 +102,28 @@ try {
     $history = is_array($body['history'] ?? null) ? array_slice($body['history'], -12) : [];
     $shownNames = is_array($body['shownNames'] ?? null) ? array_slice($body['shownNames'], 0, 50) : [];
     if ($query === '' || mb_strlen($query) > 300) { http_response_code(422); throw new RuntimeException('Enter a search query up to 300 characters.'); }
+    $allergyConcern = activeFoodAllergyConcern($query, $history);
+    $queryScope = detectOutOfScopeLocation($query);
+    if ($allergyConcern !== null && empty($queryScope['out_of_scope'])) {
+        $allergyResponse = [
+            'answer'=>foodAllergySafetyMessage($allergyConcern),
+            'assistantStatus'=>'ready',
+            'modelUsed'=>null,
+            'outOfScope'=>false,
+            'sources'=>[],
+            'webResults'=>[],
+            'mapResults'=>[],
+            'results'=>[],
+            'count'=>0,
+            'locationSearch'=>['enabled'=>false],
+            'metrics'=>['pipeline'=>['stages'=>[]]],
+        ];
+        echo json_encode($streamSearchProgress
+            ? ['type'=>'result', 'data'=>$allergyResponse]
+            : $allergyResponse, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($streamSearchProgress) echo "\n";
+        exit;
+    }
     if (!isset($body['evaluation'])) {
         $queryCorrection = suggestSearchQueryTypo($query);
         if ($queryCorrection !== null) {
@@ -1070,7 +1092,10 @@ try {
         if ($requestedRestaurantCore !== null) {
             $moreNearbyResults = filterPlacesByRestaurantCore($moreNearbyResults, $requestedRestaurantCore);
         }
-        if ($moreNearbyResults && session_status() === PHP_SESSION_ACTIVE) {
+        if ($moreNearbyResults
+            && session_status() === PHP_SESSION_ACTIVE
+            && empty($intent['areas'])
+            && requestedPlantBasedDietaryRequirement($query) === null) {
             $savedPages = is_array($_SESSION['nearby_result_pages'] ?? null) ? $_SESSION['nearby_result_pages'] : [];
             foreach ($savedPages as $savedToken => $savedPage) {
                 if (!is_array($savedPage) || (int)($savedPage['expires_at'] ?? 0) < time()) {
@@ -1398,9 +1423,15 @@ try {
         }
     }
 
-    if ($outOfScope === false
-        && !empty($intent['areas'])
-        && !in_array('dairy_free', $intent['dietary'] ?? [], true)) {
+    if ($outOfScope === false && !empty($intent['areas'])) {
+        foreach (['results', 'webResults', 'mapFindResults'] as $resultKey) {
+            $$resultKey = filterPlacesByRequestedDavaoAreas($$resultKey, $intent['areas']);
+        }
+        if (isset($nearbyItems) && is_array($nearbyItems)) {
+            $nearbyItems = filterPlacesByRequestedDavaoAreas($nearbyItems, $intent['areas']);
+            $nearbySearch['result_count'] = count($nearbyItems);
+            if (!$nearbyItems) $nearbySearch['status'] = 'no_matching_places_in_area';
+        }
         $areaLabels = array_values(array_unique(array_filter(array_map(
             fn($area) => mb_convert_case(trim((string)$area), MB_CASE_TITLE, 'UTF-8'),
             $intent['areas']
@@ -1410,11 +1441,52 @@ try {
             $name = trim((string)($place['name'] ?? ''));
             if ($name !== '' && !in_array($name, $matchingNames, true)) $matchingNames[] = $name;
         }
-        $answer = $matchingNames
-            ? 'For your request in ' . implode(', ', $areaLabels) . ', matching places found are: '
-                . implode(', ', array_slice($matchingNames, 0, 8))
-                . '. Check each linked source for details that may not be verified.'
-            : 'I could not find matching places in ' . implode(', ', $areaLabels) . ' in the available results.';
+        if (!in_array('dairy_free', $intent['dietary'] ?? [], true)) {
+            $answer = $matchingNames
+                ? 'For your request in ' . implode(', ', $areaLabels) . ', matching places found are: '
+                    . implode(', ', array_slice($matchingNames, 0, 8))
+                    . '. Check each linked source for details that may not be verified.'
+                : 'I could not find matching places in ' . implode(', ', $areaLabels) . ' in the available results.';
+        }
+    }
+
+    $plantBasedRequirement = requestedPlantBasedDietaryRequirement($query);
+    if ($outOfScope === false && $plantBasedRequirement !== null) {
+        $plantBasedIntent = $intent;
+        $plantBasedIntent['dietary'] = array_values(array_unique(array_merge(
+            is_array($intent['dietary'] ?? null) ? $intent['dietary'] : [],
+            [$plantBasedRequirement]
+        )));
+        $results = filterPlacesByVerifiedDietaryRequirements($results, $evidence, $plantBasedIntent);
+        $webResults = filterPlacesByVerifiedDietaryRequirements($webResults, $evidence, $plantBasedIntent);
+        $mapFindResults = filterPlacesByVerifiedDietaryRequirements($mapFindResults, $evidence, $plantBasedIntent);
+        if (isset($nearbyItems) && is_array($nearbyItems)) {
+            $nearbyItems = filterPlacesByVerifiedDietaryRequirements($nearbyItems, $evidence, $plantBasedIntent);
+            $nearbySearch['result_count'] = count($nearbyItems);
+            if (!$nearbyItems) $nearbySearch['status'] = 'no_verified_dietary_matches';
+        }
+
+        $verifiedPlantBasedPlaces = array_merge($webResults, $results, $mapFindResults);
+        $sources = filterSourcesByVerifiedDietaryRequirements(
+            $sources,
+            $verifiedPlantBasedPlaces,
+            $evidence,
+            $plantBasedIntent
+        );
+        if (!$verifiedPlantBasedPlaces) {
+            $label = $plantBasedRequirement === 'vegan' ? 'vegan or plant-based' : 'vegetarian';
+            $answer = "I couldn't verify a Davao City restaurant's {$label} options from an accessible, venue-specific source, so I removed unverified matches. Please check the menu and preparation directly with the restaurant.";
+        } else {
+            $verifiedNames = [];
+            foreach ($verifiedPlantBasedPlaces as $place) {
+                $name = trim((string)($place['name'] ?? ''));
+                if ($name !== '' && !in_array($name, $verifiedNames, true)) $verifiedNames[] = $name;
+            }
+            $label = $plantBasedRequirement === 'vegan' ? 'vegan or plant-based' : 'vegetarian';
+            $answer = 'These places have accessible, venue-specific source evidence mentioning '
+                . $label . ' options: ' . implode(', ', $verifiedNames)
+                . '. Confirm current ingredients and preparation with each restaurant.';
+        }
     }
 
     emitSearchProgress('Putting your recommendations together…');

@@ -8,7 +8,6 @@ require_once $appRoot . '/src/search.php';
 require_once $appRoot . '/src/web_reasoner.php';
 require_once __DIR__ . '/statistics.php';
 require_once __DIR__ . '/metrics.php';
-require_once __DIR__ . '/provenance.php';
 require_once __DIR__ . '/usability.php';
 
 function fail(string $message): never {
@@ -16,11 +15,60 @@ function fail(string $message): never {
     exit(1);
 }
 
+function buildSourceTreeManifest(string $appRoot): array {
+    $resolvedRoot = realpath($appRoot);
+    if ($resolvedRoot === false || !is_dir($resolvedRoot)) {
+        throw new RuntimeException('Could not resolve application root for source manifest.');
+    }
+
+    $files = [];
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($resolvedRoot, FilesystemIterator::SKIP_DOTS)
+    );
+    foreach ($iterator as $entry) {
+        if (!$entry instanceof SplFileInfo || !$entry->isFile() || $entry->isLink()) continue;
+        $relativePath = str_replace('\\', '/', substr($entry->getPathname(), strlen($resolvedRoot) + 1));
+        if (preg_match('~(^|/)(?:\.git|node_modules|playwright-report|test-results)(/|$)~', $relativePath)
+            || preg_match('~^evaluation/results/~', $relativePath)
+            || $relativePath === 'data/.places-cache.json') {
+            continue;
+        }
+        $sha256 = hash_file('sha256', $entry->getPathname());
+        if ($sha256 === false) {
+            throw new RuntimeException('Could not hash source file: ' . $relativePath);
+        }
+        $files[$relativePath] = $sha256;
+    }
+    ksort($files, SORT_STRING);
+    $manifestLines = [];
+    foreach ($files as $relativePath => $sha256) {
+        $manifestLines[] = $relativePath . ':' . $sha256;
+    }
+
+    return [
+        'file_count'=>count($files),
+        'files'=>$files,
+        'combined_sha256'=>hash('sha256', implode("\n", $manifestLines)),
+    ];
+}
+
+function buildPromptVersionHashes(array $sourceFiles): array {
+    if (!isset($sourceFiles['src/web_reasoner.php']) || !function_exists('promptStyleInstruction')) {
+        throw new RuntimeException('Cannot calculate prompt-style hashes without the web reasoner source.');
+    }
+    return [
+        'baseline'=>hash('sha256', promptStyleInstruction(['promptStyle'=>'baseline'])),
+        'strict_grounding'=>hash('sha256', promptStyleInstruction(['promptStyle'=>'strict_grounding'])),
+    ];
+}
+
 function parseArguments(array $arguments): array {
     $options = [
         'require_ai'=>false,
         'quick'=>false,
         'research'=>false,
+        'live_trial'=>false,
+        'controlled_trial'=>false,
         'live_turns'=>false,
         'no_save'=>false,
         'local_cli'=>false,
@@ -62,6 +110,10 @@ function parseArguments(array $arguments): array {
             $options['quick'] = true;
         } elseif ($argument === '--research' || $argument === '--compare-all') {
             $options['research'] = true;
+        } elseif ($argument === '--live-trial') {
+            $options['live_trial'] = true;
+        } elseif ($argument === '--controlled-trial') {
+            $options['controlled_trial'] = true;
         } elseif ($argument === '--live-turns') {
             $options['live_turns'] = true;
         } elseif ($argument === '--no-save') {
@@ -141,10 +193,13 @@ function parseArguments(array $arguments): array {
         } elseif (str_starts_with($argument, '--output=')) {
             $options['output'] = trim(substr($argument, strlen('--output=')));
         } else {
-                fail("Unknown option {$argument}. Supported: --quick, --research, --dev-grid, --final-run, --selection-report=PATH, --selection-metric=ndcg5|p5, --allow-test-selection, --randomize-config-order, --reject-listicles, --compare-listicle-filter, --critique-web-rescrape, --loop-telemetry, --gpt-retries=N, --retry-backoff-ms=MS, --gpt-max-tokens=N, --trace=CASE_ID, --deepseek-repeat-identical, --local-cli, --local-ablation, --require-ai, --live-turns, --no-save, --detailed-telemetry, --api-url=URL, --ground-truth=PATH, --provider=..., --providers=baseline,ablation-no-loop,agentic-local,non-agentic,deepseek,deepseek-api,gpt-4o-mini,hybrid, --split=all|train|dev|test, --trials=N, --cache-policy=default|cold|warm|none, --seed=N, --limit=N, --output=PATH.");
+                fail("Unknown option {$argument}. Supported: --controlled-trial, --live-trial, --quick, --research, --dev-grid, --final-run, --selection-report=PATH, --selection-metric=ndcg5|p5, --allow-test-selection, --randomize-config-order, --reject-listicles, --compare-listicle-filter, --critique-web-rescrape, --loop-telemetry, --gpt-retries=N, --retry-backoff-ms=MS, --gpt-max-tokens=N, --trace=CASE_ID, --deepseek-repeat-identical, --local-cli, --local-ablation, --require-ai, --live-turns, --no-save, --detailed-telemetry, --api-url=URL, --ground-truth=PATH, --provider=..., --providers=baseline,ablation-no-loop,agentic-local,non-agentic,deepseek,deepseek-api,gpt-4o-mini,hybrid, --split=all|train|dev|test, --trials=N, --cache-policy=default|cold|warm|none, --seed=N, --limit=N, --output=PATH.");
         }
     }
 
+    if ($options['live_trial'] && $options['controlled_trial']) {
+        fail('--live-trial and --controlled-trial cannot be combined.');
+    }
     if ($options['dev_grid']) {
             if ($options['providers_explicit']) fail('--dev-grid selects the fixed DeepSeek + GPT-4o-mini grid; do not combine it with --provider/--providers.');
             if (!in_array($options['split'], ['all', 'dev'], true)) fail('--dev-grid can only evaluate the dev split.');
@@ -184,6 +239,23 @@ function parseArguments(array $arguments): array {
         }
     }
 
+    if ($options['live_trial']) {
+        if ($options['dev_grid'] || $options['final_run'] || $options['deepseek_repeat_identical']) {
+            fail('--live-trial cannot be combined with --dev-grid, --final-run, or --deepseek-repeat-identical.');
+        }
+        $liveProviders = ['deepseek', 'deepseek-api', 'gpt-4o-mini', 'hybrid'];
+        foreach ($options['providers'] as $provider) {
+            if (!in_array($provider, $liveProviders, true)) {
+                fail('--live-trial requires live web-capable providers only: ' . implode(', ', $liveProviders) . '.');
+            }
+        }
+        if ($options['cache_policy_explicit'] && $options['cache_policy'] !== 'bypass') {
+            fail('--live-trial requires --cache-policy=bypass so each request uses fresh web retrieval.');
+        }
+        $options['cache_policy'] = 'bypass';
+        $options['cache_policy_explicit'] = true;
+    }
+
     if (!$options['local_cli']) {
         if (!$options['api_url_explicit']) {
             $fp = @fsockopen('127.0.0.1', 8080, $errno, $errstr, 0.2);
@@ -220,7 +292,7 @@ function parseArguments(array $arguments): array {
     if (!in_array($options['selection_metric'], ['ndcg5', 'p5'], true)) {
         fail('Selection metric must be ndcg5 or p5.');
     }
-    if ($options['split'] === 'test' && !$options['final_run'] && !$options['allow_test_selection']) {
+    if ($options['split'] === 'test' && !$options['final_run'] && !$options['allow_test_selection'] && !$options['live_trial']) {
         fail('Refusing to select a configuration on the held-out test split. Use a dev selection report with --final-run, or explicitly pass --allow-test-selection.');
     }
     if ($options['trace_case'] !== '' && !preg_match('/^[A-Za-z0-9_-]+$/', $options['trace_case'])) {
@@ -935,10 +1007,10 @@ try {
             ];
             continue;
         }
-        if ($options['research']) {
+        if ($options['research'] || $options['live_trial']) {
             $configurations[] = [
                 'provider'=>$provider,
-                'id'=>strtoupper($provider) . '-T0.2-STRICT',
+                'id'=>($options['live_trial'] ? 'LIVE-' : '') . strtoupper($provider) . '-T0.2-STRICT',
                 'temperature'=>0.2,
                 'top_p'=>1.0,
                 'prompt_style'=>'strict_grounding',
@@ -1054,6 +1126,7 @@ try {
     echo " Davao Food Finder Comprehensive Evaluation & Agentic Intent Benchmark (v3.0)\n";
     echo "====================================================================================================\n";
     echo 'API Endpoint       : ' . $options['api_url'] . "\n";
+    echo 'Trial type         : ' . ($options['live_trial'] ? 'live_trial (fresh web evidence)' : 'controlled_trial') . "\n";
     echo 'Ground Truth       : ' . basename($groundTruthPath) . ' (v' . $validatedGt['metadata']['version'] . ', sha256=' . substr($groundTruthHash, 0, 12) . "...)\n";
     echo 'Benchmark Split    : ' . $options['split'] . ' (' . count($allCases) . ' in-scope/multi-turn cases + ' . count($allScopeCases) . " scope cases)\n";
     echo 'Systems / Providers: ' . implode(', ', $options['providers']) . "\n";
@@ -2478,7 +2551,9 @@ try {
         : 'NDCG@5 mean descending, then P@5 mean descending, constraint item-pass mean descending, scope accuracy descending, error rate ascending, median P50 latency ascending, config ID ascending.';
     $bestConfigSelection = null;
     echo "\n";
-    if ($options['final_run']) {
+    if ($options['live_trial']) {
+        echo "Best-config selection: skipped; live trial reports are evaluation evidence, not a model-selection run.\n";
+    } elseif ($options['final_run']) {
         echo 'Best-config selection: skipped on test; the selected config was loaded from the dev report: ' . $selectedDevConfig['id'] . ".\n";
     } elseif ($validSummary) {
         echo "Ranking — P@5 first:\n";
@@ -2644,9 +2719,10 @@ try {
         $resultsDir = __DIR__ . DIRECTORY_SEPARATOR . 'results';
         if (!is_dir($resultsDir)) @mkdir($resultsDir, 0775, true);
         $stamp = gmdate('Ymd_His');
+        $trialType = $options['live_trial'] ? 'live_trial' : 'controlled_trial';
         $jsonOutPath = $options['output'] !== ''
             ? $options['output']
-            : ($resultsDir . DIRECTORY_SEPARATOR . "eval_{$stamp}.json");
+            : ($resultsDir . DIRECTORY_SEPARATOR . ($options['live_trial'] ? "live_eval_{$stamp}.json" : "eval_{$stamp}.json"));
         $traceArtifact = null;
         $traceJsonPath = null;
         $traceMarkdownPath = null;
@@ -2854,8 +2930,23 @@ try {
         }
 
         $artifact = [
+            'trial_type'=>$trialType,
+            'evaluation_scope'=>$options['live_trial']
+                ? [
+                    'query_source'=>'ground_truth_benchmark',
+                    'web_evidence'=>'fresh_cache_bypass',
+                    'accuracy_scored_against_ground_truth'=>true,
+                    'best_configuration_selection'=>false,
+                ]
+                : [
+                    'query_source'=>'ground_truth_benchmark',
+                    'web_evidence'=>'as_configured',
+                    'accuracy_scored_against_ground_truth'=>true,
+                ],
             'reproducibility_manifest'=>[
                 'evaluator_version'=>'3.0.0',
+                'trial_type'=>$trialType,
+                'live_web_evidence'=>$options['live_trial'],
                 'started_at_utc'=>$runStartedIso,
                 'completed_at_utc'=>gmdate('c'),
                 'php_version'=>PHP_VERSION,
@@ -2949,7 +3040,8 @@ try {
 
         $encodedArtifact = json_encode($artifact, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
         @file_put_contents($jsonOutPath, $encodedArtifact, LOCK_EX);
-        @file_put_contents($resultsDir . DIRECTORY_SEPARATOR . 'latest_run.json', $encodedArtifact, LOCK_EX);
+        $latestJsonPath = $resultsDir . DIRECTORY_SEPARATOR . ($options['live_trial'] ? 'live_latest_run.json' : 'latest_run.json');
+        @file_put_contents($latestJsonPath, $encodedArtifact, LOCK_EX);
         if ($traceArtifact !== null && $traceJsonPath !== null && $traceMarkdownPath !== null) {
             $traceJson = json_encode($traceArtifact, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
             if ($traceJson === false || file_put_contents($traceJsonPath, $traceJson, LOCK_EX) === false) {
@@ -3023,12 +3115,12 @@ try {
                 ]);
             }
             fclose($fp);
-            @copy($csvPath, $resultsDir . DIRECTORY_SEPARATOR . 'latest_run_summary.csv');
+            @copy($csvPath, $resultsDir . DIRECTORY_SEPARATOR . ($options['live_trial'] ? 'live_latest_run_summary.csv' : 'latest_run_summary.csv'));
         }
 
         $tablesCsvPath = preg_replace('/\.json$/i', '', $jsonOutPath) . '_tables_1_5.csv';
         $exportTables1To5($tablesCsvPath, $summary, $inScopeRetrievalCases);
-        $exportTables1To5($resultsDir . DIRECTORY_SEPARATOR . 'latest_tables_1_5.csv', $summary, $inScopeRetrievalCases);
+        $exportTables1To5($resultsDir . DIRECTORY_SEPARATOR . ($options['live_trial'] ? 'live_latest_tables_1_5.csv' : 'latest_tables_1_5.csv'), $summary, $inScopeRetrievalCases);
 
         $extraSourceHeader = 'SOURCE: script=evaluation/run_evaluation.php; function=exportCaseFailureAndObjectiveTables; inputs=ground_truth.json,data/*; ground_truth_sha256='
             . $groundTruthHash . '; dataset_sha256=' . json_encode($datasetHashList, JSON_UNESCAPED_SLASHES)
@@ -3067,7 +3159,9 @@ try {
         }
         fclose($objectiveFp);
 
+        echo "Trial type                          : {$trialType}\n";
         echo "Saved reproducible evaluation report: {$jsonOutPath}\n";
+        echo "Saved latest trial report           : {$latestJsonPath}\n";
         echo "Saved CSV thesis summary table      : {$csvPath}\n";
         echo "Saved CSV Tables 1-5 report         : {$tablesCsvPath}\n";
         echo "Saved per-case failure matrix       : {$failureMatrixPath}\n";

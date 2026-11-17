@@ -258,68 +258,13 @@ function restaurantQueryCore(string $query): string {
 
 function detectExplicitRestaurantCoreQuery(array $places, string $query): ?string {
     $queryCore = restaurantQueryCore($query);
-    if ($queryCore !== '') {
-        foreach ($places as $place) {
-            $core = nearbyPlaceCore((string)($place['name'] ?? ''));
-            if ($core !== '' && $core === $queryCore) return $core;
-        }
-    }
-
-    $queryTokens = preg_split(
-        '/[^\p{L}\p{N}]+/u',
-        mb_strtolower($query, 'UTF-8'),
-        -1,
-        PREG_SPLIT_NO_EMPTY
-    ) ?: [];
-    $genericTokens = array_fill_keys([
-        'and', 'barbecue', 'bbq', 'burger', 'burgers', 'cafe', 'cafes', 'chicken',
-        'coffee', 'dessert', 'desserts', 'dining', 'food', 'fried', 'restaurant',
-        'restaurants', 'seafood', 'sushi', 'tea',
-    ], true);
-    $matches = [];
+    if ($queryCore === '') return null;
 
     foreach ($places as $place) {
-        $name = trim((string)($place['name'] ?? ''));
-        if ($name === '') continue;
-        $baseName = preg_replace('/\s*(?:[-–|]\s*[^-–|]+|\([^)]*\))\s*$/u', '', $name) ?? $name;
-        $core = nearbyPlaceCore($baseName);
-        $nameTokens = preg_split(
-            '/[^\p{L}\p{N}]+/u',
-            mb_strtolower($baseName, 'UTF-8'),
-            -1,
-            PREG_SPLIT_NO_EMPTY
-        ) ?: [];
-        if ($core === '' || !$nameTokens) continue;
-
-        $matched = false;
-        $minimumLength = count($nameTokens) > 1 ? 2 : 1;
-        for ($length = count($nameTokens); $length >= $minimumLength && !$matched; $length--) {
-            for ($start = 0; $start + $length <= count($queryTokens); $start++) {
-                if (array_slice($queryTokens, $start, $length) === array_slice($nameTokens, 0, $length)) {
-                    $matched = true;
-                    break;
-                }
-            }
-        }
-        if (!$matched && count($nameTokens) === 1) {
-            $token = $nameTokens[0];
-            if (mb_strlen($token, 'UTF-8') >= 6
-                && !isset($genericTokens[$token])
-                && in_array($token, $queryTokens, true)) {
-                $matched = true;
-            }
-        }
-        if ($matched) $matches[$core] = true;
+        $core = nearbyPlaceCore((string)($place['name'] ?? ''));
+        if ($core !== '' && $core === $queryCore) return $core;
     }
-
-    return count($matches) === 1 ? (string)array_key_first($matches) : null;
-}
-
-function correctModelOutOfScopeForRecognizedDavaoArea(bool $modelOutOfScope, array $intent): bool {
-    if ($modelOutOfScope && empty($intent['out_of_scope']) && !empty($intent['areas'])) {
-        return false;
-    }
-    return $modelOutOfScope;
+    return null;
 }
 
 function detectApproximateRestaurantCoreQuery(array $places, string $query): ?string {
@@ -737,7 +682,7 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
     if (!nearbyPlaceHasIntentEvidence($feature, $intent)) return false;
 
     $hasDietaryConstraint = !empty($intent['dietary'])
-        || preg_match('/\b(halal|vegan|vegetarian|muslim[- ]friendly|no\s+pork|pork[- ]free|lactose[- ]intoleran\w*|lactose[- ]free|dairy[- ]free|milk[- ]free|no\s+dairy|without\s+dairy|(?:milk|dairy)\s+allerg\w*|allerg\w*\s+to\s+(?:milk|dairy))\b/iu', $query) === 1;
+        || preg_match('/\b(halal|vegan|vegetarian|muslim[- ]friendly|no\s+pork|pork[- ]free)\b/iu', $query) === 1;
     if (!$hasDietaryConstraint && detectExplicitRestaurantCoreQuery([$feature], $query) !== null) {
         return true;
     }
@@ -747,7 +692,7 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
         array_merge($intent['cuisines'] ?? [], $intent['specific_dishes'] ?? [], $intent['dietary'] ?? [])
     );
     $requestedDietaryTerms = array_values(array_filter(
-        ['halal', 'vegan', 'vegetarian', 'dairy_free'],
+        ['halal', 'vegan', 'vegetarian'],
         fn($term) => preg_match('/(?<![\p{L}\p{N}])' . $term . '(?![\p{L}\p{N}])/iu', $query) === 1
             || in_array($term, $intentTerms, true)
     ));

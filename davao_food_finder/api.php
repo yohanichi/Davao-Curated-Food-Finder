@@ -133,7 +133,7 @@ try {
             $accuracyMeters = (float)$location['accuracy_m'];
             if (!is_finite($accuracyMeters) || $accuracyMeters < 0 || $accuracyMeters > 1000) {
                 http_response_code(422);
-                throw new RuntimeException('Your location is too imprecise to verify places within 5 km. Try again with device location enabled.');
+                throw new RuntimeException('Your location is too imprecise to verify places within 2.5 km. Try again with device location enabled.');
             }
         }
         $nearbyLocation = [
@@ -141,7 +141,7 @@ try {
             'longitude'=>$longitude,
             'accuracy_km'=>$accuracyMeters / 1000,
         ];
-        $nearbySearchArea = nearbySearchBounds($latitude, $longitude, 5.0);
+        $nearbySearchArea = nearbySearchBounds($latitude, $longitude, 2.5);
         $nearbyMapSnapshotMetadata = loadLocalOsmNearbySnapshot(
             __DIR__ . '/data/osm-nearby-places.json',
             $nearbySearchArea
@@ -375,7 +375,7 @@ try {
             $mapPlaces,
             $nearbyLocation['latitude'],
             $nearbyLocation['longitude'],
-            5.0,
+            2.5,
             $nearbyLocation['accuracy_km']
         );
         $nearbyPlaceIds = [];
@@ -395,7 +395,7 @@ try {
         unset($place);
         $nearbySearch = [
             'enabled'=>true,
-            'radius_km'=>5,
+            'radius_km'=>2.5,
             'status'=>!$mapPlaces ? 'no_map_data' : ($candidates ? 'ok' : 'no_matching_places_within_radius'),
             'result_count'=>count($candidates),
             'map_source'=>'OpenStreetMap local snapshot',
@@ -513,7 +513,7 @@ try {
             $places,
             $nearbyLocation['latitude'],
             $nearbyLocation['longitude'],
-            5.0,
+            2.5,
             $nearbyLocation['accuracy_km']
         );
     }
@@ -623,8 +623,8 @@ try {
         }
         if (!$nearbyItems) {
             $answer = ($nearbySearch['status'] ?? '') === 'no_map_data'
-                ? 'The local OpenStreetMap snapshot contains no mapped food places near you, so no locations can be verified within 5 km. Try another area or refresh the OSM snapshot.'
-                : 'I could not verify any restaurants matching your request within 5 km. I have not included distant or unverified places.';
+                ? 'The local OpenStreetMap snapshot contains no mapped food places near you, so no locations can be verified within 2.5 km. Try another area or refresh the OSM snapshot.'
+                : 'I could not verify any restaurants matching your request within 2.5 km. I have not included distant or unverified places.';
         } else {
             $summaryItems = [];
             foreach (array_slice($nearbyItems, 0, 6) as $nearbyItem) {
@@ -632,7 +632,7 @@ try {
                 $summaryItems[] = trim((string)($nearbyItem['name'] ?? 'Restaurant'))
                     . ' (' . number_format((float)$nearbyItem['distance_km'], 1) . ' km)';
             }
-            $answer = 'Matching restaurants within 5 km, ordered by approximate distance: '
+            $answer = 'Matching restaurants within 2.5 km, ordered by approximate distance: '
                 . implode(', ', $summaryItems)
                 . '. Distances are straight-line estimates; OpenStreetMap coverage may be incomplete.';
         }
@@ -846,7 +846,7 @@ try {
             $mapPlaces,
             $nearbyLocation['latitude'],
             $nearbyLocation['longitude'],
-            5.0,
+            2.5,
             (string)($intent['effective_query'] !== '' ? $intent['effective_query'] : $query),
             $intent,
             $nearbyLocation['accuracy_km']
@@ -903,8 +903,8 @@ try {
         $nearbySearch['result_count'] = count($nearbyItems);
         if (!$nearbyItems) {
             $answer = $nearbySearch['status'] === 'no_map_data'
-                ? 'The local OpenStreetMap snapshot contains no mapped food places near you, so no locations can be verified within 5 km. Try another area or refresh the OSM snapshot.'
-                : 'I could not verify any restaurants matching your request within 5 km. I have not included distant or unverified places.';
+                ? 'The local OpenStreetMap snapshot contains no mapped food places near you, so no locations can be verified within 2.5 km. Try another area or refresh the OSM snapshot.'
+                : 'I could not verify any restaurants matching your request within 2.5 km. I have not included distant or unverified places.';
         } else {
             $summaryItems = [];
             foreach (array_slice($nearbyItems, 0, 6) as $nearbyItem) {
@@ -912,7 +912,7 @@ try {
                 $summaryItems[] = trim((string)($nearbyItem['name'] ?? 'Restaurant'))
                     . ' (' . number_format((float)$nearbyItem['distance_km'], 1) . ' km)';
             }
-            $answer = 'Matching restaurants within 5 km, ordered by approximate distance: '
+            $answer = 'Matching restaurants within 2.5 km, ordered by approximate distance: '
                 . implode(', ', $summaryItems)
                 . '. Distances are straight-line estimates; OpenStreetMap coverage may be incomplete.';
         }

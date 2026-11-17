@@ -228,7 +228,7 @@ function nearbyDistanceKm(float $latitude, float $longitude, float $placeLatitud
     return $earthRadiusKm * 2 * asin(min(1.0, sqrt($a)));
 }
 
-function nearbySearchBounds(float $latitude, float $longitude, float $radiusKm = 5.0): array {
+function nearbySearchBounds(float $latitude, float $longitude, float $radiusKm = 2.5): array {
     if (!is_finite($latitude) || $latitude < -90 || $latitude > 90
         || !is_finite($longitude) || $longitude < -180 || $longitude > 180
         || !is_finite($radiusKm) || $radiusKm <= 0) {

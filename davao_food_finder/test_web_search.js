@@ -37,6 +37,17 @@ test('adds bounded blog and public community discovery queries with source label
   assert.equal(classifyEvidenceSource('https://example.com/davao-food', 'web'), 'web_page');
 });
 
+test('uses menu and ordering searches instead of review-only queries for exact dishes', () => {
+  const queries = buildDiscoveryQueries('Davao City palabok restaurants food');
+  assert.equal(queries.length, 5);
+  assert.match(queries[0].query, /\brestaurant\b/i);
+  assert.match(queries[1].query, /"Pancit Palabok".*\bmenu\b/i);
+  assert.match(queries[2].query, /"Palabok Fiesta".*\bmenu\b/i);
+  assert.match(queries[3].query, /\border online delivery menu\b/i);
+  assert.equal(queries.some(query => /\bOR\b/.test(query.query)), false);
+  assert.equal(queries.some(query => query.reviewSearch), false);
+});
+
 test('builds a normalized local OSM snapshot from nodes and centered ways', () => {
   const snapshot = buildOsmSnapshot({
     osm3s: { timestamp_osm_base: '2026-11-16T12:00:00Z' },
@@ -217,6 +228,9 @@ test('builds a single Nominatim lookup for the normalized place query', () => {
   assert.equal(url.searchParams.get('format'), 'jsonv2');
   assert.equal(url.searchParams.get('addressdetails'), '1');
   assert.equal(url.searchParams.get('limit'), '8');
+
+  const palabokUrl = new URL(nominatimSearchUrl('palabok Davao City', 8));
+  assert.equal(palabokUrl.searchParams.get('q'), 'restaurant Davao City');
 
   const dishUrl = new URL(nominatimSearchUrl('fries Obrero Davao City', 8));
   assert.equal(dishUrl.searchParams.get('q'), 'fast food Obrero Davao City');

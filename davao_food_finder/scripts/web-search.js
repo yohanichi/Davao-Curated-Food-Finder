@@ -14,6 +14,7 @@ const NOMINATIM_BASE_URL = process.env.NOMINATIM_BASE_URL === undefined
 const NOMINATIM_CACHE_DIR = path.join(__dirname, '..', 'data', '.web-cache');
 const NOMINATIM_CACHE_TTL = 12 * 60 * 60 * 1000;
 const NOMINATIM_MIN_INTERVAL = 1000;
+const MENU_ITEM_SEARCH_TERMS = /\b(?:palabok|pancit\s+palabok|sisig|bulalo|balbacua|bulcachong|satti|pares|silog|samgyupsal|ramen|biryani|shawarma|halo[- ]halo|lugaw|lomi|batchoy|lechon|takoyaki|siomai|kinilaw|burger\s+steak|fries|wings)\b/i;
 
 async function waitForSearchResults(page, selector, source, errors) {
   try {
@@ -64,6 +65,8 @@ function isLowValueNonFoodUrl(url, title) {
   if (/^(davao city|davao region|mindanao)\s*[-|–]\s*wikipedia/i.test(t)) return true;
   if (/britannica\.com|merriam-webster\.com|dictionary\.com|wikidata\.org|philatlas\.com/i.test(u)) return true;
   if (/must-visit-davao-tourist-spot|things-to-do-in-davao(?!.*(food|eat|restaur|cafe))/i.test(u)) return true;
+  if (/\b(things to do|tourist spots?|tourist attractions?|best tourist|travel guide)\b/i.test(t)
+      && !/\b(restaurants?|food|eat|cafe|dining)\b/i.test(t)) return true;
   // Reject home cooking recipe blogs
   if (/panlasangpinoy\.com|kawalingpinoy\.com|yummykitchentv\.com|foxyfolksy\.com|kusinasecrets\.com|allrecipes\.com|recipetineats\.com|mamasguiderecipes\.com|angsarap\.net|lutongbahayrecipe\.com/i.test(u)) return true;
   if (/\b(?:recipe|how to cook|ingredients|instructions)\b/i.test(t) && !/\b(?:restaurant|cafe|bistro|grill|eatery|food)\b/i.test(t)) return true;
@@ -339,7 +342,7 @@ function parseBingHtml(html) {
 function photonPlaceSearchUrl(searchQuery, resultLimit) {
   const queryWithoutAlternatives = searchQuery
     .replace(/\s*\([^()]*\bOR\b[^()]*\)\s*/gi, ' ');
-  const hasSpecificFoodTerm = /\b(?:burger|hamburger|fries|chicken|wings|sisig|bulalo|pares|silog|satti|ramen|pizza|shawarma|cafe|cafes|coffee|tea|dessert|cake|seafood)\b/i.test(queryWithoutAlternatives);
+  const hasSpecificFoodTerm = /\b(?:burger|hamburger|fries|chicken|wings|sisig|bulalo|pares|silog|satti|ramen|pizza|shawarma|palabok|cafe|cafes|coffee|tea|dessert|cake|seafood)\b/i.test(queryWithoutAlternatives);
   const placeQuery = (hasSpecificFoodTerm
     ? queryWithoutAlternatives.replace(/\brestaurants?\b/gi, ' ')
     : queryWithoutAlternatives)
@@ -362,7 +365,7 @@ function nominatimSearchUrl(searchQuery, resultLimit, nearbySearchArea = null) {
   }
   const url = new URL('search', `${baseUrl.href.replace(/\/+$/, '')}/`);
   let placeQuery = new URL(photonUrl).searchParams.get('q') || '';
-  const dishTerms = /\b(?:fries|wings|chicken|sisig|bulalo|pares|silog|satti|ramen|pizza|shawarma|seafood|dessert|cake)\b/i;
+  const dishTerms = /\b(?:fries|wings|chicken|sisig|bulalo|pares|silog|satti|ramen|pizza|shawarma|palabok|seafood|dessert|cake)\b/i;
   const fastFoodTerms = /\b(?:fries|wings|chicken)\b/i;
   const dietaryTerm = placeQuery.match(/\b(?:halal|vegan|vegetarian)\b/i);
   if (dietaryTerm) {
@@ -734,10 +737,34 @@ function buildReviewSearchQuery(searchQuery) {
 }
 
 function buildDiscoveryQueries(searchQuery, reviewSearchQuery = buildReviewSearchQuery(searchQuery)) {
+  const dishSearch = MENU_ITEM_SEARCH_TERMS.test(searchQuery);
+  if (/\bpalabok\b/i.test(searchQuery)) {
+    const locationContext = searchQuery
+      .replace(/\b(?:pancit\s+)?palabok(?:\s+fiesta)?\b/gi, ' ')
+      .replace(/[()"]/g, ' ')
+      .replace(/\b(?:restaurants?|food|menus?|orders?|online|delivery)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim() || 'Davao City';
+    return [
+      { query: `${searchQuery} restaurant`, reviewSearch: false, useBraveBrowser: true, discoveryType: 'web' },
+      { query: `"Pancit Palabok" ${locationContext} restaurant menu`, reviewSearch: false, discoveryType: 'menu' },
+      { query: `"Palabok Fiesta" ${locationContext} restaurant menu`, reviewSearch: false, discoveryType: 'menu' },
+      { query: `${searchQuery} order online delivery menu`, reviewSearch: false, discoveryType: 'menu' },
+      { query: `${searchQuery} food blog recommendations`, reviewSearch: false, discoveryType: 'blog' }
+    ];
+  }
   return [
-    { query: searchQuery, reviewSearch: false, useBraveBrowser: true, discoveryType: 'web' },
-    { query: `${searchQuery} branches locations`, reviewSearch: false, discoveryType: 'web' },
-    { query: reviewSearchQuery, reviewSearch: true, discoveryType: 'review' },
+    { query: dishSearch ? `${searchQuery} restaurant` : searchQuery, reviewSearch: false, useBraveBrowser: true, discoveryType: 'web' },
+    {
+      query: dishSearch ? `${searchQuery} menu` : `${searchQuery} branches locations`,
+      reviewSearch: false,
+      discoveryType: dishSearch ? 'menu' : 'web'
+    },
+    {
+      query: dishSearch ? `${searchQuery} order online delivery menu` : reviewSearchQuery,
+      reviewSearch: !dishSearch,
+      discoveryType: dishSearch ? 'menu' : 'review'
+    },
     { query: `${searchQuery} food blog recommendations`, reviewSearch: false, discoveryType: 'blog' },
     {
       query: `(${searchQuery}) (site:reddit.com OR site:facebook.com OR site:tiktok.com)`,
@@ -998,7 +1025,8 @@ async function run() {
       const key = String(item.url || '').split('#')[0].replace(/\/+$/, '');
       if (key) byUrl.set(key, {
         ...item,
-        playwright_search_result: item.playwright_search_result === true
+        playwright_search_result: item.playwright_search_result === true,
+        search_provider_result: item.playwright_search_result !== true
       });
     }
     for (const item of bingBrowser) {
@@ -1012,7 +1040,7 @@ async function run() {
       if (existing) {
         if (!existing.snippet && item.snippet) existing.snippet = item.snippet;
       } else {
-        byUrl.set(key, { ...item, playwright_search_result: false });
+        byUrl.set(key, { ...item, playwright_search_result: false, search_provider_result: true });
       }
     }
     return [...byUrl.values()].slice(0, 12);
@@ -1128,23 +1156,31 @@ async function run() {
 
     const checkBlob = `${pageTitle} ${link.title} ${link.snippet || ''} ${cleanedBody} ${link.url}`;
     const playwrightRetrieved = browserFetchedPage || (link.playwright_search_result === true && Boolean(link.snippet));
-    if (combinedText && playwrightRetrieved && !isLowValueNonFoodUrl(link.url, pageTitle) && /\bdavao\b/i.test(checkBlob)) {
+    const searchProviderRetrieved = link.search_provider_result === true && Boolean(link.snippet);
+    if (combinedText
+        && (playwrightRetrieved || searchProviderRetrieved)
+        && !isLowValueNonFoodUrl(link.url, pageTitle)
+        && /\bdavao\b/i.test(checkBlob)) {
       results.push({
         title: pageTitle || link.title,
         url: link.url,
         text: combinedText,
-        playwright_retrieved: true,
+        playwright_retrieved: playwrightRetrieved,
+        search_provider_retrieved: searchProviderRetrieved,
         review_search: Boolean(link.reviewSearch),
         review_query: link.reviewSearch ? reviewSearchQuery : '',
         food_query: searchQuery,
         price_lookup: Boolean(link.priceLookup),
         source_type: classifyEvidenceSource(link.url, link.discoveryType),
-        source_access: browserFetchedPage ? 'source_page' : 'search_result_snippet'
+        source_access: browserFetchedPage
+          ? 'source_page'
+          : (playwrightRetrieved ? 'search_result_snippet' : 'search_engine_snippet')
       });
     }
   }
 
   browserResultCount = results.filter(result => result.playwright_retrieved).length;
+  const searchProviderResultCount = results.filter(result => result.source_access === 'search_engine_snippet').length;
   const nearbyPlaces = nearbyPlacesPromise ? await nearbyPlacesPromise : [];
   browserResultCount = Math.max(
     browserResultCount,
@@ -1160,6 +1196,7 @@ async function run() {
     nearby_places: nearbyPlaces,
     browser_used: Boolean(browser),
     browser_result_count: browserResultCount,
+    search_provider_result_count: searchProviderResultCount,
     browser_search_count: browserSearchCount,
     browser_search_errors: playwrightErrors
   }));

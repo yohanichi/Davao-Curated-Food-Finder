@@ -178,7 +178,7 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
     $searchQuery = trim(preg_replace('/\b(can|could|please|show|me|you|recommend|to|what|where|good)\b/iu', ' ', $searchQuery));
     $searchQuery = trim(preg_replace('/\s+/u', ' ', $searchQuery));
     if (!preg_match('/\bdavao(\s+city)?\b/i', $searchQuery)) $searchQuery = 'Davao City ' . $searchQuery;
-    if (!preg_match('/\b(restaurant|restaurants|cafe|coffee|food|eatery|foodhouse|burger|burgers|sisig|sisigan|silog|pares|ramen|pizza|chicken|bbq|grill)\b/i', $searchQuery)) $searchQuery .= ' restaurants food';
+    if (!preg_match('/\b(restaurant|restaurants|cafe|coffee|food|eatery|foodhouse|burger|burgers|sisig|sisigan|silog|pares|ramen|pizza|chicken|bbq|grill|palabok)\b/i', $searchQuery)) $searchQuery .= ' restaurants food';
     $priceQueries = array_values(array_filter(array_map(
         fn($priceQuery) => trim(preg_replace('/\s+/u', ' ', (string)$priceQuery) ?? ''),
         array_slice($priceQueries, 0, 3)
@@ -196,7 +196,7 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
         }
     }
     $nearbyAreaCacheKey = $nearbyAreaJson !== '' ? hash('sha256', $nearbyAreaJson) : '';
-    $key = hash('sha256', ($includeNearby ? 'v11:' : 'v10:') . ($includeNearby ? 'nearby|' . mb_strtolower(implode('|', $nearbyQueries), 'UTF-8') . '|' . $nearbyAreaCacheKey . '|' : '') . mb_strtolower(preg_replace('/\s+/u', ' ', $searchQuery) . '|' . implode('|', $priceQueries)));
+    $key = hash('sha256', ($includeNearby ? 'v13:' : 'v12:') . ($includeNearby ? 'nearby|' . mb_strtolower(implode('|', $nearbyQueries), 'UTF-8') . '|' . $nearbyAreaCacheKey . '|' : '') . mb_strtolower(preg_replace('/\s+/u', ' ', $searchQuery) . '|' . implode('|', $priceQueries)));
     $cacheFile = rtrim($cacheDir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $key . '.json';
 
     $bypassCacheRead = in_array($cachePolicy, ['cold', 'bypass'], true);
@@ -211,6 +211,10 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
                 $cachedAt = isset($cached['cached_at']) && is_numeric($cached['cached_at']) ? (int)$cached['cached_at'] : $mtime;
                 $cachedResults = is_array($cached['results'] ?? null) ? $cached['results'] : [];
                 $cachedNearbyPlaces = is_array($cached['nearby_places'] ?? null) ? array_slice($cached['nearby_places'], 0, 400) : [];
+                $searchProviderResultCount = count(array_filter(
+                    $cachedResults,
+                    fn($result) => ($result['source_access'] ?? '') === 'search_engine_snippet'
+                ));
                 $sources = array_values(array_filter(array_map(
                     fn($r) => isset($r['url']) ? ['title'=>$r['title'] ?? parse_url((string)$r['url'], PHP_URL_HOST) ?: 'Web source', 'url'=>(string)$r['url']] : null,
                     $cachedResults
@@ -225,6 +229,7 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
                     'success'=>count($cachedResults) > 0 || count($cachedNearbyPlaces) > 0,
                     'browser_used'=>false,
                     'browser_result_count'=>0,
+                    'search_provider_result_count'=>$searchProviderResultCount,
                     'latency_ms'=>$elapsed(),
                 ];
             }
@@ -317,6 +322,7 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
     $nearbyPlaces = is_array($payload['nearby_places'] ?? null) ? array_slice($payload['nearby_places'], 0, 400) : [];
     $browserUsed = ($payload['browser_used'] ?? false) === true;
     $browserResultCount = (int)($payload['browser_result_count'] ?? 0);
+    $searchProviderResultCount = (int)($payload['search_provider_result_count'] ?? 0);
     $now = time();
     if (count($results) > 0 || count($nearbyPlaces) > 0) {
         @file_put_contents($cacheFile, json_encode(['query'=>$query,'results'=>$results,'nearby_places'=>$nearbyPlaces,'cached_at'=>$now], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), LOCK_EX);
@@ -332,6 +338,7 @@ function collectPlaywrightEvidence(string $query, string $cacheDir, int $ttlSeco
         'success'=>$browserUsed && $browserResultCount > 0 && (count($results) > 0 || count($nearbyPlaces) > 0),
         'browser_used'=>$browserUsed,
         'browser_result_count'=>$browserResultCount,
+        'search_provider_result_count'=>$searchProviderResultCount,
         'browser_search_count'=>(int)($payload['browser_search_count'] ?? 0),
         'browser_search_errors'=>is_array($payload['browser_search_errors'] ?? null) ? $payload['browser_search_errors'] : [],
         'error'=>null,
@@ -424,18 +431,26 @@ function normalizeEvidenceUrlKey(string $url): string {
     return $host . $path . $query;
 }
 
-function onlinePlaceHasSpecificDishEvidence(array $place, array $evidence, array $dishes): bool {
+function onlinePlaceSpecificDishEvidenceStatus(array $place, array $evidence, array $dishes): ?string {
     $strictDishes = array_map(fn($dish) => mb_strtolower(trim((string)$dish), 'UTF-8'), $dishes);
-    if (!in_array('burger steak', $strictDishes, true)) return true;
+    if (!$strictDishes) return null;
 
     $sourceUrl = normalizeEvidenceUrlKey((string)($place['source_url'] ?? ''));
-    if ($sourceUrl === '' || preg_match('/^yelp\.com\/search\b/iu', $sourceUrl) === 1) return false;
+    if ($sourceUrl === '' || preg_match('/^yelp\.com\/search\b/iu', $sourceUrl) === 1) return null;
+    $sourcePath = (string)(parse_url((string)($place['source_url'] ?? ''), PHP_URL_PATH) ?? '');
+    $sourceHost = strtolower((string)(parse_url((string)($place['source_url'] ?? ''), PHP_URL_HOST) ?? ''));
+    $isMenuPage = preg_match('/(?:^|\/)menus?(?:\/|$)/iu', $sourcePath) === 1;
+    $isReviewPage = preg_match('/(?:tripadvisor\.[^\/]+\/(?:Restaurant_Review-|ShowUserReviews\b)|yelp\.[^\/]+\/biz\/|google\.[^\/]+\/maps\/(?:contrib|review)\b)/iu', $sourceUrl) === 1;
+    if (!$isMenuPage && $isReviewPage) return null;
+    $isMapListing = preg_match('/(?:^|\/)maps\/place(?:\/|$)/iu', $sourceUrl) === 1
+        || preg_match('/(?:^|\.)openstreetmap\.org$/iu', $sourceHost) === 1
+        || preg_match('/^maps\.app\.goo\.gl$/iu', $sourceHost) === 1;
 
     $name = trim((string)($place['name'] ?? ''));
     $nameKey = mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $name) ?? '', 'UTF-8');
     $nameCore = trim(preg_replace('/\s*(?:&\s*)?(?:restaurant|bistro|caf[eé])\s*$/iu', '', $name) ?? $name);
     $nameCoreKey = mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', $nameCore) ?? '', 'UTF-8');
-    if (mb_strlen($nameCoreKey, 'UTF-8') < 4) return false;
+    if (mb_strlen($nameCoreKey, 'UTF-8') < 4) return null;
 
     foreach ($evidence['results'] ?? [] as $item) {
         if (!is_array($item) || normalizeEvidenceUrlKey((string)($item['url'] ?? '')) !== $sourceUrl) continue;
@@ -450,17 +465,26 @@ function onlinePlaceHasSpecificDishEvidence(array $place, array $evidence, array
             continue;
         }
 
-        $sentences = preg_split('/(?<=[.!?;])\s+|\R/u', $sourceText) ?: [];
-        foreach ($sentences as $sentence) {
-            if (!placeMatchesSpecificDishes(['description'=>$sentence], ['burger steak'])) continue;
-            $hasMenuEvidence = preg_match(
-                '/\b(menu|serv(?:e|es|ed|ing)|offer(?:s|ed|ing)?|order(?:s|ed|ing)?|sold|available|dish|item)\b|(?:₱|php)\s*\d/iu',
-                $sentence
-            ) === 1;
-            if ($hasMenuEvidence || isPositiveFoodReviewEvidence($item)) return true;
+        foreach ($strictDishes as $dish) {
+            $sentences = preg_split('/(?<=[.!?;])\s+|\R/u', $sourceText) ?: [];
+            foreach ($sentences as $sentence) {
+                if (!placeMatchesSpecificDishes(['description'=>$sentence], [$dish])) continue;
+                $hasMenuEvidence = preg_match(
+                    '/\b(?:menu\s+(?:offers?|lists?|includes?|features?|highlights?|item)|(?:offered|listed|sold|available)\s+(?:on|in)\s+(?:the\s+)?menu|order(?:s|ed|ing)?|sold|available\s+(?:for\s+)?(?:order|delivery|pickup)|for\s+sale)\b|(?:₱|php)\s*\d/iu',
+                    $sentence
+                ) === 1 || $isMenuPage;
+                if ($isMapListing) return 'listing_mention';
+                if (($item['source_access'] ?? '') === 'search_engine_snippet') return 'search_result_mention';
+                if ($hasMenuEvidence) return 'menu_source';
+                return 'dish_mention';
+            }
         }
     }
-    return false;
+    return null;
+}
+
+function onlinePlaceHasSpecificDishEvidence(array $place, array $evidence, array $dishes): bool {
+    return onlinePlaceSpecificDishEvidenceStatus($place, $evidence, $dishes) !== null;
 }
 
 function onlinePlaceHasIntentEvidence(array $place, array $evidence, array $intent): bool {
@@ -513,6 +537,8 @@ function onlinePlaceHasIntentEvidence(array $place, array $evidence, array $inte
 function isLikelyRestaurantArticleTitle(string $title): bool {
     return preg_match(
         '/^\s*(?:
+            (?:best|top)\s+of\s+davao\s+\d{4}\b
+            |
             (?:the\s+)?\d+\s+(?:best|top)\b
             |(?:the\s+)?(?:best|top)\s+\d+\b
             |(?:the\s+)?\d+\s+(?:restaurants?|cafes?|spots?|places?|eateries|burgers?|pizzerias?|chicken\s+shops?|coffee\s+shops?)\b
@@ -547,8 +573,8 @@ function intentFoodEvidenceTerms(array $intent): array {
         'Indian'=>['indian', 'biryani', 'curry'],
         'Shawarma'=>['shawarma', 'kebab'],
         'Desserts'=>['dessert', 'cake', 'pastry', 'halo-halo', 'ice cream', 'donut', 'bakery'],
-        'Noodles'=>['noodles', 'ramen', 'pancit', 'lomi', 'siomai'],
-        'Filipino'=>['filipino', 'silog', 'pares', 'bulalo', 'sisig', 'satti'],
+        'Noodles'=>['noodles', 'ramen', 'pancit', 'palabok', 'lomi', 'siomai'],
+        'Filipino'=>['filipino', 'silog', 'pares', 'bulalo', 'sisig', 'satti', 'palabok'],
         'Healthy'=>['healthy', 'salad', 'vegan', 'vegetarian'],
     ];
     $strictDishes = array_map('strval', $intent['strict_dishes'] ?? []);
@@ -1482,7 +1508,7 @@ function evidencePlacesFallback(array $evidence): array {
         if (preg_match('/\b(tourist\s+spots?|tourist\s+attractions?|tourism\s+office|travel\s+guide|destinations?|davao\s+region\s+information)\b/i', $blob) === 1) continue;
         if (preg_match('/^(barangay\b.*(announcement|information|proper|official)|city government of davao)/iu', $title) === 1) continue;
         if (detectOutOfScopeLocation($blob)['out_of_scope']) continue;
-        if (preg_match('/\b(restaurant|cafe|coffee|food|eatery|pizza|burger|hamburger|seafood|biryani|indian|shawarma|chicken|pancake|pares|silogan|sisig|sisigan|lechon|grill|bbq|ramen|dining|menu|eats)\b/i', $blob) !== 1) continue;
+        if (preg_match('/\b(restaurant|cafe|coffee|food|eatery|pizza|burger|hamburger|seafood|biryani|indian|shawarma|chicken|pancake|pares|silogan|sisig|sisigan|palabok|lechon|grill|bbq|ramen|dining|menu|eats)\b/i', $blob) !== 1) continue;
 
         // Clean venue name: strip platform suffixes and location suffixes
         $name = preg_replace('/\s*(?:[-–|]\s*(?:Facebook|TikTok|Instagram|Apple Maps|Restaurant Guru|Tripadvisor|Explore in Google Maps|Google Maps)).*$/iu', '', $title) ?? $title;
@@ -1499,6 +1525,7 @@ function evidencePlacesFallback(array $evidence): array {
         // Extract food type from title/snippet
         $foodType = 'Davao City Food';
         if (preg_match('/\b(sisig|sisigan)\b/iu', $blob)) $foodType = 'Sisig';
+        elseif (preg_match('/\b(palabok)\b/iu', $blob)) $foodType = 'Palabok / Filipino Noodles';
         elseif (preg_match('/\b(burgers?|hamburgers?)\b/iu', $blob)) $foodType = 'Burgers';
         elseif (preg_match('/\b(coffee|cafe|café|kapehan)\b/iu', $blob)) $foodType = 'Coffee / Cafe';
         elseif (preg_match('/\b(chicken|fried\s+chicken|inasal)\b/iu', $blob)) $foodType = 'Chicken';
@@ -1699,12 +1726,12 @@ SYS;
         if ($content !== '') $messages[] = ['role'=>($turn['role'] ?? '') === 'assistant' ? 'assistant' : 'user','content'=>$content];
     }
     $evidenceCompact = [];
-    foreach (array_slice($evidence['results'] ?? [], 0, 4) as $item) {
+    foreach (array_slice($evidence['results'] ?? [], 0, 8) as $item) {
         if (!is_array($item)) continue;
         $evidenceCompact[] = [
-            'title'=>mb_substr((string)($item['title'] ?? ''), 0, 140),
+            'title'=>mb_substr((string)($item['title'] ?? ''), 0, 180),
             'url'=>(string)($item['url'] ?? ''),
-            'snippet'=>mb_substr((string)($item['text'] ?? $item['snippet'] ?? ''), 0, 250),
+            'snippet'=>mb_substr((string)($item['text'] ?? $item['snippet'] ?? ''), 0, 350),
         ];
     }
     $constraintHints = [];
@@ -2794,12 +2821,12 @@ function answerWithDeepSeekApi(string $query, array $history, array $candidates,
         if ($content !== '') $messages[] = ['role'=>($turn['role'] ?? '') === 'assistant' ? 'assistant' : 'user','content'=>$content];
     }
     $evidenceCompact = [];
-    foreach (array_slice($evidence['results'] ?? [], 0, 4) as $item) {
+    foreach (array_slice($evidence['results'] ?? [], 0, 8) as $item) {
         if (!is_array($item)) continue;
         $evidenceCompact[] = [
-            'title'=>mb_substr((string)($item['title'] ?? ''), 0, 140),
+            'title'=>mb_substr((string)($item['title'] ?? ''), 0, 180),
             'url'=>(string)($item['url'] ?? ''),
-            'snippet'=>mb_substr((string)($item['text'] ?? $item['snippet'] ?? ''), 0, 250),
+            'snippet'=>mb_substr((string)($item['text'] ?? $item['snippet'] ?? ''), 0, 350),
         ];
     }
     $constraintHints = [];

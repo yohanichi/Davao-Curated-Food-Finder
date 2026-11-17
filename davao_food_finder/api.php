@@ -59,10 +59,10 @@ try {
         $rawInput = stream_get_contents(STDIN);
     }
     $body = json_decode((string)$rawInput, true) ?: [];
-    if (($body['action'] ?? '') === 'load_nearby_map_more') {
+    if (($body['action'] ?? '') === 'load_nearby_results_more') {
         if (session_status() !== PHP_SESSION_ACTIVE) {
             http_response_code(503);
-            throw new RuntimeException('Nearby map results are not available in this session. Run the search again.');
+            throw new RuntimeException('Nearby results are not available in this session. Run the search again.');
         }
         $token = (string)($body['token'] ?? '');
         if (preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
@@ -74,11 +74,11 @@ try {
             http_response_code(422);
             throw new RuntimeException('The nearby results page offset is invalid.');
         }
-        $savedPage = $_SESSION['nearby_map_pages'][$token] ?? null;
+        $savedPage = $_SESSION['nearby_result_pages'][$token] ?? null;
         if (!is_array($savedPage)
             || (int)($savedPage['expires_at'] ?? 0) < time()
             || !is_array($savedPage['places'] ?? null)) {
-            unset($_SESSION['nearby_map_pages'][$token]);
+            unset($_SESSION['nearby_result_pages'][$token]);
             http_response_code(410);
             throw new RuntimeException('These nearby results have expired. Run the search again to refresh them.');
         }
@@ -102,12 +102,37 @@ try {
     $history = is_array($body['history'] ?? null) ? array_slice($body['history'], -12) : [];
     $shownNames = is_array($body['shownNames'] ?? null) ? array_slice($body['shownNames'], 0, 50) : [];
     if ($query === '' || mb_strlen($query) > 300) { http_response_code(422); throw new RuntimeException('Enter a search query up to 300 characters.'); }
+    if (!isset($body['evaluation'])) {
+        $queryCorrection = suggestSearchQueryTypo($query);
+        if ($queryCorrection !== null) {
+            if (ob_get_level() > 0) ob_clean();
+            $correctionResponse = [
+                'answer'=>'Did you mean “' . $queryCorrection['suggested_term'] . '”?',
+                'assistantStatus'=>'clarification',
+                'modelUsed'=>null,
+                'outOfScope'=>false,
+                'sources'=>[],
+                'webResults'=>[],
+                'mapResults'=>[],
+                'results'=>[],
+                'count'=>0,
+                'queryCorrection'=>$queryCorrection,
+                'locationSearch'=>['enabled'=>false],
+                'metrics'=>['pipeline'=>['stages'=>[]]],
+            ];
+            echo json_encode($streamSearchProgress
+                ? ['type'=>'result', 'data'=>$correctionResponse]
+                : $correctionResponse, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            if ($streamSearchProgress) echo "\n";
+            exit;
+        }
+    }
     $nearbyLocation = null;
     $nearbySearchArea = null;
     $nearbyMapPlaces = [];
     $nearbyMapSnapshotMetadata = null;
     $nearbyRelevantCandidates = [];
-    $moreNearbyMapResults = [];
+    $moreNearbyResults = [];
     $mapFindResults = [];
     $mapFindSearch = [
         'status'=>'not_applicable',
@@ -255,12 +280,8 @@ try {
     $intent = parseQueryIntent($query, $history, $shownNames);
     $nearbyExperienceRequested = nearbyIntentRequiresEvidence($intent);
     $fastFoodItems = is_array($intent['fast_food_items'] ?? null) ? $intent['fast_food_items'] : [];
-    $matchesFastFoodIntent = static function (array $place) use ($fastFoodItems, $intent, $query): bool {
-        return !$fastFoodItems || (
-            fastFoodChainMatchesItems($place, $fastFoodItems)
-            && nearbyFeatureMatchesRequest($place, $query, $intent)
-        );
-    };
+    $matchesFastFoodIntent = static fn(array $place): bool =>
+        !$fastFoodItems || nearbyFeatureMatchesRequest($place, $query, $intent);
     if ($requestedRestaurantCore !== null) {
         $intent['requested_restaurant_core'] = $requestedRestaurantCore;
     }
@@ -299,6 +320,10 @@ try {
     if ($requestedRestaurantCore !== null) {
         $intent['requested_restaurant_core'] = $requestedRestaurantCore;
     }
+    $nearbyExperienceRequested = nearbyIntentRequiresEvidence($intent);
+    $nearbyAlternativePlan = $nearbyLocation !== null
+        ? nearbyExperienceAlternativePlan($query, $intent)
+        : null;
     $openAIOptions['intent'] = $intent;
 
     // Component Timing 3 / Stage 2: Playwright active web scraping (or local volatility test snapshot override)
@@ -354,7 +379,9 @@ try {
             && ($evidence['browser_used'] ?? false) === true
             && (int)($evidence['browser_result_count'] ?? 0) > 0)
             ? 'ok'
-            : ((string)($evidence['error'] ?? '') !== '' ? 'error' : (string)($evidence['cache'] ?? 'empty'));
+            : ((int)($evidence['search_provider_result_count'] ?? 0) > 0
+                ? 'search_provider_only'
+                : ((string)($evidence['error'] ?? '') !== '' ? 'error' : (string)($evidence['cache'] ?? 'empty')));
     }
     if ($intent['out_of_scope']) {
         emitSearchProgress('Finishing the Davao City scope check…');
@@ -398,6 +425,29 @@ try {
     }
     if ($requestedRestaurantCore !== null) {
         $candidates = filterPlacesByRestaurantCore($candidates, $requestedRestaurantCore);
+    }
+    $nearbyAlternativeCandidates = [];
+    if ($nearbyAlternativePlan !== null) {
+        $categoryCandidates = array_values(array_filter(
+            $places,
+            fn($place) => nearbyFeatureMatchesRequest(
+                $place,
+                $nearbyAlternativePlan['query'],
+                $nearbyAlternativePlan['intent']
+            )
+        ));
+        $nearbyAlternativeCandidates = shortlistPlaces(
+            $categoryCandidates,
+            $nearbyAlternativePlan['query'],
+            100,
+            $nearbyAlternativePlan['intent']
+        );
+        if ($requestedRestaurantCore !== null) {
+            $nearbyAlternativeCandidates = filterPlacesByRestaurantCore(
+                $nearbyAlternativeCandidates,
+                $requestedRestaurantCore
+            );
+        }
     }
     if ($fastFoodItems) {
         $candidates = array_values(array_filter($candidates, $matchesFastFoodIntent));
@@ -596,31 +646,30 @@ try {
     }
     if (!$outOfScope && !isset($body['evaluation']) && !empty($intent['strict_dishes'])) {
         $strictDishes = $intent['strict_dishes'];
-        $strictDishIds = [];
-        foreach ($places as $place) {
-            $placeId = trim((string)($place['_id'] ?? ''));
-            if ($placeId !== '' && placeMatchesSpecificDishes($place, $strictDishes)) {
-                $strictDishIds[$placeId] = true;
-            }
+        $rankedIds = [];
+        $candidates = [];
+        $nearbyRelevantCandidates = [];
+        $supportedWebResults = [];
+        $verifiedDishSources = [];
+        foreach ($webResults as $place) {
+            if (!is_array($place) || !placeMatchesSpecificDishes($place, $strictDishes)) continue;
+            $evidenceStatus = onlinePlaceSpecificDishEvidenceStatus($place, $evidence, $strictDishes);
+            if ($evidenceStatus === null) continue;
+            $place['dish_evidence_status'] = $evidenceStatus;
+            $place['dish_availability_note'] = $evidenceStatus === 'menu_source'
+                ? 'A linked menu or ordering page lists this dish; confirm availability at this branch before visiting.'
+                : ($evidenceStatus === 'listing_mention'
+                    ? 'A business or map listing mentions this dish, but current branch menu availability is not confirmed.'
+                    : 'A web source connects this place with the dish, but does not confirm its current menu; check before visiting.');
+            $sourceKey = normalizeEvidenceUrlKey((string)($place['source_url'] ?? ''));
+            if ($sourceKey !== '') $verifiedDishSources[$sourceKey] = true;
+            $supportedWebResults[] = $place;
         }
-        $rankedIds = array_values(array_filter(
-            $rankedIds,
-            fn($id) => isset($strictDishIds[(string)$id])
-        ));
-        $candidates = array_values(array_filter(
-            $candidates,
-            fn($place) => is_array($place) && placeMatchesSpecificDishes($place, $strictDishes)
-        ));
-        $nearbyRelevantCandidates = array_values(array_filter(
-            $nearbyRelevantCandidates,
-            fn($place) => is_array($place) && placeMatchesSpecificDishes($place, $strictDishes)
-        ));
-        $webResults = array_values(array_filter(
-            $webResults,
-            fn($place) => is_array($place)
-                && placeMatchesSpecificDishes($place, $strictDishes)
-                && (!empty($place['map_only'])
-                    || onlinePlaceHasSpecificDishEvidence($place, $evidence, $strictDishes))
+        $webResults = $supportedWebResults;
+        $sources = array_values(array_filter(
+            $sources,
+            fn($source) => is_array($source)
+                && isset($verifiedDishSources[normalizeEvidenceUrlKey((string)($source['url'] ?? ''))])
         ));
     }
     if (!$outOfScope && $fastFoodItems) {
@@ -718,7 +767,7 @@ try {
                 . '. Distances are straight-line estimates; OpenStreetMap coverage may be incomplete.';
         }
     }
-    $results = array_slice($results, 0, 20);
+    $results = array_slice($results, 0, 100);
     foreach ($results as &$r) {
         if (empty($r['record_id'])) {
             $r['record_id'] = $r['_id'] ?? $r['store_id'] ?? '';
@@ -878,12 +927,13 @@ try {
     if ($nearbyLocation === null
         && !isset($body['evaluation'])
         && !$outOfScope
+        && empty($intent['strict_dishes'])
         && mapFindIntentIsSupported($intent, $requestedRestaurantCore)) {
         try {
             $mapSnapshot = loadLocalOsmNearbySnapshot(__DIR__ . '/data/osm-nearby-places.json');
             $mapFindSearch['search_type'] = $requestedRestaurantCore !== null
                 ? 'brand_branches'
-                : ($fastFoodItems ? 'fast_food_chains' : 'category');
+                : ($fastFoodItems ? 'fast_food_items' : 'category');
             $mapFindSearch['snapshot_updated_at'] = $mapSnapshot['updated_at'];
             $mapFindResults = buildMapFindResults(
                 $mapSnapshot['places'],
@@ -924,7 +974,7 @@ try {
 
     if ($nearbyLocation !== null && !$outOfScope) {
         $mapPlaces = $nearbyMapPlaces;
-        $mapResults = $nearbyExperienceRequested
+        $mapResults = ($nearbyExperienceRequested || !empty($intent['strict_dishes']))
             ? []
             : buildNearbyMapResults(
                 $nearbyRelevantCandidates,
@@ -948,28 +998,23 @@ try {
                 $seenMapUrls[$mapUrl] = true;
             }
         }
+        if ($fastFoodItems) {
+            foreach ($webResults as &$webPlace) {
+                $webPlace['fast_food_chain'] = fastFoodChainMatchesItems($webPlace, $fastFoodItems);
+            }
+            unset($webPlace);
+        }
         if (!$nearbyExperienceRequested) {
             usort($webResults, fn($a, $b) => ((float)($a['distance_km'] ?? PHP_FLOAT_MAX)) <=> ((float)($b['distance_km'] ?? PHP_FLOAT_MAX)));
         }
         $allNearbyWebResults = $webResults;
         $webResults = array_slice($webResults, 0, 20);
-        $displayedMapUrls = [];
-        foreach ($webResults as $displayedPlace) {
-            if (!empty($displayedPlace['map_only'])) {
-                $mapUrl = trim((string)($displayedPlace['location_source_url'] ?? ''));
-                if ($mapUrl !== '') $displayedMapUrls[$mapUrl] = true;
-            }
-        }
-        $moreNearbyMapResults = array_values(array_filter(
-            $allNearbyWebResults,
-            fn($place) => !empty($place['map_only'])
-                && !isset($displayedMapUrls[(string)($place['location_source_url'] ?? '')])
-        ));
+        $moreNearbyResults = array_slice($allNearbyWebResults, 20);
         if ($requestedRestaurantCore !== null) {
-            $moreNearbyMapResults = filterPlacesByRestaurantCore($moreNearbyMapResults, $requestedRestaurantCore);
+            $moreNearbyResults = filterPlacesByRestaurantCore($moreNearbyResults, $requestedRestaurantCore);
         }
-        if ($moreNearbyMapResults && session_status() === PHP_SESSION_ACTIVE) {
-            $savedPages = is_array($_SESSION['nearby_map_pages'] ?? null) ? $_SESSION['nearby_map_pages'] : [];
+        if ($moreNearbyResults && session_status() === PHP_SESSION_ACTIVE) {
+            $savedPages = is_array($_SESSION['nearby_result_pages'] ?? null) ? $_SESSION['nearby_result_pages'] : [];
             foreach ($savedPages as $savedToken => $savedPage) {
                 if (!is_array($savedPage) || (int)($savedPage['expires_at'] ?? 0) < time()) {
                     unset($savedPages[$savedToken]);
@@ -978,11 +1023,114 @@ try {
             $pageToken = bin2hex(random_bytes(16));
             $savedPages[$pageToken] = [
                 'expires_at'=>time() + 600,
-                'places'=>$moreNearbyMapResults,
+                'places'=>$moreNearbyResults,
             ];
-            $_SESSION['nearby_map_pages'] = array_slice($savedPages, -5, null, true);
+            $_SESSION['nearby_result_pages'] = array_slice($savedPages, -5, null, true);
             $nearbySearch['page_token'] = $pageToken;
-            $nearbySearch['more_count'] = count($moreNearbyMapResults);
+            $nearbySearch['more_count'] = count($moreNearbyResults);
+        }
+        if ($nearbyAlternativePlan !== null
+            && !$outOfScope
+            && empty($intent['online_only'])) {
+            $exactNearbyPlaces = [];
+            foreach (array_merge($results, $webResults) as $place) {
+                $duplicate = false;
+                foreach ($exactNearbyPlaces as $existingPlace) {
+                    if (mapBranchMatchesPlace($place, $existingPlace)) {
+                        $duplicate = true;
+                        break;
+                    }
+                }
+                if (!$duplicate) $exactNearbyPlaces[] = $place;
+            }
+            $alternativeLimit = nearbyAlternativeResultLimit(count($exactNearbyPlaces));
+            if ($alternativeLimit > 0) {
+                $isPartialFallback = count($exactNearbyPlaces) > 0;
+                $alternativeNote = $nearbyAlternativePlan['note'];
+                if ($isPartialFallback) {
+                    $alternativeNote = $nearbyExperienceRequested
+                        ? 'These additional nearby ' . $nearbyAlternativePlan['label']
+                            . ' are alternatives; the requested '
+                            . nearbyIntentEvidenceLabel($intent)
+                            . ' preference is unverified for them.'
+                        : 'These additional nearby ' . $nearbyAlternativePlan['label']
+                            . ' are alternatives; check linked details to see which are local favorites.';
+                }
+                $alternativeMatches = rankNearbyCandidates(
+                    $nearbyAlternativeCandidates,
+                    $places,
+                    $nearbyMapPlaces,
+                    $nearbyLocation['latitude'],
+                    $nearbyLocation['longitude'],
+                    DAVAO_NEARBY_RADIUS_KM,
+                    $nearbyLocation['accuracy_km'],
+                    true,
+                    $nearbyAlternativePlan['query'],
+                    $nearbyAlternativePlan['intent']
+                );
+                $alternativePlaces = [];
+                foreach ($alternativeMatches as $alternativeMatch) {
+                    $alternative = publicPlace($alternativeMatch);
+                    $duplicate = false;
+                    foreach (array_merge($exactNearbyPlaces, $alternativePlaces) as $existingPlace) {
+                        if (mapBranchMatchesPlace($alternative, $existingPlace)) {
+                            $duplicate = true;
+                            break;
+                        }
+                    }
+                    if ($duplicate) continue;
+                    $alternative['nearby_match_tier'] = 'alternative';
+                    $alternative['nearby_match_note'] = $alternativeNote;
+                    $alternative['description'] = trim(
+                        (string)($alternative['description'] ?? $alternative['food_type'] ?? 'Nearby place.')
+                        . ' '
+                        . $alternativeNote
+                    );
+                    $alternativePlaces[] = $alternative;
+                }
+                $mapAlternatives = buildNearbyMapResults(
+                    $nearbyAlternativeCandidates,
+                    $nearbyMapPlaces,
+                    $nearbyLocation['latitude'],
+                    $nearbyLocation['longitude'],
+                    DAVAO_NEARBY_RADIUS_KM,
+                    $nearbyAlternativePlan['query'],
+                    $nearbyAlternativePlan['intent'],
+                    $nearbyLocation['accuracy_km'],
+                    100
+                );
+                foreach ($mapAlternatives as $mapAlternative) {
+                    $duplicate = false;
+                    foreach (array_merge($exactNearbyPlaces, $alternativePlaces) as $existingPlace) {
+                        if (mapBranchMatchesPlace($mapAlternative, $existingPlace)) {
+                            $duplicate = true;
+                            break;
+                        }
+                    }
+                    if ($duplicate) continue;
+                    $mapAlternative['nearby_match_tier'] = 'alternative';
+                    $mapAlternative['nearby_match_note'] = $alternativeNote;
+                    $mapAlternative['description'] = trim(
+                        (string)($mapAlternative['description'] ?? $mapAlternative['food_type'] ?? 'Nearby place.')
+                        . ' '
+                        . $alternativeNote
+                    );
+                    $alternativePlaces[] = $mapAlternative;
+                }
+                $results = array_merge(
+                    $results,
+                    array_slice($alternativePlaces, 0, $alternativeLimit)
+                );
+                $alternativeCount = min(count($alternativePlaces), $alternativeLimit);
+                if ($alternativeCount > 0) {
+                    $nearbySearch['matching_mode'] = $isPartialFallback
+                        ? 'nearby_partial_alternatives'
+                        : 'nearby_alternatives';
+                    $nearbySearch['exact_result_count'] = count($exactNearbyPlaces);
+                    $nearbySearch['alternative_result_count'] = $alternativeCount;
+                    $nearbySearch['fallback_note'] = $alternativeNote;
+                }
+            }
         }
         $nearbyItems = $nearbyExperienceRequested
             ? []
@@ -1008,15 +1156,43 @@ try {
             ? nearbyBroadSearchSuggestions($intent)
             : [];
         if (!$nearbyItems) {
-            if ($nearbyExperienceRequested) {
-                $answer = 'I could not verify any nearby restaurants matching your requested '
-                    . nearbyIntentEvidenceLabel($intent)
-                    . ' within 3 km. I have not filled the list with unrelated places; choose “Anywhere in Davao City” to see broader source-backed recommendations.';
+            if ($nearbyExperienceRequested || $nearbyAlternativePlan !== null) {
+                $answer = $nearbyExperienceRequested
+                    ? 'I could not verify any nearby restaurants matching your requested '
+                        . nearbyIntentEvidenceLabel($intent) . ' within 3 km.'
+                    : 'I could not find nearby ' . ($nearbyAlternativePlan['label'] ?? 'matching') . ' options within 3 km.';
+                $answer .= $nearbyAlternativePlan !== null
+                    ? ' No nearby places in that category were found either; try “Anywhere in Davao City” for more choices.'
+                    : ' I have not filled the list with unrelated places; choose “Anywhere in Davao City” to see broader source-backed recommendations.';
             } else {
                 $answer = $nearbySearch['status'] === 'no_map_data'
                     ? 'The local OpenStreetMap snapshot contains no mapped food places near you, so no locations can be verified within 3 km. Try another area or refresh the OSM snapshot.'
                     : 'I could not verify any restaurants matching your request within 3 km. I have not included distant or unverified places.';
             }
+        } elseif (($nearbySearch['matching_mode'] ?? '') === 'nearby_alternatives') {
+            $answer = ($nearbyExperienceRequested
+                ? 'I could not verify a nearby match for your requested '
+                    . nearbyIntentEvidenceLabel($intent)
+                    . ' within 3 km. Here are '
+                : 'No exact local-favorites match was verified. Here are ')
+                . (int)($nearbySearch['alternative_result_count'] ?? count($nearbyItems))
+                . ' nearby '
+                . $nearbyAlternativePlan['label']
+                . ((int)($nearbySearch['alternative_result_count'] ?? count($nearbyItems)) === 1 ? ' alternative' : ' alternatives')
+                . '. '
+                . $nearbyAlternativePlan['note'];
+        } elseif (($nearbySearch['matching_mode'] ?? '') === 'nearby_partial_alternatives') {
+            $answer = 'I found '
+                . (int)$nearbySearch['exact_result_count']
+                . ' nearby match'
+                . ((int)$nearbySearch['exact_result_count'] === 1 ? '' : 'es')
+                . ' and added '
+                . (int)$nearbySearch['alternative_result_count']
+                . ' nearby '
+                . $nearbyAlternativePlan['label']
+                . ((int)$nearbySearch['alternative_result_count'] === 1 ? ' alternative' : ' alternatives')
+                . '. '
+                . ($nearbySearch['fallback_note'] ?? $nearbyAlternativePlan['note']);
         } elseif ($nearbyExperienceRequested) {
             $nearbySearch['matching_mode'] = 'evidence_backed_experience';
             $answer = 'I found ' . count($nearbyItems) . ' nearby '
@@ -1065,8 +1241,8 @@ try {
             $searchSuggestions = nearbyBroadSearchSuggestions($intent);
             $sources = [];
             $answer = $nearbyLocation !== null
-                ? "I could not confirm any places within 3 km serving {$dishLabel} from available menu or review evidence."
-                : "I could not confirm any Davao City places serving {$dishLabel} from available menu or review evidence.";
+                ? "I did not find a venue-linked online listing for {$dishLabel} within 3 km in this search. That does not mean no nearby places serve it."
+                : "I did not find a venue-linked online listing for {$dishLabel} in Davao City in this search. That does not mean no Davao places serve it.";
         } elseif ($nearbyLocation === null) {
             $answer = 'Places with available evidence for ' . $dishLabel . ': '
                 . implode(', ', array_slice($matchedNames, 0, 8))
@@ -1076,32 +1252,47 @@ try {
     if (!$outOfScope && $fastFoodItems) {
         $itemLabels = implode(' and ', $fastFoodItems);
         foreach (['results', 'webResults', 'mapFindResults'] as $resultKey) {
-            $$resultKey = array_values(array_filter($$resultKey, $matchesFastFoodIntent));
+            $$resultKey = array_values(array_filter(
+                $$resultKey,
+                fn($place) => is_array($place) && $matchesFastFoodIntent($place)
+            ));
             foreach ($$resultKey as &$place) {
-                $place['food_type'] = 'Fast-food chain';
-                $place['description'] = !empty($place['map_only'])
-                    ? "OpenStreetMap lists this fast-food chain location. Branch-specific {$itemLabels} menu availability is not verified."
-                    : "This is a listed fast-food chain location. Branch-specific {$itemLabels} menu availability may vary and is not verified; check the linked source or contact the branch.";
+                $place['fast_food_chain'] = fastFoodChainMatchesItems($place, $fastFoodItems);
             }
             unset($place);
         }
         $matchingNames = [];
+        $chainNames = [];
+        $mapCategoryNames = [];
         foreach (array_merge($results, $webResults, $mapFindResults) as $place) {
             $name = trim((string)($place['name'] ?? ''));
-            if ($name !== '' && !in_array($name, $matchingNames, true)) $matchingNames[] = $name;
+            if ($name === '') continue;
+            if (!empty($place['fast_food_chain'])) {
+                if (!in_array($name, $chainNames, true)) $chainNames[] = $name;
+            } elseif (!empty($place['map_only'])) {
+                if (!in_array($name, $mapCategoryNames, true)) $mapCategoryNames[] = $name;
+            } elseif (!in_array($name, $matchingNames, true)) {
+                $matchingNames[] = $name;
+            }
         }
-        if ($nearbyLocation !== null) {
-            $answer = $matchingNames
-                ? 'Fast-food chain locations within 3 km to check for ' . $itemLabels . ': '
-                    . implode(', ', array_slice($matchingNames, 0, 8))
-                    . '. Branch-specific menu availability may vary and is not verified; distances are approximate.'
-                : 'No supported fast-food chain locations matching ' . $itemLabels . ' were found within 3 km.';
+        $scopeLabel = $nearbyLocation !== null ? 'within 3 km' : 'in Davao City';
+        if ($matchingNames) {
+            $answer = 'Places matching ' . $itemLabels . ' ' . $scopeLabel . ': '
+                . implode(', ', array_slice($matchingNames, 0, 8))
+                . '. Check linked sources for current menu details.';
+        } elseif ($mapCategoryNames) {
+            $answer = 'OpenStreetMap category matches to check for ' . $itemLabels . ' ' . $scopeLabel . ': '
+                . implode(', ', array_slice($mapCategoryNames, 0, 8))
+                . '. OpenStreetMap does not verify menu availability.';
+        } elseif ($chainNames) {
+            $answer = 'I could not confirm places serving ' . $itemLabels . ' from menu or online evidence ' . $scopeLabel . '.';
         } else {
-            $answer = $matchingNames
-                ? 'Fast-food chain locations in Davao City to check for ' . $itemLabels . ': '
-                    . implode(', ', array_slice($matchingNames, 0, 8))
-                    . '. Branch-specific menu availability may vary and is not verified; check linked sources or contact the branch.'
-                : 'No supported fast-food chain locations matching ' . $itemLabels . ' were found in the available Davao City listings.';
+            $answer = 'I could not find supported places for ' . $itemLabels . ' ' . $scopeLabel . '.';
+        }
+        if ($chainNames) {
+            $answer .= ' Additional fast-food chain locations to check: '
+                . implode(', ', array_slice($chainNames, 0, 8))
+                . '. Branch-specific menu availability may vary and has not been verified.';
         }
     }
 
@@ -1171,6 +1362,7 @@ try {
             'success'=>$playwrightSuccess,
             'browser_used'=>($evidence['browser_used'] ?? false) === true,
             'browser_result_count'=>(int)($evidence['browser_result_count'] ?? 0),
+            'search_provider_result_count'=>(int)($evidence['search_provider_result_count'] ?? 0),
             'browser_search_count'=>(int)($evidence['browser_search_count'] ?? 0),
             'browser_search_errors'=>is_array($evidence['browser_search_errors'] ?? null) ? $evidence['browser_search_errors'] : [],
             'error'=>$evidence['error'] ?? null,

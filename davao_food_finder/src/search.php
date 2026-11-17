@@ -194,6 +194,7 @@ function specificDishPatterns(): array {
         'lechon'     => '/\b(lechon|lechonan|litson)\b/iu',
         'takoyaki'   => '/\b(takoyaki)\b/iu',
         'siomai'     => '/\b(siomai|dimsum|dumplings?)\b/iu',
+        'palabok'    => '/\b(pancit\s+palabok|palabok(?:\s+fiesta)?)\b/iu',
         'fries'      => '/\b(french\s+fries|fries)\b/iu',
         'sundae'     => '/\bsundaes?\b/iu',
         'burger steak' => '/\b(burger[\s-]*steak|hamburger[\s-]*steak)\b/iu',
@@ -224,6 +225,8 @@ function expandMenuItemSearchQuery(string $query, array $intent): string {
     $cuisines = array_map(fn($cuisine) => mb_strtolower(trim((string)$cuisine), 'UTF-8'), $intent['cuisines'] ?? []);
     $fastFoodItems = is_array($intent['fast_food_items'] ?? null) ? $intent['fast_food_items'] : [];
 
+    if (in_array('palabok', $dishes, true)) return trim($query);
+
     if (in_array('fries', $dishes, true)) {
         $alternatives = array_merge($alternatives, ['fries', '"french fries"']);
         if (!in_array('fries', $fastFoodItems, true)) $alternatives[] = '"Potato Corner"';
@@ -241,7 +244,7 @@ function expandMenuItemSearchQuery(string $query, array $intent): string {
         $chainQueries = [
             'burgers'=>['McDonald\'s', 'Jollibee', '"Burger King"', '"Minute Burger"'],
             'chicken'=>['KFC', 'Jollibee', 'McDonald\'s', '"Mang Inasal"'],
-            'fries'=>['McDonald\'s', 'KFC', 'Jollibee', '"Burger King"', '"Minute Burger"'],
+            'fries'=>['McDonald\'s', 'KFC', 'Jollibee', '"Burger King"'],
             'sundaes'=>['McDonald\'s', 'Jollibee', '"Burger King"'],
         ];
         foreach ($fastFoodItems as $item) {
@@ -268,44 +271,37 @@ function extractStrictDishes(string $rawText): array {
         return [];
     }
 
-    $strictEligible = ['sisig', 'bulalo', 'balbacua', 'bulcachong', 'satti', 'takoyaki', 'lomi', 'batchoy', 'halo-halo', 'shawarma', 'biryani', 'lugaw', 'pares', 'silog', 'kinilaw', 'fries', 'burger steak'];
+    $strictEligible = ['sisig', 'bulalo', 'balbacua', 'bulcachong', 'satti', 'takoyaki', 'lomi', 'batchoy', 'halo-halo', 'shawarma', 'biryani', 'lugaw', 'pares', 'silog', 'kinilaw', 'palabok', 'fries', 'burger steak'];
     return array_values(array_intersect($dishes, $strictEligible));
 }
 
 function placeMatchesSpecificDishes(array $place, array $dishes): bool {
     if (!$dishes) return true;
     $patterns = specificDishPatterns();
-    $haystack = mb_strtolower(implode(' ', [
+    $evidenceTexts = [
         (string)($place['name'] ?? ''),
         (string)($place['food_type'] ?? ''),
         (string)($place['description'] ?? ''),
-        implode(' ', is_array($place['_review_snippets'] ?? null) ? $place['_review_snippets'] : []),
-    ]), 'UTF-8');
+    ];
+    $evidenceTexts = array_merge(
+        $evidenceTexts,
+        is_array($place['_review_snippets'] ?? null) ? $place['_review_snippets'] : []
+    );
 
     foreach ($dishes as $dish) {
         $regex = $patterns[$dish] ?? ('/\b' . preg_quote(mb_strtolower((string)$dish, 'UTF-8'), '/') . '\b/iu');
-        if (mb_strtolower(trim((string)$dish), 'UTF-8') === 'burger steak') {
-            $evidenceTexts = array_merge(
-                [(string)($place['name'] ?? ''), (string)($place['description'] ?? '')],
-                is_array($place['_review_snippets'] ?? null) ? $place['_review_snippets'] : []
-            );
-            foreach ($evidenceTexts as $evidenceText) {
-                $sentences = preg_split('/(?<=[.!?;])\s+|\R/u', (string)$evidenceText) ?: [];
-                foreach ($sentences as $sentence) {
-                    if (preg_match($regex, $sentence) !== 1) continue;
-                    if (preg_match(
-                        '/\b(?:may|might|could)\s+(?:possibly\s+)?(?:serve|have|offer|sell|be\b)|\b(?:unverified|unconfirmed|uncertain)\b|\bnot\s+(?:explicitly\s+)?(?:verified|confirmed|listed)\b|\bavailability\s+(?:is\s+)?not\b|\bno\s+(?:evidence|confirmation)\b|\bnone\s+(?:have|has)\s+confirmed\b|\bdoes(?:\s+not|n\'t)\s+(?:serve|offer|sell)\b|\bnot\s+(?:on|in)\s+(?:the|their)\s+menu\b/iu',
-                        $sentence
-                    ) === 1) {
-                        continue;
-                    }
-                    return true;
+        foreach ($evidenceTexts as $evidenceText) {
+            $sentences = preg_split('/(?<=[.!?;])\s+|\R/u', (string)$evidenceText) ?: [];
+            foreach ($sentences as $sentence) {
+                if (preg_match($regex, $sentence) !== 1) continue;
+                if (preg_match(
+                    '/\b(?:may|might|could)\s+(?:possibly\s+)?(?:serve|have|offer|sell|be\b)|\b(?:unverified|unconfirmed|uncertain)\b|\bnot\s+(?:explicitly\s+)?(?:verified|confirmed|listed)\b|\bavailability\s+(?:is\s+)?not\b|\bno\s+(?:evidence|confirmation)\b|\bnone\s+(?:have|has)\s+confirmed\b|\bdoes(?:\s+not|n\'t)\s+(?:serve|offer|sell)\b|\bnot\s+(?:on|in)\s+(?:the|their)\s+menu\b/iu',
+                    $sentence
+                ) === 1) {
+                    continue;
                 }
+                return true;
             }
-            continue;
-        }
-        if (preg_match($regex, $haystack) === 1) {
-            return true;
         }
     }
     return false;
@@ -676,7 +672,7 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'Fried Chicken' => '/\b(fried\s+chicken|boneless\s+chicken|chicken\s+wings?|wings|unli\s+wings|inasal)\b/iu',
             'Chicken' => '/\b(chickens?|manok|roasters)\b/iu',
             'Korean' => '/\b(korean|samgyup|samgyupsal|kimchi|bibimbap|jjajang|corndog|k-food)\b/iu',
-            'Pizza' => '/\b(pizza|pizzeria|italian|pasta|spaghetti|lasagna|palabok)\b/iu',
+            'Pizza' => '/\b(pizza|pizzeria|italian|pasta|spaghetti|lasagna)\b/iu',
             'Seafood' => '/\b(seafood|tuna|fish|shrimp|crab|kinilaw|sutukil|hito)\b/iu',
             'Milk Tea' => '/\b(milk\s*tea|milktea|boba|bubble\s+tea|fruit\s+tea)\b/iu',
             'Burgers' => '/\b(burgers?|hamburger|sandwiches|sandwich|sliders)\b/iu',
@@ -684,8 +680,8 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
             'Indian' => '/\b(indian|biryani|curry|masala|punjabi|tandoori)\b/iu',
             'Shawarma' => '/\b(shawarma|kebab|kabab|middle\s+eastern|turkish|arabian|mediterranean|wraps)\b/iu',
             'Desserts' => '/\b(desserts?|cakes?|pastry|pastries|halo[- ]halo|ice\s+cream|gelato|sundaes?|donuts?|brownies|sweet|waffles?|pancakes?|bakeshop|bakery|bakeries)\b/iu',
-            'Noodles' => '/\b(noodles?|pancit|pansit|batchoy|mami|lomi|lugaw|porridge|gotokai|dimsum|siomai)\b/iu',
-            'Filipino' => '/\b(filipino|pinoy|lutong\s+bahay|ulam|carinderia|bulalo|sinigang|kambingan|silog|silogan|pares|paresan|satti)\b/iu',
+            'Noodles' => '/\b(noodles?|pancit|pansit|palabok|batchoy|mami|lomi|lugaw|porridge|gotokai|dimsum|siomai)\b/iu',
+            'Filipino' => '/\b(filipino|pinoy|lutong\s+bahay|ulam|carinderia|bulalo|sinigang|kambingan|silog|silogan|pares|paresan|satti|palabok)\b/iu',
             'Healthy' => '/(\b(healthy|salads?|vegan|vegetarian|plant[- ]based|veggie|low[- ]calorie)\b|\bgreen\s+(salads?|bowls?|food|veggies?|smoothies?)\b)/iu',
         ];
         foreach ($cuisineMap as $label => $regex) {
@@ -1101,6 +1097,158 @@ function parseQueryIntent(string $query, array $history = [], array $shownNames 
         'conversation_layers'=>$conversationLayers,
         'effective_query'=>$effectiveQuery,
     ];
+}
+
+function searchTypoNormalizeTerm(string $term): string {
+    return mb_strtolower(preg_replace('/[^\p{L}\p{N}]+/u', '', trim($term)) ?? '', 'UTF-8');
+}
+
+function searchTypoEditDistance(string $left, string $right): int {
+    $leftChars = preg_split('//u', $left, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    $rightChars = preg_split('//u', $right, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    $leftLength = count($leftChars);
+    $rightLength = count($rightChars);
+    $distance = [];
+
+    for ($i = 0; $i <= $leftLength; $i++) $distance[$i] = array_fill(0, $rightLength + 1, 0);
+    for ($i = 0; $i <= $leftLength; $i++) $distance[$i][0] = $i;
+    for ($j = 0; $j <= $rightLength; $j++) $distance[0][$j] = $j;
+
+    for ($i = 1; $i <= $leftLength; $i++) {
+        for ($j = 1; $j <= $rightLength; $j++) {
+            $cost = $leftChars[$i - 1] === $rightChars[$j - 1] ? 0 : 1;
+            $distance[$i][$j] = min(
+                $distance[$i - 1][$j] + 1,
+                $distance[$i][$j - 1] + 1,
+                $distance[$i - 1][$j - 1] + $cost
+            );
+            if ($i > 1 && $j > 1
+                && $leftChars[$i - 1] === $rightChars[$j - 2]
+                && $leftChars[$i - 2] === $rightChars[$j - 1]) {
+                $distance[$i][$j] = min($distance[$i][$j], $distance[$i - 2][$j - 2] + 1);
+            }
+        }
+    }
+
+    return $distance[$leftLength][$rightLength];
+}
+
+function searchTypoVocabulary(): array {
+    $vocabulary = [
+        'fries'=>'fries', 'frenchfries'=>'French fries', 'burger'=>'burger', 'burgers'=>'burgers',
+        'chicken'=>'chicken', 'fried'=>'fried', 'fish'=>'fish', 'chips'=>'chips', 'sundae'=>'sundae',
+        'sundaes'=>'sundaes', 'pizza'=>'pizza', 'pasta'=>'pasta', 'sushi'=>'sushi', 'ramen'=>'ramen',
+        'udon'=>'udon', 'sashimi'=>'sashimi', 'gyoza'=>'gyoza', 'katsu'=>'katsu', 'takoyaki'=>'takoyaki',
+        'tempura'=>'tempura', 'teriyaki'=>'teriyaki', 'samgyup'=>'samgyup', 'samgyupsal'=>'samgyupsal',
+        'samgyeopsal'=>'samgyeopsal', 'kimchi'=>'kimchi', 'bibimbap'=>'bibimbap', 'jjajang'=>'jjajang',
+        'corndog'=>'corn dog', 'biryani'=>'biryani', 'curry'=>'curry', 'masala'=>'masala',
+        'punjabi'=>'Punjabi', 'tandoori'=>'tandoori', 'shawarma'=>'shawarma', 'kebab'=>'kebab',
+        'kabab'=>'kabab', 'turkish'=>'Turkish', 'arabian'=>'Arabian', 'wraps'=>'wraps',
+        'sisig'=>'sisig', 'bulalo'=>'bulalo', 'balbacua'=>'balbacua', 'bulcachong'=>'bulcachong',
+        'pares'=>'pares', 'silog'=>'silog', 'satti'=>'satti', 'lugaw'=>'lugaw', 'lomi'=>'lomi',
+        'batchoy'=>'batchoy', 'lechon'=>'lechon', 'kinilaw'=>'kinilaw', 'siomai'=>'siomai',
+        'dimsum'=>'dimsum', 'pancit'=>'pancit', 'pansit'=>'pansit', 'mami'=>'mami', 'goto'=>'goto',
+        'porridge'=>'porridge', 'sinigang'=>'sinigang', 'ulam'=>'ulam', 'kambingan'=>'kambingan',
+        'wings'=>'wings', 'halohalo'=>'halo-halo', 'icecream'=>'ice cream', 'gelato'=>'gelato',
+        'donut'=>'donut', 'donuts'=>'donuts', 'brownie'=>'brownie', 'brownies'=>'brownies',
+        'pancake'=>'pancake', 'pancakes'=>'pancakes', 'waffle'=>'waffle', 'waffles'=>'waffles',
+        'spaghetti'=>'spaghetti', 'lasagna'=>'lasagna', 'palabok'=>'palabok', 'ribs'=>'ribs',
+        'steak'=>'steak', 'liempo'=>'liempo', 'ihaw'=>'ihaw', 'grilled'=>'grilled', 'sinugba'=>'sinugba',
+        'soup'=>'soup',
+        'seafood'=>'seafood', 'shrimp'=>'shrimp', 'crab'=>'crab', 'tuna'=>'tuna', 'beef'=>'beef',
+        'pork'=>'pork', 'noodles'=>'noodles', 'rice'=>'rice', 'dessert'=>'dessert', 'desserts'=>'desserts',
+        'cake'=>'cake', 'bakery'=>'bakery', 'bakeshop'=>'bakeshop', 'coffee'=>'coffee', 'cafe'=>'cafe',
+        'cafes'=>'cafes', 'restaurant'=>'restaurant', 'restaurants'=>'restaurants', 'eatery'=>'eatery',
+        'diner'=>'diner', 'bistro'=>'bistro', 'pizzeria'=>'pizzeria', 'steakhouse'=>'steakhouse',
+        'fastfood'=>'fast food', 'buffet'=>'buffet', 'foodcourt'=>'food court', 'milktea'=>'milk tea',
+        'breakfast'=>'breakfast', 'brunch'=>'brunch', 'lunch'=>'lunch', 'dinner'=>'dinner',
+        'filipino'=>'Filipino', 'pinoy'=>'Pinoy', 'japan'=>'Japanese', 'japanese'=>'Japanese',
+        'korean'=>'Korean', 'italian'=>'Italian',
+        'indian'=>'Indian', 'chinese'=>'Chinese', 'thai'=>'Thai',
+        'mexican'=>'Mexican', 'spanish'=>'Spanish', 'vietnamese'=>'Vietnamese', 'french'=>'French',
+        'american'=>'American', 'mediterranean'=>'Mediterranean', 'healthy'=>'healthy', 'vegan'=>'vegan',
+        'vegetarian'=>'vegetarian', 'halal'=>'halal', 'lowcalorie'=>'low-calorie', 'veggie'=>'veggie',
+        'family'=>'family', 'friendly'=>'friendly', 'quiet'=>'quiet',
+        'study'=>'study', 'romantic'=>'romantic', 'local'=>'local', 'favorites'=>'favorites',
+        'lanang'=>'Lanang', 'matina'=>'Matina', 'obrero'=>'Obrero', 'bajada'=>'Bajada',
+        'ecoland'=>'Ecoland', 'toril'=>'Toril', 'buhangin'=>'Buhangin', 'talomo'=>'Talomo',
+        'bangkal'=>'Bangkal', 'mintal'=>'Mintal', 'calinan'=>'Calinan', 'juna'=>'Juna',
+        'agdao'=>'Agdao', 'panacan'=>'Panacan', 'sasa'=>'Sasa', 'davao'=>'Davao',
+        'jollibee'=>'Jollibee', 'mcdonalds'=>"McDonald's", 'kfc'=>'KFC', 'burgerking'=>'Burger King',
+        'minuteburger'=>'Minute Burger', 'manginasal'=>'Mang Inasal', 'greenwich'=>'Greenwich',
+        'chowking'=>'Chowking', 'maxs'=>"Max's", 'shakeys'=>"Shakey's", 'bonchon'=>'Bonchon',
+        'potatocorner'=>'Potato Corner', 'starbucks'=>'Starbucks', 'boscoffee'=>"Bo's Coffee",
+        'dunkin'=>'Dunkin', 'goldilocks'=>'Goldilocks', 'redribbon'=>'Red Ribbon',
+        'armynavy'=>'Army Navy', '24chicken'=>'24 Chicken',
+    ];
+    foreach (array_keys(specificDishPatterns()) as $dish) {
+        $key = searchTypoNormalizeTerm((string)$dish);
+        if ($key !== '' && !isset($vocabulary[$key])) $vocabulary[$key] = (string)$dish;
+    }
+    return $vocabulary;
+}
+
+function formatSearchTypoCorrection(string $original, string $suggestion): string {
+    if ($original !== '' && mb_strtoupper($original, 'UTF-8') === $original) {
+        return mb_strtoupper($suggestion, 'UTF-8');
+    }
+    if ($original !== '' && mb_strtoupper(mb_substr($original, 0, 1, 'UTF-8'), 'UTF-8')
+        === mb_substr($original, 0, 1, 'UTF-8')) {
+        return mb_strtoupper(mb_substr($suggestion, 0, 1, 'UTF-8'), 'UTF-8')
+            . mb_substr($suggestion, 1, null, 'UTF-8');
+    }
+    return $suggestion;
+}
+
+function suggestSearchQueryTypo(string $query): ?array {
+    $vocabulary = searchTypoVocabulary();
+    if (preg_match_all('/[\p{L}\p{N}]+(?:[\'’][\p{L}\p{N}]+)?/u', $query, $matches, PREG_OFFSET_CAPTURE) === false) {
+        return null;
+    }
+
+    foreach ($matches[0] as [$original, $offset]) {
+        $normalized = searchTypoNormalizeTerm($original);
+        $length = mb_strlen($normalized, 'UTF-8');
+        if ($normalized === '' || $length < 3 || isset($vocabulary[$normalized])) continue;
+
+        $tokenIntent = parseQueryIntent($original);
+        if (!empty($tokenIntent['cuisines'])
+            || !empty($tokenIntent['specific_dishes'])
+            || !empty($tokenIntent['areas'])
+            || !empty($tokenIntent['fast_food_items'])
+            || !empty($tokenIntent['dietary'])
+            || !empty($tokenIntent['thematic'])
+            || !empty($tokenIntent['ambiance'])
+            || detectOutOfScopeLocation($original)['out_of_scope']) {
+            continue;
+        }
+
+        $maxDistance = $length >= 9 ? 2 : 1;
+        $bestDistance = $maxDistance + 1;
+        $bestSuggestions = [];
+        foreach ($vocabulary as $candidateKey => $candidateLabel) {
+            if (abs($length - mb_strlen($candidateKey, 'UTF-8')) > $maxDistance) continue;
+            $distance = searchTypoEditDistance($normalized, $candidateKey);
+            if ($distance > $maxDistance) continue;
+            if ($distance < $bestDistance) {
+                $bestDistance = $distance;
+                $bestSuggestions = [$candidateKey=>$candidateLabel];
+            } elseif ($distance === $bestDistance) {
+                $bestSuggestions[$candidateKey] = $candidateLabel;
+            }
+        }
+        if ($bestDistance > $maxDistance || count($bestSuggestions) !== 1) continue;
+
+        $suggestion = formatSearchTypoCorrection($original, (string)reset($bestSuggestions));
+        $correctedQuery = substr_replace($query, $suggestion, (int)$offset, strlen($original));
+        return [
+            'original_term'=>$original,
+            'suggested_term'=>$suggestion,
+            'corrected_query'=>$correctedQuery,
+        ];
+    }
+
+    return null;
 }
 
 function isContinuationQuery(string $query): bool {

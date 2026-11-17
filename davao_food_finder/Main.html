@@ -194,10 +194,24 @@ function priceBadgeText(p,intent={}){if(intent.price_scope==='menu_item'){const 
 function getPriceEvidence(p,intent={}){const raw=intent.price_scope==='menu_item'?p.menu_item_price_evidence?.observed_max_php:p.price_evidence?.observed_median_php;if(raw===null||raw===undefined||raw==='')return null;const value=Number(raw);return Number.isFinite(value)&&value>=0?value:null}
 function hasLivePriceVerification(p,intent={}){const evidence=intent.price_scope==='menu_item'?p.menu_item_price_evidence:p.price_evidence,source=intent.price_scope==='menu_item'?'live_menu_item_evidence':'live_web_evidence';return getPriceEvidence(p,intent)!==null&&evidence?.source===source&&Boolean(sourceUrlFor(p,intent))}
 function relativeAge(seconds){const age=Math.max(0,Number(seconds));if(!Number.isFinite(age))return'';if(age<60)return'less than a minute';if(age<3600)return`${Math.floor(age/60)} min`;if(age<86400)return`${Math.floor(age/3600)} hr`;return`${Math.floor(age/86400)} day`}
-function evidenceNote(metrics,isOnline,isMapFinds=false){if(metrics?.parsed_intent?.fast_food_items?.length)return'These are locations of fast-food chains associated with your search. Branch-specific menu availability may vary and has not been verified; check the linked source or contact the branch.';if(metrics?.nearby_search&&(metrics?.parsed_intent?.thematic?.length||metrics?.parsed_intent?.ambiance?.length))return'Only places with source or positive-review evidence for your requested dining experience are shown, and each has a mapped location within 3 km. Distances are approximate.';if(metrics?.nearby_search)return'Nearby places are matched to Davao City OpenStreetMap locations; map coverage, hours, and current business status may be incomplete.';if(isMapFinds){const updatedAt=metrics?.map_finds?.snapshot_updated_at,date=updatedAt?new Date(updatedAt):null;return`OpenStreetMap local snapshot${date&&Number.isFinite(date.getTime())?` updated ${date.toLocaleDateString()}`:''}; listings are not live-web verified, and menus, prices, reviews, and hours are not verified.`}if(!isOnline)return'Local record from the 2025 dataset; this is not a real-time check of current hours or business status.';const cache=metrics?.cache||{},age=cache.playwright_age_seconds,cachedAt=cache.playwright_cached_at,date=cachedAt?new Date(Number(cachedAt)*1000):null;if(date&&Number.isFinite(date.getTime()))return`Web evidence last captured ${date.toLocaleString()}${age!==null&&age!==undefined&&Number.isFinite(Number(age))?` · cache ${relativeAge(age)} old`:''}${cache.playwright==='hit'?' · reused':''}; details can change.`;if(age!==null&&age!==undefined&&Number.isFinite(Number(age)))return`Web evidence cache is ${relativeAge(age)} old${cache.playwright==='hit'?' (reused)':''}; details can change.`;return metrics?.playwright?.success?'Web evidence gathered for this search; details can change.':'Live web verification was unavailable; confirm details directly.'}
+function evidenceNote(metrics,isOnline,isMapFinds=false){
+ const nearbySearch=metrics?.nearby_search,nearbyEnabled=nearbySearch===true||nearbySearch?.enabled===true,matchingMode=nearbySearch?.matching_mode;
+ if(matchingMode==='nearby_partial_alternatives')return'Verified matches and nearby alternatives are shown separately. The requested atmosphere or preference is unverified for alternatives.';
+ if(matchingMode==='nearby_alternatives')return nearbySearch.fallback_note||'These are nearby alternatives in the same broad category. The specific atmosphere or experience you requested is not verified.';
+ if(nearbyEnabled&&(metrics?.parsed_intent?.thematic?.length||metrics?.parsed_intent?.ambiance?.length))return'Only places with source or positive-review evidence for your requested dining experience are shown, and each has a mapped location within 3 km. Distances are approximate.';
+ if(nearbyEnabled)return'Nearby places are matched to Davao City OpenStreetMap locations; map coverage, hours, and current business status may be incomplete.';
+ if(isMapFinds){const updatedAt=metrics?.map_finds?.snapshot_updated_at,date=updatedAt?new Date(updatedAt):null;return`OpenStreetMap local snapshot${date&&Number.isFinite(date.getTime())?` updated ${date.toLocaleDateString()}`:''}; listings are not live-web verified, and menus, prices, reviews, and hours are not verified.`}
+ if(metrics?.parsed_intent?.thematic?.length||metrics?.parsed_intent?.ambiance?.length)return'Davao City-wide recommendations; check linked sources for details about the requested dining experience.';
+ if(Number(metrics?.playwright?.search_provider_result_count)>0)return'Some evidence comes from search-result snippets, not a fully checked menu page; open the source and confirm current availability.';
+ if(!isOnline)return'Local record from the 2025 dataset; this is not a real-time check of current hours or business status.';
+ const cache=metrics?.cache||{},age=cache.playwright_age_seconds,cachedAt=cache.playwright_cached_at,date=cachedAt?new Date(Number(cachedAt)*1000):null;
+ if(date&&Number.isFinite(date.getTime()))return`Web evidence last captured ${date.toLocaleString()}${age!==null&&age!==undefined&&Number.isFinite(Number(age))?` · cache ${relativeAge(age)} old`:''}${cache.playwright==='hit'?' · reused':''}; details can change.`;
+ if(age!==null&&age!==undefined&&Number.isFinite(Number(age)))return`Web evidence cache is ${relativeAge(age)} old${cache.playwright==='hit'?' (reused)':''}; details can change.`;
+ return metrics?.playwright?.success?'Web evidence gathered for this search; details can change.':'Live web verification was unavailable; confirm details directly.';
+}
 function sourceBadgeLabel(p,isOnline){if(p.map_only)return'OpenStreetMap';if(p.source_type==='community_post')return'Public post snippet';if(p.source_type==='blog_search_result')return'Blog-search result';return isOnline?'Live web':'2025 dataset'}
 function refinementNote(metrics){const loop=metrics?.agentic_loop;if(!loop||loop.enabled!==true){if(loop?.skipped_reason==='recommendation_failed')return'Automatic criteria review was skipped because recommendation processing failed.';return'Automatic criteria review was not run for this search.'}const iterations=Math.max(1,Number(loop.iterations)||1),repaired=Math.max(0,Number(loop.violations_repaired)||0);return`Automatic criteria review ran in ${iterations} pass${iterations===1?'':'es'}${repaired?` · ${repaired} issue${repaired===1?'':'s'} corrected`:''}.`}
-function fitReasons(p,intent){const haystack=String([p.name,p.food_type,p.description,p.address].filter(Boolean).join(' ')).toLowerCase(),reasons=[];[...(intent?.specific_dishes||[]),...(intent?.cuisines||[]),...(intent?.thematic||[])].forEach(item=>{const key=String(item||'').toLowerCase().trim();if(key&&haystack.includes(key)&&!reasons.includes(key))reasons.push(key)});(intent?.areas||[]).forEach(item=>{const key=String(item||'').toLowerCase().trim();if(key&&haystack.includes(key)&&!reasons.some(reason=>reason.toLowerCase()===`area: ${key}`))reasons.push(`area: ${key}`)});const max=intent?.max_price_php,min=intent?.min_price_php,hasMax=max!==null&&max!==undefined&&max!==''&&Number.isFinite(Number(max)),hasMin=min!==null&&min!==undefined&&min!==''&&Number.isFinite(Number(min)),price=getPriceEvidence(p,intent);if(price!==null&&(hasMax||hasMin)&&(!hasMax||price<=Number(max))&&(!hasMin||price>=Number(min)))reasons.push(hasLivePriceVerification(p,intent)?`live price ~₱${Math.round(price)} meets your requested range`:`reported price estimate ~₱${Math.round(price)}; verify the current price`);return reasons}
+function fitReasons(p,intent){if(p.nearby_match_tier==='alternative')return[`Nearby ${String(p.food_type||'place').toLowerCase()} alternative; requested preference is unverified`];const haystack=String([p.name,p.food_type,p.description,p.address].filter(Boolean).join(' ')).toLowerCase(),reasons=[];[...(intent?.specific_dishes||[]),...(intent?.cuisines||[]),...(intent?.thematic||[])].forEach(item=>{const key=String(item||'').toLowerCase().trim();if(key&&haystack.includes(key)&&!reasons.includes(key))reasons.push(key)});(intent?.areas||[]).forEach(item=>{const key=String(item||'').toLowerCase().trim();if(key&&haystack.includes(key)&&!reasons.some(reason=>reason.toLowerCase()===`area: ${key}`))reasons.push(`area: ${key}`)});const max=intent?.max_price_php,min=intent?.min_price_php,hasMax=max!==null&&max!==undefined&&max!==''&&Number.isFinite(Number(max)),hasMin=min!==null&&min!==undefined&&min!==''&&Number.isFinite(Number(min)),price=getPriceEvidence(p,intent);if(price!==null&&(hasMax||hasMin)&&(!hasMax||price<=Number(max))&&(!hasMin||price>=Number(min)))reasons.push(hasLivePriceVerification(p,intent)?`live price ~₱${Math.round(price)} meets your requested range`:`reported price estimate ~₱${Math.round(price)}; verify the current price`);return reasons}
 function normAlnum(s){return String(s??'').toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/gi,'')}
 function normCore(name){const raw=String(name??'').trim();const stripped=raw.replace(/\s*(?:[-–|]\s*[^-–|]+|\([^)]*\))\s*$/,'').trim();return normAlnum(stripped||raw)}
 function extractBranch(name){const m=String(name??'').match(/\s+[-–]\s+([^-–]{2,80})$/);return m?normAlnum(m[1]):''}
@@ -211,38 +225,59 @@ function renderPlaces(places,title,isOnline=false,metrics={},request='',isMapFin
  const heading=document.createElement('h2');heading.className='results-heading'+(isOnline?' online':'');heading.innerHTML=`<span>${esc(title)}</span>`;const countBadge=document.createElement('span');countBadge.className='results-count';countBadge.textContent=String(places.length);heading.appendChild(countBadge);group.appendChild(heading);
  const context=document.createElement('div');context.className='result-context';
  const requestLine=document.createElement('p');requestLine.textContent=`Your request: ${request}`;context.appendChild(requestLine);
- const evidenceLine=document.createElement('p');evidenceLine.textContent=evidenceNote(metrics,isOnline,isMapFinds);context.appendChild(evidenceLine);
+ const evidenceLine=document.createElement('p');evidenceLine.textContent=places.some(place=>place.fast_food_chain===true)?'These additional locations belong to fast-food chains associated with your search. Branch-specific menu availability may vary and has not been verified; check the linked source or contact the branch.':evidenceNote(metrics,isOnline,isMapFinds);context.appendChild(evidenceLine);
  const checkLine=document.createElement('p');checkLine.textContent=refinementNote(metrics);context.appendChild(checkLine);
  if(intent.max_price_php!==null&&intent.max_price_php!==undefined&&Number.isFinite(Number(intent.max_price_php))){const priceLine=document.createElement('p');priceLine.textContent=intent.price_scope==='menu_item'?`Menu item ceiling: ${intent.specific_dishes?.[0]||'requested dish'} at or below ₱${Math.round(Number(intent.max_price_php))}.`:`Per-person ceiling: ₱${Math.round(Number(intent.max_price_php))}.`;context.appendChild(priceLine)}
  const latency=Number(metrics?.total_latency_ms);if(Number.isFinite(latency)&&latency>=0){const speedLine=document.createElement('p');speedLine.textContent=`Search completed in ${(latency/1000).toFixed(1)} seconds.`;context.appendChild(speedLine)}
  group.appendChild(context);
  const grid=document.createElement('div');grid.className='results';group.appendChild(grid);
- const pricedPlaces=[],unpricedPlaces=[];
- places.forEach(place=>{
-  if(hasPriceConstraint&&!hasLivePriceVerification(place,intent))unpricedPlaces.push(place);
-  else pricedPlaces.push(place);
- });
- appendPlaceCards(grid,pricedPlaces,isOnline,intent);
- let unpricedHeading=null,unpricedGrid=null;
+ const allPlaces=places.slice(),pageSize=20;
+ let visibleCount=0,clientLoadMoreButton=null,unpricedGrid=null,unpricedHeading=null;
  if(hasPriceConstraint){
   unpricedHeading=document.createElement('h3');unpricedHeading.className='price-split-heading unverified';unpricedHeading.textContent='Price unverified or estimate only — may not meet your limit';
   unpricedGrid=document.createElement('div');unpricedGrid.className='results';
-  appendPlaceCards(unpricedGrid,unpricedPlaces,isOnline,intent);
-  unpricedHeading.hidden=unpricedPlaces.length===0;unpricedGrid.hidden=unpricedPlaces.length===0;
+  unpricedHeading.hidden=true;unpricedGrid.hidden=true;
   group.append(unpricedHeading,unpricedGrid);
  }
+ const appendBatch=batch=>{
+  const pricedPlaces=[],unpricedPlaces=[];
+  batch.forEach(place=>{
+   if(hasPriceConstraint&&!hasLivePriceVerification(place,intent))unpricedPlaces.push(place);
+   else pricedPlaces.push(place);
+  });
+  appendPlaceCards(grid,pricedPlaces,isOnline,intent);
+  if(unpricedPlaces.length&&unpricedGrid&&unpricedHeading){
+   unpricedHeading.hidden=false;unpricedGrid.hidden=false;
+   appendPlaceCards(unpricedGrid,unpricedPlaces,isOnline,intent);
+  }
+ };
+ const updateLoadMoreButton=()=>{
+  if(!clientLoadMoreButton)return;
+  const remaining=allPlaces.length-visibleCount;
+  if(remaining<=0){clientLoadMoreButton.remove();clientLoadMoreButton=null;return}
+  clientLoadMoreButton.textContent=`Load ${Math.min(pageSize,remaining)} more`;
+ };
+ const appendNextPage=()=>{
+  const nextPlaces=allPlaces.slice(visibleCount,visibleCount+pageSize);
+  if(!nextPlaces.length)return;
+  appendBatch(nextPlaces);
+  visibleCount+=nextPlaces.length;
+  countBadge.textContent=String(visibleCount);
+  updateLoadMoreButton();
+ };
+ appendNextPage();
  thread.appendChild(group);
+ if(visibleCount<allPlaces.length){
+  clientLoadMoreButton=document.createElement('button');clientLoadMoreButton.type='button';clientLoadMoreButton.className='load-more';
+  clientLoadMoreButton.addEventListener('click',appendNextPage);
+  group.appendChild(clientLoadMoreButton);updateLoadMoreButton();
+ }
  return{
   grid,countBadge,intent,
   anchor:unpricedGrid||grid,
   appendPlaces(morePlaces){
-   const morePriced=[],moreUnpriced=[];
-   morePlaces.forEach(place=>{
-    if(hasPriceConstraint&&!hasLivePriceVerification(place,intent))moreUnpriced.push(place);
-    else morePriced.push(place);
-   });
-   appendPlaceCards(grid,morePriced,isOnline,intent);
-   if(moreUnpriced.length&&unpricedGrid&&unpricedHeading){unpricedHeading.hidden=false;unpricedGrid.hidden=false;appendPlaceCards(unpricedGrid,moreUnpriced,isOnline,intent)}
+   allPlaces.push(...morePlaces);
+   appendNextPage();
   }
  };
 }
@@ -251,36 +286,68 @@ function appendPlaceCards(grid,places,isOnline,intent){
   const category=categoryTile(p,intent),address=placeLocationLabel(p),pBadge=priceBadgeText(p,intent),src=sourceUrlFor(p,intent),reasons=fitReasons(p,intent),distance=Number(p.distance_km),hasDistance=p.distance_km!==null&&p.distance_km!==undefined&&Number.isFinite(distance),distanceBadge=hasDistance?`<span class="tag evidence">~${distance.toFixed(1)} km away</span>`:'',maxPrice=Number(intent.max_price_php),minPrice=Number(intent.min_price_php),hasCeiling=intent.max_price_php!==null&&intent.max_price_php!==undefined&&intent.max_price_php!==''&&Number.isFinite(maxPrice),hasMinimum=intent.min_price_php!==null&&intent.min_price_php!==undefined&&intent.min_price_php!==''&&Number.isFinite(minPrice),observedPrice=getPriceEvidence(p,intent),hasPriceConstraint=hasCeiling||hasMinimum,withinPriceConstraint=observedPrice!==null&&(!hasCeiling||observedPrice<=maxPrice)&&(!hasMinimum||observedPrice>=minPrice),livePriceVerified=hasLivePriceVerification(p,intent),priceLabel=intent.price_scope==='menu_item'?`${intent.specific_dishes?.[0]||'Menu item'} price`:'Price';
   const priceCheck=!hasPriceConstraint?'':observedPrice===null?`${priceLabel} not verified against ${intent.price_scope==='menu_item'?'the item ceiling':'your budget'}`:!livePriceVerified?`${priceLabel} estimate ~₱${Math.round(observedPrice)}; not live-verified against your limit`:!withinPriceConstraint&&hasCeiling&&observedPrice>maxPrice?`${priceLabel} above ₱${Math.round(maxPrice)} ceiling`:!withinPriceConstraint&&hasMinimum&&observedPrice<minPrice?`${priceLabel} below ₱${Math.round(minPrice)} minimum`:hasMinimum&&hasCeiling?`${priceLabel} within ₱${Math.round(minPrice)}–₱${Math.round(maxPrice)} range`:hasCeiling?`${priceLabel} within ₱${Math.round(maxPrice)} ceiling`:`${priceLabel} meets ₱${Math.round(minPrice)} minimum`;
   const card=document.createElement('article');card.className='place'+(isOnline?' online-card':'');
-  card.innerHTML=`${category}<div class="place-body"><div class="place-topline"><h3>${esc(p.name||'Unnamed place')}</h3>${ratingMarkup(p)}</div><div class="place-tags">${p.map_only?'<span class="tag evidence">OpenStreetMap</span>':isOnline?'<span class="tag online">Live web</span>':'<span class="tag evidence">2025 dataset</span>'}<span class="tag">${esc(p.food_type||'Restaurant')}</span>${distanceBadge}${pBadge?`<span class="tag price">${esc(pBadge)}</span>`:''}${priceCheck?`<span class="tag ${!livePriceVerified||!withinPriceConstraint?'unverified':'evidence'}">${esc(priceCheck)}</span>`:''}</div><p class="place-description">${esc(p.description||'Explore this place in Davao City.')}</p><p class="place-reason"><strong>Why it may fit:</strong> ${esc(reasons.length?reasons.join(' · '):'Selected as a relevant Davao City option. Check its details and source before visiting.')}</p><div class="place-location"><span class="pin" aria-hidden="true">⌖</span><span>${esc(address)}</span></div><div class="place-actions"><button class="details" type="button">View details</button>${src?`<a class="source-link" href="${esc(src.href)}" target="_blank" rel="noopener noreferrer" title="${esc(src.host)}">Source ↗</a>`:'<span class="source-unavailable">Source link unavailable</span>'}<a class="map-link" href="${esc(mapUrlFor(p))}" target="_blank" rel="noopener noreferrer">${mapLinkLabel(p)}</a></div></div>`;
+  card.innerHTML=`${category}<div class="place-body"><div class="place-topline"><h3>${esc(p.name||'Unnamed place')}</h3>${ratingMarkup(p)}</div><div class="place-tags">${p.map_only?'<span class="tag evidence">OpenStreetMap</span>':isOnline?'<span class="tag online">Live web</span>':'<span class="tag evidence">2025 dataset</span>'}<span class="tag">${esc(p.food_type||'Restaurant')}</span>${p.nearby_match_tier==='alternative'?'<span class="tag unverified">Alternative</span>':''}${distanceBadge}${pBadge?`<span class="tag price">${esc(pBadge)}</span>`:''}${priceCheck?`<span class="tag ${!livePriceVerified||!withinPriceConstraint?'unverified':'evidence'}">${esc(priceCheck)}</span>`:''}</div><p class="place-description">${esc(p.description||'Explore this place in Davao City.')}</p><p class="place-reason"><strong>${p.nearby_match_tier==='alternative'?'Why it is shown':'Why it may fit'}:</strong> ${esc(reasons.length?reasons.join(' · '):'Selected as a relevant Davao City option. Check its details and source before visiting.')}</p><div class="place-location"><span class="pin" aria-hidden="true">⌖</span><span>${esc(address)}</span></div><div class="place-actions"><button class="details" type="button">View details</button>${src?`<a class="source-link" href="${esc(src.href)}" target="_blank" rel="noopener noreferrer" title="${esc(src.host)}">Source ↗</a>`:'<span class="source-unavailable">Source link unavailable</span>'}<a class="map-link" href="${esc(mapUrlFor(p))}" target="_blank" rel="noopener noreferrer">${mapLinkLabel(p)}</a></div></div>`;
   const sourceBadge=card.querySelector('.place-tags .tag');
   if(sourceBadge){sourceBadge.textContent=sourceBadgeLabel(p,isOnline);sourceBadge.className=`tag ${p.map_only?'evidence':isOnline?'online':'evidence'}`}
+  const dishEvidenceLabels={menu_source:'Menu source',listing_mention:'Dish mentioned in listing',search_result_mention:'Dish in search result',dish_mention:'Dish mentioned online'};
+  if(dishEvidenceLabels[p.dish_evidence_status]){
+   const tag=document.createElement('span');tag.className='tag evidence';tag.textContent=dishEvidenceLabels[p.dish_evidence_status];
+   card.querySelector('.place-tags').appendChild(tag);
+   if(p.dish_availability_note){
+    const note=document.createElement('p');note.className='small';note.textContent=p.dish_availability_note;
+    card.querySelector('.place-description').insertAdjacentElement('afterend',note);
+   }
+  }
   card.querySelector('.details').addEventListener('click',()=>openDetails(p,intent));
   grid.appendChild(card)
  });
 }
-function attachNearbyLoadMore(section,token,moreCount){
- let offset=0,shown=Number(section.countBadge.textContent)||0;
- const button=document.createElement('button');button.type='button';button.className='load-more';button.textContent=`Load ${Math.min(20,moreCount)} more mapped places`;
+function attachNearbyLoadMore(section,token,moreCount,splitFastFoodChains=false,additionalSection=null,additionalOnlineSection=null,metrics={},request=''){
+ let offset=0,shown=section===additionalSection||section===additionalOnlineSection?0:Number(section.countBadge.textContent)||0,additionalShown=additionalSection?Number(additionalSection.countBadge.textContent)||0:0,additionalOnlineShown=additionalOnlineSection?Number(additionalOnlineSection.countBadge.textContent)||0:0,totalShown=shown+additionalShown+additionalOnlineShown;
+ let primarySection=section===additionalSection||section===additionalOnlineSection?null:section;
+ const button=document.createElement('button');button.type='button';button.className='load-more';button.textContent=`Load ${Math.min(20,moreCount)} more nearby results`;
  button.addEventListener('click',async()=>{
-  button.disabled=true;button.textContent='Loading mapped places…';
+  button.disabled=true;button.textContent='Loading nearby results…';
   try{
-   const response=await fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'load_nearby_map_more',token,offset})});
+   const response=await fetch('api.php',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'load_nearby_results_more',token,offset})});
    let data;
    try{data=await response.json()}catch{throw new Error(`The PHP server returned invalid JSON (${response.status}).`)}
-   if(!response.ok){const error=new Error(data.error||`Could not load more places (${response.status}).`);error.status=response.status;throw error}
+   if(!response.ok){const error=new Error(data.error||`Could not load nearby results (${response.status}).`);error.status=response.status;throw error}
    const places=Array.isArray(data.places)?data.places:[];
    const nextOffset=Number(data.nextOffset);
    if(!places.length||!Number.isInteger(nextOffset)||nextOffset!==offset+places.length)throw new Error('The nearby results page was incomplete. Please retry.');
-   section.appendPlaces(places);
-   offset=nextOffset;shown+=places.length;section.countBadge.textContent=String(shown);
+   if(splitFastFoodChains){
+    const itemMatches=places.filter(place=>place.fast_food_chain!==true);
+    const chainMapMatches=places.filter(place=>place.fast_food_chain===true&&place.map_only);
+    const chainOnlineMatches=places.filter(place=>place.fast_food_chain===true&&!place.map_only);
+    if(itemMatches.length){
+     if(!primarySection)primarySection=renderPlaces(itemMatches,'Additional nearby item matches',true,metrics,request);
+     else primarySection.appendPlaces(itemMatches);
+    }
+    if(chainMapMatches.length){
+     if(!additionalSection)additionalSection=renderPlaces(chainMapMatches,'Additional nearby fast-food chain branches (OpenStreetMap)',false,metrics,request,true);
+     else additionalSection.appendPlaces(chainMapMatches);
+    }
+    if(chainOnlineMatches.length){
+     if(!additionalOnlineSection)additionalOnlineSection=renderPlaces(chainOnlineMatches,'Additional nearby fast-food chain locations to check',true,metrics,request);
+     else additionalOnlineSection.appendPlaces(chainOnlineMatches);
+    }
+   }else{
+    section.appendPlaces(places);
+   }
+   offset=nextOffset;
+   shown=primarySection?Number(primarySection.countBadge.textContent)||0:(splitFastFoodChains?0:Number(section.countBadge.textContent)||0);
+   additionalShown=additionalSection?Number(additionalSection.countBadge.textContent)||0:0;
+   additionalOnlineShown=additionalOnlineSection?Number(additionalOnlineSection.countBadge.textContent)||0:0;
+   totalShown=shown+additionalShown+additionalOnlineShown;
    places.forEach(place=>{const name=String(place?.name||'').trim();if(name)shownNamesSet.add(name)});
    lastResults=[...lastResults,...places];
-   statusEl.textContent=`Loaded ${places.length} additional mapped places; ${shown} nearby results now shown. These additional places come from OpenStreetMap and are not live-web verified.`;
+   statusEl.textContent=`Loaded ${places.length} more nearby results; ${totalShown} are now shown. Check each card’s source label; map listings are not live-web verified.`;
    if(data.hasMore!==true){button.remove();return}
-   button.disabled=false;button.textContent=`Load ${Math.min(20,Math.max(1,Number(data.totalCount)-offset))} more mapped places`;
+   button.disabled=false;button.textContent=`Load ${Math.min(20,Math.max(1,Number(data.totalCount)-offset))} more nearby results`;
   }catch(error){
    if(error.status===410){button.remove();statusEl.textContent=error.message;return}
-   button.disabled=false;button.textContent='Retry loading mapped places';statusEl.textContent=`Could not load additional nearby places: ${error.message}`;
+   button.disabled=false;button.textContent='Retry loading nearby results';statusEl.textContent=`Could not load additional nearby results: ${error.message}`;
   }
  });
  section.anchor.after(button);
@@ -328,6 +395,15 @@ form.addEventListener('submit',async e=>{
     :`The PHP server returned an unexpected response (${response.status}). Check the PHP server setup and logs.`);
   }
   if(!response.ok)throw new Error(data.error||`Search failed (${response.status}).`);
+  if(data.queryCorrection){
+   input.value=typedQuery;
+   areaFilter.value=requestArea;
+   budgetFilter.value=requestBudget;
+   selectedPrompt=requestPrompt;
+   promptButtons.forEach(item=>item.setAttribute('aria-pressed',item.dataset.prompt===requestPrompt?'true':'false'));
+   selectedLocation=nearMe?requestLocation:null;
+   locationPrivacyHint.hidden=requestArea!=='__near_me__';
+  }
   if(data.assistantStatus==='ready'&&typeof data.modelUsed==='string'&&data.modelUsed){
    const st=data.metrics?.pipeline?.stages||{};
    const fullFlow=st['1_gpt4o_query_planner']==='ok'&&st['3_gpt4o_structurer']==='ok'&&st['4_deepseek_r1_reasoner']==='ok'&&st['5_gpt4o_final_reply']==='ok';
@@ -355,43 +431,98 @@ form.addEventListener('submit',async e=>{
     });
     assistantBubble.appendChild(options);
    }
+   if(data.queryCorrection?.corrected_query&&data.queryCorrection?.suggested_term){
+    const options=document.createElement('div');
+    options.className='clarification-options';
+    const option=document.createElement('button');
+    option.type='button';
+    option.className='clarification-choice';
+    option.textContent=`Search for “${data.queryCorrection.suggested_term}”`;
+    option.addEventListener('click',()=>{
+     input.value=data.queryCorrection.corrected_query;
+     areaFilter.value=requestArea==='__near_me__'?'__near_me__':'';
+     budgetFilter.value='';
+     selectedPrompt='';
+     promptButtons.forEach(item=>item.setAttribute('aria-pressed','false'));
+     selectedLocation=nearMe?requestLocation:null;
+     locationPrivacyHint.hidden=!nearMe;
+     form.requestSubmit();
+    });
+    options.appendChild(option);
+    assistantBubble.appendChild(options);
+   }
   }
   while(history.length>12)history.shift();
   const outOfScope=data.outOfScope===true;
-  const webResults=outOfScope?[]:(Array.isArray(data.webResults)?data.webResults.map(place=>({...place,online:true})):[]);
-  const mapFindResults=outOfScope?[]:(Array.isArray(data.mapResults)?data.mapResults:[]);
+  const rawWebResults=outOfScope?[]:(Array.isArray(data.webResults)?data.webResults.map(place=>({...place,online:true})):[]);
+  const rawMapFindResults=outOfScope?[]:(Array.isArray(data.mapResults)?data.mapResults:[]);
   const rawLocalResults=outOfScope?[]:(data.results||[]);
-  const localResults=webResults.length?rawLocalResults.filter(lp=>!webResults.some(wp=>!wp.map_only&&isSameVenue(wp,lp))):rawLocalResults;
-  [...webResults,...mapFindResults,...localResults].forEach(p=>{const nm=String(p?.name||'').trim();if(nm)shownNamesSet.add(nm)});
-  lastResults=[...webResults,...mapFindResults,...localResults];
+  const localResultsBeforeDedup=rawWebResults.length?rawLocalResults.filter(lp=>!rawWebResults.some(wp=>!wp.map_only&&isSameVenue(wp,lp))):rawLocalResults;
   const parsedIntent=data.metrics?.parsed_intent||{};
   const fastFoodSearch=Array.isArray(parsedIntent.fast_food_items)&&parsedIntent.fast_food_items.length>0;
+  const additionalFastFoodWebResults=fastFoodSearch?rawWebResults.filter(place=>place.fast_food_chain===true&&!place.map_only):[];
+  const additionalFastFoodNearbyMapResults=fastFoodSearch?rawWebResults.filter(place=>place.fast_food_chain===true&&place.map_only):[];
+  const additionalFastFoodMapResults=fastFoodSearch?rawMapFindResults.filter(place=>place.fast_food_chain===true):[];
+  const additionalFastFoodLocalResults=fastFoodSearch?localResultsBeforeDedup.filter(place=>place.fast_food_chain===true):[];
+  const webResults=fastFoodSearch?rawWebResults.filter(place=>place.fast_food_chain!==true):rawWebResults;
+  const mapFindResults=fastFoodSearch?rawMapFindResults.filter(place=>place.fast_food_chain!==true):rawMapFindResults;
+  const localResults=fastFoodSearch?localResultsBeforeDedup.filter(place=>place.fast_food_chain!==true):localResultsBeforeDedup;
+  [...webResults,...mapFindResults,...localResults,...additionalFastFoodWebResults,...additionalFastFoodNearbyMapResults,...additionalFastFoodMapResults,...additionalFastFoodLocalResults].forEach(p=>{const nm=String(p?.name||'').trim();if(nm)shownNamesSet.add(nm)});
+  lastResults=[...webResults,...mapFindResults,...localResults,...additionalFastFoodWebResults,...additionalFastFoodNearbyMapResults,...additionalFastFoodMapResults,...additionalFastFoodLocalResults];
   const experienceSearch=Boolean(parsedIntent.thematic?.length||parsedIntent.ambiance?.length);
-  const nearbySection=renderPlaces(webResults,experienceSearch?'Nearby recommendations':fastFoodSearch?(data.locationSearch?.enabled?'Nearby fast-food chains':'Fast-food chain locations'):data.locationSearch?.enabled?'Nearby mapped / online finds':'Online finds',true,data.metrics||{},displayQuery);
-  if(nearbySection&&data.locationSearch?.page_token&&Number(data.locationSearch.more_count)>0)attachNearbyLoadMore(nearbySection,data.locationSearch.page_token,Number(data.locationSearch.more_count));
-  const mapFindTitle=fastFoodSearch?'Fast-food chain branches (OpenStreetMap)':data.metrics?.map_finds?.search_type==='brand_branches'?'Known branches from OpenStreetMap':'Map finds (not live-web verified)';
-  renderPlaces(mapFindResults,mapFindTitle,false,data.metrics||{},displayQuery,true);
-  renderPlaces(localResults,experienceSearch?'Nearby recommendations from local reviews':fastFoodSearch?'Fast-food chain records':'Local finds',false,data.metrics||{},displayQuery);
-  const wCount=webResults.length,mCount=mapFindResults.length,lCount=localResults.length;
+  const nearbyAlternativeSearch=data.locationSearch?.matching_mode==='nearby_alternatives';
+  const nearbyPartialAlternativeSearch=data.locationSearch?.matching_mode==='nearby_partial_alternatives';
+  const nearbyAlternativesMode=nearbyAlternativeSearch||nearbyPartialAlternativeSearch;
+  const nearbyEnabled=data.locationSearch?.enabled===true;
+  const renderMetrics={...(data.metrics||{}),nearby_search:data.locationSearch||data.metrics?.nearby_search};
+  const nearbyAlternativeResults=[...webResults,...localResults].filter(place=>place.nearby_match_tier==='alternative');
+  const nearbyExactWebResults=webResults.filter(place=>place.nearby_match_tier!=='alternative');
+  const nearbyExactLocalResults=localResults.filter(place=>place.nearby_match_tier!=='alternative');
+  const nearbySection=renderPlaces(nearbyExactWebResults,experienceSearch?(nearbyEnabled?'Nearby recommendations':'Davao City recommendations'):fastFoodSearch?(nearbyEnabled?'Nearby item matches':'Davao City item matches'):nearbyEnabled?'Nearby mapped / online finds':'Online finds',true,renderMetrics,displayQuery);
+  const mapFindTitle=data.metrics?.map_finds?.search_type==='brand_branches'?'Known branches from OpenStreetMap':'Map finds (not live-web verified)';
+  renderPlaces(mapFindResults,mapFindTitle,false,renderMetrics,displayQuery,true);
+  renderPlaces(nearbyExactLocalResults,experienceSearch?(nearbyEnabled?'Nearby recommendations from local reviews':'Davao City recommendations from local reviews'):fastFoodSearch?'Local item matches':'Local finds',false,renderMetrics,displayQuery);
+  const additionalFastFoodWebSection=renderPlaces(additionalFastFoodWebResults,'Additional fast-food chain locations to check',true,renderMetrics,displayQuery);
+  const additionalFastFoodNearbyMapSection=renderPlaces(additionalFastFoodNearbyMapResults,'Additional nearby fast-food chain branches (OpenStreetMap)',false,renderMetrics,displayQuery,true);
+  renderPlaces(additionalFastFoodMapResults,'Additional fast-food chain branches (OpenStreetMap)',false,renderMetrics,displayQuery,true);
+  renderPlaces(additionalFastFoodLocalResults,'Additional fast-food chain records',false,renderMetrics,displayQuery);
+  if(data.locationSearch?.page_token&&Number(data.locationSearch.more_count)>0){
+   const pageSection=nearbySection||additionalFastFoodNearbyMapSection||additionalFastFoodWebSection;
+   if(pageSection)attachNearbyLoadMore(pageSection,data.locationSearch.page_token,Number(data.locationSearch.more_count),fastFoodSearch,additionalFastFoodNearbyMapSection,additionalFastFoodWebSection,renderMetrics,displayQuery);
+  }
+  if(nearbyAlternativesMode)renderPlaces(nearbyAlternativeResults,'Nearby alternatives',false,renderMetrics,displayQuery);
+  const displayedCount=places=>Math.min(20,places.length);
+  const wCount=displayedCount(nearbyExactWebResults),mCount=displayedCount(mapFindResults),lCount=displayedCount(nearbyExactLocalResults),alternativeCount=displayedCount(nearbyAlternativeResults),additionalChainCount=displayedCount(additionalFastFoodWebResults)+displayedCount(additionalFastFoodNearbyMapResults)+displayedCount(additionalFastFoodMapResults)+displayedCount(additionalFastFoodLocalResults);
   const resultSummary=[
    wCount?`${wCount} online ${wCount===1?'find':'finds'}`:'',
    mCount?`${mCount} map ${mCount===1?'find':'finds'}`:'',
-   lCount?`${lCount} local ${lCount===1?'find':'finds'}`:''
+   lCount?`${lCount} local ${lCount===1?'find':'finds'}`:'',
+   additionalChainCount?`${additionalChainCount} additional fast-food chain ${additionalChainCount===1?'location':'locations'}`:''
   ].filter(Boolean).join(', ');
   statusEl.textContent=data.locationSearch?.enabled
    ?data.locationSearch.status==='no_map_data'
     ?'The local OpenStreetMap snapshot contains no mapped food locations in this area. Your exact coordinates are not sent to map providers. Try another area or refresh the snapshot.'
     :wCount+lCount===0
-     ?'No matching restaurants with verified map locations were found within 3 km. Distant or unverified places were not shown.'
-     :`${wCount+lCount} nearby ${wCount+lCount===1?'match':'matches'} shown within 3 km. Distances are approximate straight-line estimates; map coverage may be incomplete.`
+     ?additionalChainCount
+      ?`No item-evidence matches were found within 3 km. ${additionalChainCount} additional fast-food chain ${additionalChainCount===1?'location is':'locations are'} shown separately; branch menus are unverified.`
+      :'No matching restaurants with verified map locations were found within 3 km. Distant or unverified places were not shown.'
+     :`${wCount+lCount} nearby ${wCount+lCount===1?'match':'matches'} shown within 3 km. Distances are approximate straight-line estimates; map coverage may be incomplete.${additionalChainCount?` ${additionalChainCount} additional fast-food chain ${additionalChainCount===1?'location':'locations'} are shown separately; branch menus are unverified.`:''}`
+   :data.queryCorrection
+   ?'Check the suggested spelling and choose whether to search with it.'
    :data.priceClarification===true
    ?'Choose a price range or type a peso budget to see matching Davao City places.'
    :outOfScope
    ?'This assistant only recommends places in Davao City.'
    :resultSummary
     ?`${resultSummary} shown.`
+    :Array.isArray(parsedIntent.strict_dishes)&&parsedIntent.strict_dishes.length
+     ?'No venue-linked online evidence was returned for this dish in this search; that does not prove no Davao places serve it.'
     :'No matching online, map, or local finds were found.';
-  if(data.locationSearch?.enabled&&experienceSearch){
+  if(data.locationSearch?.enabled&&nearbyAlternativeSearch){
+   statusEl.textContent=`No exact nearby match was verified. Showing ${alternativeCount} nearby alternative${alternativeCount===1?'':'s'} in the same broad category; the requested preference is unverified.`;
+  }else if(data.locationSearch?.enabled&&nearbyPartialAlternativeSearch){
+   statusEl.textContent=`Showing ${wCount+lCount} nearby verified match${wCount+lCount===1?'':'es'} and ${alternativeCount} nearby alternative${alternativeCount===1?'':'s'}. The requested preference is unverified for alternatives.`;
+  }else if(data.locationSearch?.enabled&&experienceSearch){
     statusEl.textContent=wCount+lCount
      ?`${wCount+lCount} nearby recommendation${wCount+lCount===1?'':'s'} matched your requested dining experience and have a mapped location within 3 km. Distances are approximate.`
      :'No source- or review-supported matches for that dining experience were found within 3 km. Choose “Anywhere in Davao City” to see broader recommendations.';
@@ -401,8 +532,13 @@ form.addEventListener('submit',async e=>{
    const metrics=data.metrics||{};
    const searchErrors=Array.isArray(metrics.playwright?.browser_search_errors)?metrics.playwright.browser_search_errors:[];
    const searchRateLimited=searchErrors.some(error=>/\bHTTP 429\b|rate-limit cooldown/i.test(String(error)));
+   const strictDishSearch=Array.isArray(metrics.parsed_intent?.strict_dishes)&&metrics.parsed_intent.strict_dishes.length>0;
    statusEl.textContent+=webResults.length
     ?' Online source matches are shown, but recommendation processing did not complete; check the linked sources for menu and current details.'
+    :strictDishSearch&&Number(metrics.playwright?.result_count)>0
+     ?' Search pages were found, but none linked this dish to a specific venue strongly enough to show.'
+     :strictDishSearch
+      ?' Live search did not return usable venue-linked results this time; that does not mean the dish is unavailable in Davao.'
     :metrics.playwright&&metrics.playwright.success
     ?' Live Playwright evidence was collected, but GPT-4o mini or paid DeepSeek Flash was unavailable; showing available local dataset and map-snapshot matches.'
     :searchRateLimited
@@ -411,7 +547,7 @@ form.addEventListener('submit',async e=>{
   }
   if(!data.locationSearch?.enabled&&!outOfScope&&data.metrics?.map_finds?.status==='unavailable')statusEl.textContent+=' The OpenStreetMap map supplement was unavailable.';
   const broaderSuggestions=Array.isArray(data.searchSuggestions)?data.searchSuggestions:data.locationSearch?.suggestions;
-  if(assistantBubble&&wCount+mCount+lCount===0&&Array.isArray(broaderSuggestions)&&broaderSuggestions.length){
+  if(assistantBubble&&wCount+mCount+lCount+additionalChainCount===0&&Array.isArray(broaderSuggestions)&&broaderSuggestions.length){
    const prompt=document.createElement('p');prompt.className='small';prompt.textContent='Try a broader search instead:';assistantBubble.appendChild(prompt);
    const options=document.createElement('div');options.className='clarification-options';
    broaderSuggestions.forEach(suggestion=>{

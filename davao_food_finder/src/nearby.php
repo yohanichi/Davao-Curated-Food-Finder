@@ -16,7 +16,6 @@ function fastFoodChainMatchesItems(array $place, array $items): bool {
         'kfc'=>['chicken', 'fries'],
         'jollibee'=>['burgers', 'chicken', 'fries', 'sundaes'],
         'burgerking'=>['burgers', 'fries', 'sundaes'],
-        'minuteburger'=>['burgers', 'fries'],
         'manginasal'=>['chicken'],
     ];
     foreach ($chainItems as $chain => $supportedItems) {
@@ -37,6 +36,99 @@ function nearbyIntentEvidenceLabel(array $intent): string {
     if (in_array('quiet_study', $intent['ambiance'] ?? [], true)) return 'quiet or study-friendly atmosphere';
     if (in_array('family_group', $intent['ambiance'] ?? [], true)) return 'family or group-friendly atmosphere';
     return 'requested dining experience';
+}
+
+function nearbyAlternativeResultLimit(int $exactResultCount): int {
+    return $exactResultCount <= 0 ? 20 : max(0, 5 - $exactResultCount);
+}
+
+function nearbyExperienceAlternativePlan(string $query, array $intent): ?array {
+    $hasExperienceConstraint = nearbyIntentRequiresEvidence($intent);
+    $isLocalFavoritesSearch = preg_match('/\b(local\s+(?:food|favorites?)|(?:davao|local)\s+(?:food|favorites?))\b/iu', $query) === 1;
+    if ((!$hasExperienceConstraint && !$isLocalFavoritesSearch)
+        || !empty($intent['strict_dishes'])
+        || !empty($intent['online_only'])
+        || !empty($intent['requested_restaurant_core'])
+        || !empty($intent['areas'])
+        || !empty($intent['hours'])
+        || ($intent['min_rating'] ?? null) !== null
+        || ($intent['max_price_php'] ?? null) !== null
+        || ($intent['min_price_php'] ?? null) !== null
+        || !empty($intent['budget'])
+        || !empty($intent['price_preference'])) {
+        return null;
+    }
+
+    $alternativeIntent = $intent;
+    $alternativeIntent['ambiance'] = [];
+    $alternativeIntent['thematic'] = [];
+    $cuisines = is_array($alternativeIntent['cuisines'] ?? null) ? $alternativeIntent['cuisines'] : [];
+    $dishes = is_array($alternativeIntent['specific_dishes'] ?? null) ? $alternativeIntent['specific_dishes'] : [];
+    $venueType = null;
+
+    if (!$cuisines && !$dishes && $isLocalFavoritesSearch) {
+        $cuisines = ['Filipino'];
+        $alternativeIntent['cuisines'] = $cuisines;
+    } elseif (!$cuisines && !$dishes) {
+        if (preg_match('/\b(caf[eé]s?|coffee\s+shops?)\b/iu', $query) === 1) {
+            $venueType = 'cafe';
+        } elseif (preg_match('/\b(restaurants?|dining|dinner|eat(?:ery|eries)?|food\s+spots?)\b/iu', $query) === 1) {
+            $venueType = 'restaurant';
+        } else {
+            return null;
+        }
+    }
+    if ($isLocalFavoritesSearch && !$cuisines && !$dishes) {
+        return null;
+    }
+    if ($venueType !== null) $alternativeIntent['nearby_venue_type'] = $venueType;
+    else unset($alternativeIntent['nearby_venue_type']);
+
+    $queryParts = $dishes ?: $cuisines;
+    if (!$queryParts && $venueType !== null) {
+        $queryParts[] = $venueType === 'cafe' ? 'cafes' : 'restaurants';
+    }
+    if (!empty($alternativeIntent['areas'])) {
+        $queryParts = array_merge($queryParts, array_map('strval', $alternativeIntent['areas']));
+    }
+    $alternativeQuery = trim(implode(' ', $queryParts));
+    if ($alternativeQuery === '') return null;
+    $alternativeIntent['effective_query'] = $alternativeQuery;
+
+    if ($cuisines) {
+        $categoryLabel = strtolower(implode(' and ', array_map('strval', $cuisines))) . ' restaurants';
+        if (in_array('Coffee', $cuisines, true)) $categoryLabel = 'cafes';
+    } else {
+        $categoryLabel = $venueType === 'cafe' ? 'cafes' : 'restaurants';
+    }
+    $experienceLabel = nearbyIntentEvidenceLabel($intent);
+    $note = $hasExperienceConstraint
+        ? "No nearby place had enough evidence to confirm a {$experienceLabel}. These are nearby {$categoryLabel} alternatives; that preference is unverified."
+        : "These are nearby {$categoryLabel} options; check the linked details to see which are local favorites.";
+
+    return [
+        'intent'=>$alternativeIntent,
+        'query'=>$alternativeQuery,
+        'label'=>$categoryLabel,
+        'note'=>$note,
+    ];
+}
+
+function nearbyFeatureMatchesVenueType(array $feature, string $venueType): bool {
+    $featureText = mb_strtolower(implode(' ', array_filter([
+        $feature['name'] ?? '',
+        $feature['food_type'] ?? '',
+        $feature['cuisine'] ?? '',
+    ])), 'UTF-8');
+    $featureText = str_replace('_', ' ', $featureText);
+    if ($venueType === 'cafe') {
+        return preg_match('/\b(caf[eé]s?|coffee|espresso|roastery)\b/iu', $featureText) === 1;
+    }
+    if ($venueType === 'restaurant') {
+        return preg_match('/\brestaurant\b/iu', $featureText) === 1
+            && preg_match('/\b(fast\s*food|food\s*court|kiosk)\b/iu', $featureText) !== 1;
+    }
+    return false;
 }
 
 function nearbyPlaceHasIntentEvidence(array $place, array $intent): bool {
@@ -395,7 +487,9 @@ function rankNearbyCandidates(
     float $longitude,
     float $radiusKm,
     float $locationAccuracyKm = 0.0,
-    bool $relevanceFirst = false
+    bool $relevanceFirst = false,
+    string $requestQuery = '',
+    array $requestIntent = []
 ): array {
     $venueCoreCounts = [];
     foreach ($allPlaces as $place) {
@@ -416,6 +510,7 @@ function rankNearbyCandidates(
         $features = $featuresByCore[$core] ?? [];
         $nearest = null;
         foreach ($features as $feature) {
+            if (!nearbyFeatureMatchesRequest($feature, $requestQuery, $requestIntent)) continue;
             if (!nearbyFeatureMatchesVenue($candidate, $feature, $venueCoreCounts[$core] ?? 1, count($features))) {
                 continue;
             }
@@ -510,7 +605,8 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
     $strictDishes = is_array($intent['strict_dishes'] ?? null) ? $intent['strict_dishes'] : [];
     if ($strictDishes && !placeMatchesSpecificDishes($feature, $strictDishes)) return false;
     $fastFoodItems = is_array($intent['fast_food_items'] ?? null) ? $intent['fast_food_items'] : [];
-    if ($fastFoodItems && !fastFoodChainMatchesItems($feature, $fastFoodItems)) return false;
+    $nearbyVenueType = trim((string)($intent['nearby_venue_type'] ?? ''));
+    if ($nearbyVenueType !== '' && !nearbyFeatureMatchesVenueType($feature, $nearbyVenueType)) return false;
     if (!nearbyPlaceHasIntentEvidence($feature, $intent)) return false;
 
     $hasDietaryConstraint = !empty($intent['dietary'])
@@ -556,7 +652,7 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
     }
 
     $requestedTerms = array_values(array_unique(array_filter($requestedTerms)));
-    if (!$requestedTerms && !$requestedDietaryTerms) return true;
+    if (!$requestedTerms && !$requestedDietaryTerms && !$fastFoodItems) return true;
 
     $featureText = mb_strtolower(implode(' ', array_filter([
         $feature['name'] ?? '',
@@ -579,7 +675,30 @@ function nearbyFeatureMatchesRequest(array $feature, string $query, array $inten
             return false;
         }
     }
-    if ($fastFoodItems) return true;
+    if ($fastFoodItems) {
+        if (fastFoodChainMatchesItems($feature, $fastFoodItems)) return true;
+        $itemTerms = [
+            'burgers'=>['burger', 'burgers', 'hamburger', 'hamburgers'],
+            'chicken'=>['chicken', 'fried chicken'],
+            'fries'=>['fries', 'french fries'],
+            'sundaes'=>['sundae', 'sundaes'],
+        ];
+        foreach ($fastFoodItems as $item) {
+            $terms = $itemTerms[$item] ?? [$item];
+            $itemFound = false;
+            foreach ($terms as $term) {
+                if (preg_match(
+                    '/(?<![\p{L}\p{N}])' . preg_quote($term, '/') . '(?![\p{L}\p{N}])/iu',
+                    $featureText
+                ) === 1) {
+                    $itemFound = true;
+                    break;
+                }
+            }
+            if (!$itemFound) return false;
+        }
+        return true;
+    }
     if (!$requestedTerms) return true;
     foreach ($requestedTerms as $term) {
         if (preg_match(
@@ -662,10 +781,12 @@ function buildMapFindResults(
         $category = $cuisine !== '' ? $foodType . ' (' . $cuisine . ')' : $foodType;
         $nearbyStreet = nearbyFeatureInferredStreet($feature);
         $locationDescription = $nearbyStreet !== '' ? "near {$nearbyStreet}" : "at {$address}";
+        $isFastFoodChain = !empty($intent['fast_food_items'])
+            && fastFoodChainMatchesItems($feature, $intent['fast_food_items']);
         $results[] = [
             'name'=>$name,
             'food_type'=>$category,
-            'description'=>!empty($intent['fast_food_items'])
+            'description'=>$isFastFoodChain
                 ? "OpenStreetMap lists this fast-food chain {$locationDescription}. Branch-specific menu availability is not verified."
                 : "OpenStreetMap lists this {$category} {$locationDescription}. Menu, prices, reviews, hours, and current business status are not verified.",
             'address'=>$address,
@@ -679,6 +800,7 @@ function buildMapFindResults(
             'source_status'=>'supported',
             'unsupported'=>false,
             'map_only'=>true,
+            'fast_food_chain'=>$isFastFoodChain,
             'location_source'=>'OpenStreetMap',
             'location_source_url'=>$url,
             'latitude'=>(float)$feature['latitude'],
@@ -805,10 +927,12 @@ function buildNearbyMapResults(
         $foodType = trim((string)($feature['food_type'] ?? 'Restaurant')) ?: 'Restaurant';
         $nearbyStreet = nearbyFeatureInferredStreet($feature);
         $locationDescription = $nearbyStreet !== '' ? "near {$nearbyStreet}" : "at {$address}";
+        $isFastFoodChain = !empty($intent['fast_food_items'])
+            && fastFoodChainMatchesItems($feature, $intent['fast_food_items']);
         $results[] = [
             'name'=>$name,
             'food_type'=>$foodType,
-            'description'=>!empty($intent['fast_food_items'])
+            'description'=>$isFastFoodChain
                 ? "OpenStreetMap lists this fast-food chain {$locationDescription}. Branch-specific menu availability is not verified."
                 : "OpenStreetMap lists this {$foodType} {$locationDescription}. Current hours and business status are not verified.",
             'address'=>$address,
@@ -821,6 +945,7 @@ function buildNearbyMapResults(
             'source_status'=>'supported',
             'unsupported'=>false,
             'map_only'=>true,
+            'fast_food_chain'=>$isFastFoodChain,
             'location_source'=>'OpenStreetMap',
             'location_source_url'=>$url,
             'latitude'=>(float)$feature['latitude'],

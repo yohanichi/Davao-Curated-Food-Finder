@@ -330,11 +330,28 @@ $filipinoBurgerSteakIntent = parseQueryIntent('Filipino burger steak');
 $mixedFriesBurgerIntent = parseQueryIntent('fries and burgers');
 $chickenBiryaniIntent = parseQueryIntent('chicken biryani');
 $dateNightIntent = parseQueryIntent('date night restaurants');
+$quietCafeIntent = parseQueryIntent('quiet cafes to study');
+$localFavoritesIntent = parseQueryIntent('local favorites in Davao');
+$dateNightAlternativePlan = nearbyExperienceAlternativePlan('date night restaurants', $dateNightIntent);
+$quietCafeAlternativePlan = nearbyExperienceAlternativePlan('quiet cafes to study', $quietCafeIntent);
+$localFavoritesAlternativePlan = nearbyExperienceAlternativePlan('local favorites in Davao', $localFavoritesIntent);
+$nearbyAlternativeLimits = [
+    nearbyAlternativeResultLimit(0),
+    nearbyAlternativeResultLimit(1),
+    nearbyAlternativeResultLimit(3),
+    nearbyAlternativeResultLimit(4),
+    nearbyAlternativeResultLimit(5),
+];
 $dateNightArticleUrl = 'https://example.com/davao-date-night';
 $dateNightEvidence = ['results'=>[[
     'url'=>$dateNightArticleUrl,
     'title'=>'Best Romantic Restaurants in Davao for the Perfect Date Night',
     'text'=>'The White House Fusion Cuisine & Wine Lounge - An intimate heritage-home dining experience for couples. Jacks Ridge offers scenic city views.',
+]]];
+$jollibeeReviewEvidence = ['results'=>[[
+    'url'=>'https://www.tripadvisor.com/Restaurant_Review-jollibee',
+    'title'=>'Jollibee in Davao City',
+    'text'=>'Customers say Jollibee serves Palabok Fiesta.',
 ]]];
 $whiteHouseOnlinePlace = [
     'name'=>'The White House Fusion Cuisine & Wine Lounge',
@@ -386,6 +403,70 @@ assertCheck(
     'Date-night nearby recommendations require positive venue-level review or linked-source evidence'
 );
 assertCheck(
+    $dateNightAlternativePlan !== null
+    && $dateNightAlternativePlan['intent']['thematic'] === []
+    && $dateNightAlternativePlan['intent']['nearby_venue_type'] === 'restaurant'
+    && $quietCafeAlternativePlan !== null
+    && in_array('Coffee', $quietCafeAlternativePlan['intent']['cuisines'], true)
+    && $quietCafeAlternativePlan['intent']['ambiance'] === []
+    && $localFavoritesAlternativePlan !== null
+    && in_array('Filipino', $localFavoritesAlternativePlan['intent']['cuisines'], true)
+    && nearbyExperienceAlternativePlan('burger steak date night', $burgerSteakIntent + ['thematic'=>['date_romantic']]) === null
+    && nearbyExperienceAlternativePlan(
+        'date night restaurants under PHP 500',
+        array_merge($dateNightIntent, ['max_price_php'=>500])
+    ) === null,
+    'Nearby fallback removes only soft experience constraints and preserves cuisine or strict dish requirements'
+);
+assertCheck(
+    $nearbyAlternativeLimits === [20, 4, 2, 1, 0],
+    'Nearby alternatives fill only the shortfall to five while preserving the zero-match fallback'
+);
+assertCheck(
+    nearbyFeatureMatchesRequest(
+        ['name'=>'Nearby Cafe', 'food_type'=>'cafe'],
+        $quietCafeAlternativePlan['query'],
+        $quietCafeAlternativePlan['intent']
+    )
+    && nearbyFeatureMatchesRequest(
+        ['name'=>'Nearby Restaurant', 'food_type'=>'restaurant'],
+        $dateNightAlternativePlan['query'],
+        $dateNightAlternativePlan['intent']
+    )
+    && !nearbyFeatureMatchesRequest(
+        ['name'=>'Generic Fast Food', 'food_type'=>'fast_food'],
+        $dateNightAlternativePlan['query'],
+        $dateNightAlternativePlan['intent']
+    ),
+    'Nearby alternatives retain the requested cafe or restaurant category and exclude unrelated map types'
+);
+$nearbyCafeAlternativeRanked = rankNearbyCandidates(
+    [
+        ['_id'=>'coffee-place', 'name'=>'Nearby Cafe', 'food_type'=>'Coffee', 'address'=>'Davao City'],
+        ['_id'=>'restaurant-place', 'name'=>'Nearby Restaurant', 'food_type'=>'Restaurant', 'address'=>'Davao City'],
+    ],
+    [
+        ['_id'=>'coffee-place', 'name'=>'Nearby Cafe', 'food_type'=>'Coffee', 'address'=>'Davao City'],
+        ['_id'=>'restaurant-place', 'name'=>'Nearby Restaurant', 'food_type'=>'Restaurant', 'address'=>'Davao City'],
+    ],
+    [
+        ['name'=>'Nearby Cafe', 'city'=>'Davao City', 'food_type'=>'cafe', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/910'],
+        ['name'=>'Nearby Restaurant', 'city'=>'Davao City', 'food_type'=>'restaurant', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/911'],
+    ],
+    7.105,
+    125.635,
+    3.0,
+    0.0,
+    true,
+    $quietCafeAlternativePlan['query'],
+    $quietCafeAlternativePlan['intent']
+);
+assertCheck(
+    count($nearbyCafeAlternativeRanked) === 1
+    && $nearbyCafeAlternativeRanked[0]['_id'] === 'coffee-place',
+    'Nearby fallback maps only matching venue categories and never relaxes the location radius'
+);
+assertCheck(
     buildNearbyMapResults(
         [],
         [['name'=>'Nearby Generic Eatery', 'city'=>'Davao City', 'food_type'=>'restaurant', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/900']],
@@ -430,6 +511,103 @@ assertCheck(
     !onlinePlaceHasSpecificDishEvidence($billyjeansPlace, $billyjeansCategoryEvidence, ['burger steak'])
     && onlinePlaceHasSpecificDishEvidence($billyjeansPlace, $billyjeansMenuEvidence, ['burger steak']),
     'A venue category page is not burger-steak evidence, while a venue-linked menu item is'
+);
+$palabokIntent = parseQueryIntent('palabok');
+$expandedPalabokQuery = expandMenuItemSearchQuery('palabok Davao City', $palabokIntent);
+$jollibeePalabokPlace = [
+    'name'=>'Jollibee',
+    'source_url'=>'https://example.com/menu/palabok-fiesta',
+];
+$jollibeePalabokMenuEvidence = ['results'=>[[
+    'url'=>'https://example.com/menu/palabok-fiesta',
+    'title'=>'Palabok Fiesta - Jollibee',
+    'text'=>'Jollibee Palabok Fiesta in Davao City.',
+]]];
+$jollibeeCategoryEvidence = ['results'=>[[
+    'url'=>'https://example.com/menu/palabok-fiesta',
+    'title'=>'Jollibee menu in Davao City',
+    'text'=>'Jollibee offers burgers and fried chicken in Davao City.',
+]]];
+$razonsListingPlace = [
+    'name'=>'The Original Razon\'s Pancit Palabok and Halo-halo',
+    'source_url'=>'https://restaurantguru.com/The-Original-Razons-Pancit-Palabok-and-Halo-halo-Davao-City',
+];
+$razonsListingEvidence = ['results'=>[[
+    'url'=>'https://restaurantguru.com/The-Original-Razons-Pancit-Palabok-and-Halo-halo-Davao-City',
+    'title'=>'The Original Razon\'s Pancit Palabok and Halo-halo, Davao City - Restaurant menu, prices and reviews',
+    'text'=>'Tucked away in Davao City, The Original Razon\'s Pancit Palabok and Halo-halo offers traditional Filipino cuisine.',
+]]];
+$razonsSearchSnippetEvidence = ['results'=>[[
+    'url'=>'https://restaurantguru.com/The-Original-Razons-Pancit-Palabok-and-Halo-halo-Davao-City',
+    'title'=>'The Original Razon\'s Pancit Palabok and Halo-halo, Davao City - Restaurant menu, prices and reviews',
+    'text'=>'The Original Razon\'s Pancit Palabok and Halo-halo in Davao City.',
+    'source_access'=>'search_engine_snippet',
+]]];
+$pansitSaBilaoMapPlace = [
+    'name'=>'Pansit Sa Bilao',
+    'source_url'=>'https://www.google.com/maps/place/Pansit+Sa+Bilao',
+];
+$pansitSaBilaoMapEvidence = ['results'=>[[
+    'url'=>'https://www.google.com/maps/place/Pansit+Sa+Bilao',
+    'title'=>'Pansit Sa Bilao, Davao City',
+    'text'=>'Menu highlight: palabok. Davao City.',
+]]];
+assertCheck(
+    $palabokIntent['specific_dishes'] === ['palabok']
+    && $palabokIntent['strict_dishes'] === ['palabok']
+    && $expandedPalabokQuery === 'palabok Davao City'
+    && !str_contains($expandedPalabokQuery, 'Jollibee')
+    && !str_contains($expandedPalabokQuery, 'Mang Inasal')
+    && extractSpecificDishes('Pancit Palabok Fiesta') === ['palabok']
+    && !in_array('Pizza', $palabokIntent['cuisines'], true)
+    && in_array('Filipino', $palabokIntent['cuisines'], true)
+    && !placeMatchesSpecificDishes([
+        'name'=>'Shakey\'s Pizza - SM Lanang',
+        'food_type'=>'Pizza',
+        'description'=>'Pizza and pasta.',
+    ], ['palabok'])
+    && !placeMatchesSpecificDishes([
+        'name'=>'Jollibee',
+        'food_type'=>'Fast Food',
+        'description'=>'Palabok availability is not verified.',
+    ], ['palabok'])
+    && !nearbyFeatureMatchesRequest([
+        'name'=>'Jollibee - Lanang',
+        'food_type'=>'fast_food',
+    ], 'palabok', $palabokIntent)
+    && placeMatchesSpecificDishes([
+        'name'=>'Jollibee',
+        'food_type'=>'Fast Food',
+        'description'=>'Menu offers Palabok Fiesta.',
+    ], ['palabok']),
+    'Palabok is a strict Filipino dish query, not a pizza-category match'
+);
+assertCheck(
+    !onlinePlaceHasSpecificDishEvidence($jollibeePalabokPlace, $jollibeeCategoryEvidence, ['palabok'])
+    && onlinePlaceHasSpecificDishEvidence($jollibeePalabokPlace, $jollibeePalabokMenuEvidence, ['palabok'])
+    && !onlinePlaceHasSpecificDishEvidence($jollibeePalabokPlace, $jollibeeReviewEvidence, ['palabok'])
+    && onlinePlaceSpecificDishEvidenceStatus($razonsListingPlace, $razonsListingEvidence, ['palabok']) === 'dish_mention'
+    && onlinePlaceSpecificDishEvidenceStatus($razonsListingPlace, $razonsSearchSnippetEvidence, ['palabok']) === 'search_result_mention'
+    && onlinePlaceSpecificDishEvidenceStatus($pansitSaBilaoMapPlace, $pansitSaBilaoMapEvidence, ['palabok']) === 'listing_mention'
+    && onlinePlaceSpecificDishEvidenceStatus($jollibeePalabokPlace, $jollibeePalabokMenuEvidence, ['palabok']) === 'menu_source'
+    && !onlinePlaceHasSpecificDishEvidence([
+        'name'=>'Cecil\'s Snack Inn and Bakeshop',
+        'source_url'=>'https://www.tripadvisor.com.ph/ShowUserReviews-g298459-d2012509-Cecil_s_Snack_Inn_and_Bakeshop-Davao_City.html',
+    ], ['results'=>[[
+        'url'=>'https://www.tripadvisor.com.ph/ShowUserReviews-g298459-d2012509-Cecil_s_Snack_Inn_and_Bakeshop-Davao_City.html',
+        'title'=>'Best pancit palabok in Davao! - Review of Cecil\'s Snack Inn and Bakeshop',
+        'text'=>'Customer review mentions pancit palabok.',
+        'source_access'=>'search_engine_snippet',
+    ]]], ['palabok'])
+    && !onlinePlaceHasSpecificDishEvidence([
+        'name'=>'Cecil\'s Snack Inn and Bakeshop',
+        'source_url'=>'https://example.com/jollibee-menu',
+    ], $jollibeePalabokMenuEvidence, ['palabok']),
+    'Online palabok evidence is venue-linked and classified by source strength'
+);
+assertCheck(
+    isLikelyRestaurantArticleTitle('Best of Davao 2020: Pancit Palabok'),
+    'Dish-focused news headlines are not shown as restaurant venues'
 );
 $chickenBiryaniLocalResults = shortlistPlaces(
     [
@@ -507,20 +685,24 @@ assertCheck(
     && count($explicitBurgerResults) === 1
     && $explicitBurgerResults[0]['name'] === 'Burger King - Davao'
     && array_column($chainNearbyResults['burger'], 'name') === [
-        "McDonald's - Bajada", 'Jollibee - Lanang', 'Burger King - Matina', 'Minute Burger - Obrero'
+        "McDonald's - Bajada", 'Jollibee - Lanang', 'Burger King - Matina', 'Minute Burger - Obrero', 'Burger Stop'
     ]
+    && !fastFoodChainMatchesItems(['name'=>'Minute Burger - Obrero'], ['burgers'])
+    && !fastFoodChainMatchesItems(['name'=>'Minute Burger - Obrero'], ['fries'])
+    && nearbyFeatureMatchesRequest(['name'=>'Minute Burger - Obrero', 'food_type'=>'fast_food'], 'burger', $burgerIntent)
+    && !nearbyFeatureMatchesRequest(['name'=>'Minute Burger - Obrero', 'food_type'=>'fast_food'], 'fries', $friesIntent)
     && array_column($chainNearbyResults['chicken'], 'name') === [
         "McDonald's - Bajada", 'KFC - Buhangin', 'Jollibee - Lanang', 'Mang Inasal - Ecoland'
     ]
     && array_column($chainNearbyResults['fries'], 'name') === [
-        "McDonald's - Bajada", 'KFC - Buhangin', 'Jollibee - Lanang', 'Burger King - Matina', 'Minute Burger - Obrero'
+        "McDonald's - Bajada", 'KFC - Buhangin', 'Jollibee - Lanang', 'Burger King - Matina'
     ]
     && array_column($chainNearbyResults['sundae'], 'name') === [
         "McDonald's - Bajada", 'Jollibee - Lanang', 'Burger King - Matina'
     ]
-    && !nearbyFeatureMatchesRequest(['name'=>'Burger Stop', 'food_type'=>'fast_food'], 'burger', $burgerIntent)
+    && nearbyFeatureMatchesRequest(['name'=>'Burger Stop', 'food_type'=>'fast_food'], 'burger', $burgerIntent)
     && buildNearbyMapResults([], $fastFoodMapPlaces, 7.105, 125.635, 5.0, 'salad', parseQueryIntent('salad')) === [],
-    'Generic item searches include only compatible fast-food chains and keep specific dish searches distinct'
+    'Generic item map searches require item evidence or a compatible chain and keep specific dishes distinct'
 );
 $mapFindFixtures = [
     ['name'=>'Burger Stop', 'city'=>'Davao City', 'food_type'=>'fast food', 'cuisine'=>'burger', 'district'=>'Lanang', 'address'=>'Lanang, Davao City', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/801'],
@@ -540,9 +722,10 @@ $lanangMapFinds = buildMapFindResults($mapFindFixtures, 'burger Lanang', $lanang
 $budgetBurgerIntent = $burgerIntent;
 $budgetBurgerIntent['max_price_php'] = 250;
 assertCheck(
-    count($burgerMapFinds) === 2
-    && count($lanangMapFinds) === 1
-    && $lanangMapFinds[0]['name'] === 'Burger King - Lanang'
+    count($burgerMapFinds) === 4
+    && count($lanangMapFinds) === 2
+    && array_column($lanangMapFinds, 'name') === ['Burger King - Lanang', 'Burger Stop - Lanang']
+    && !empty($burgerMapFinds[0]['fast_food_chain'])
     && $burgerMapFinds[0]['map_only'] === true
     && $burgerMapFinds[0]['rating'] === null
     && $burgerMapFinds[0]['review_count'] === null
@@ -596,7 +779,34 @@ $verifiedFriesMapResults = buildNearbyMapResults(
     'fries',
     $friesIntent
 );
-assertCheck($verifiedFriesMapResults === [], 'Standalone fries shops are excluded from chain-only generic fries searches');
+assertCheck(
+    count($verifiedFriesMapResults) === 1
+    && $verifiedFriesMapResults[0]['name'] === 'Potato Corner'
+    && empty($verifiedFriesMapResults[0]['fast_food_chain']),
+    'An independently matching fries shop keeps its mapped location as a primary item match'
+);
+$independentFoodMapPlaces = [
+    ['name'=>'Independent Burger Shop', 'city'=>'Davao City', 'food_type'=>'fast_food', 'cuisine'=>'burger', 'latitude'=>7.105, 'longitude'=>125.635, 'url'=>'https://www.openstreetmap.org/node/218'],
+    ['name'=>'Chicken House', 'city'=>'Davao City', 'food_type'=>'restaurant', 'description'=>'Fried chicken', 'latitude'=>7.106, 'longitude'=>125.636, 'url'=>'https://www.openstreetmap.org/node/219'],
+    ['name'=>'Uncategorized Fast Food', 'city'=>'Davao City', 'food_type'=>'fast_food', 'latitude'=>7.107, 'longitude'=>125.637, 'url'=>'https://www.openstreetmap.org/node/220'],
+];
+$independentBurgerMapResults = buildMapFindResults(
+    $independentFoodMapPlaces,
+    'burger',
+    $burgerIntent
+);
+$independentChickenMapResults = buildMapFindResults(
+    $independentFoodMapPlaces,
+    'chicken',
+    $chickenIntent
+);
+assertCheck(
+    array_column($independentBurgerMapResults, 'name') === ['Independent Burger Shop']
+    && empty($independentBurgerMapResults[0]['fast_food_chain'])
+    && array_column($independentChickenMapResults, 'name') === ['Chicken House']
+    && empty($independentChickenMapResults[0]['fast_food_chain']),
+    'Generic burger and chicken searches accept non-chain map categories but reject unclassified fast food'
+);
 $friesCandidates = [
     ['_id'=>'potato-corner', 'name'=>'Potato Corner - Maa', 'food_type'=>'Fries', 'description'=>'', 'address'=>'Davao City', 'rating'=>4.8, 'review_count'=>100],
     ['_id'=>'fries-b4-guys', 'name'=>'Fries b4 Guys - Buhangin', 'food_type'=>'Chicken', 'description'=>'', 'address'=>'Davao City', 'rating'=>4.5, 'review_count'=>20],
@@ -611,9 +821,11 @@ $mixedMenuPlaces = shortlistPlaces([
 assertCheck(
     $friesIntent['strict_dishes'] === []
     && array_column($rankedFries, '_id') === ['potato-corner', 'fries-b4-guys']
+    && nearbyFeatureMatchesRequest($friesCandidates[0], 'fries', $friesIntent)
     && $mixedFriesBurgerIntent['strict_dishes'] === []
     && count($mixedMenuPlaces) === 2
     && !str_contains(expandMenuItemSearchQuery('fries Davao City', $friesIntent), '"Potato Corner"')
+    && !str_contains(expandMenuItemSearchQuery('fries Davao City', $friesIntent), '"Minute Burger"')
     && str_contains(expandMenuItemSearchQuery('fries Davao City', $friesIntent), 'McDonald')
     && str_contains(expandMenuItemSearchQuery('chicken Davao City', $chickenIntent), 'KFC'),
     'Menu-item searches keep exact fries matches, preserve mixed food searches, and expand Playwright queries with relevant brands'
@@ -839,6 +1051,24 @@ assertCheck(detectOutOfScopeLocation('Resorts in Island Garden City of Samal')['
 assertCheck(detectOutOfScopeLocation('Restaurants in Cebu City')['out_of_scope'] === true, 'Cebu City rejected');
 assertCheck(detectOutOfScopeLocation('Cebu boneless lechon in Davao City')['out_of_scope'] === false, 'Cebu food style in Davao City allowed');
 assertCheck(detectOutOfScopeLocation('Coffee shops in Obrero Davao City')['out_of_scope'] === false, 'Obrero Davao City allowed');
+$firesTypo = suggestSearchQueryTypo('fires');
+$coffeeTypo = suggestSearchQueryTypo('quiet cofee near Matina');
+$italianTypo = suggestSearchQueryTypo('italain restaurants');
+$chainTypo = suggestSearchQueryTypo('jollibe');
+$restaurantTypo = suggestSearchQueryTypo('restuarant');
+$burgerSteakTypo = suggestSearchQueryTypo('burgrsteak');
+assertCheck(
+    ($firesTypo['suggested_term'] ?? null) === 'fries'
+    && ($firesTypo['corrected_query'] ?? null) === 'fries'
+    && ($coffeeTypo['corrected_query'] ?? null) === 'quiet coffee near Matina'
+    && ($italianTypo['corrected_query'] ?? null) === 'Italian restaurants'
+    && ($chainTypo['corrected_query'] ?? null) === 'Jollibee'
+    && ($restaurantTypo['corrected_query'] ?? null) === 'restaurant'
+    && ($burgerSteakTypo['corrected_query'] ?? null) === 'burger steak'
+    && suggestSearchQueryTypo('briyani') === null
+    && suggestSearchQueryTypo('xyzzy') === null,
+    'Suggests unique high-confidence spelling fixes while preserving query context and recognized aliases'
+);
 
 $mtIntent = parseQueryIntent(
     'What about cheaper options in Lanang?',
